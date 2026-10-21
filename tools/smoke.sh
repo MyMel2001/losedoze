@@ -52,9 +52,13 @@ wait_marker "LOSEDOZE READY"   "$TIMEOUT_SHELL"  || fail "loseshell"
 wait_marker "EGL: "            30                || fail "egl marker"
 
 WIN32_SEEN=0
-if grep -q "LOSEDOZE AUTOSTART BEGIN" "$SER" 2>/dev/null; then
+# dev images print AUTOSTART BEGIN right after login; release images never do.
+# Wait for it (a one-shot grep races the login prompt and silently skips all
+# the Win32 checks).
+if wait_marker "LOSEDOZE AUTOSTART BEGIN" 90; then
     wait_marker "LOSEDOZE WAYLAND OK" "$TIMEOUT_SHELL" || fail "wayland-socket"
     wait_marker "LOSEDOZE WIN32 OK" "$TIMEOUT_WIN32"   || fail "win32"
+    wait_marker "LOSEDOZE DMABUF" 120                  || fail "dmabuf"
     wait_marker "LOSEDOZE GL OK"     120                || fail "opengl"
     wait_marker "LOSEDOZE VULKAN OK" 120                || fail "vulkan"
     wait_marker "LOSEDOZE DOTNET OK" 180                || fail "dotnet"

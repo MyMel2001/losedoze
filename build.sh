@@ -313,6 +313,15 @@ else
     echo "LOSEDOZE WIN32 FAIL (hello=$HOK notes=$NOK mapped=$MOK hrc=$HRC)" > /dev/console
 fi
 
+# Client DMA-BUF: the client hands its GPU buffer over with linux-dmabuf v1.
+# On the guest (bochs-drm with GEM/PRIME) that succeeds; on a device without
+# dma-buf export the client says so and falls back to wl_shm.
+if grep -q "dma-buf buffer in use" /tmp/w32notes 2>/dev/null; then
+    echo "LOSEDOZE DMABUF GPU OK" > /dev/console
+elif grep -q "dma-buf unavailable" /tmp/w32notes 2>/dev/null; then
+    echo "LOSEDOZE DMABUF SHM OK" > /dev/console
+fi
+
 # graphics + .NET probes (EGL/GLES2, Vulkan/lavapipe, .NET runtime)
 losegl    > /tmp/losegl.log    2>&1
 losvulkan > /tmp/losvulkan.log 2>&1
