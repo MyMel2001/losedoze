@@ -169,7 +169,7 @@ python3 win/gen_ntsyscalls.py build/ntsyscalls.inc
 python3 win/gen_importlibs.py win/w32host.c build/winapps
 # w32host: ELF host process (hand-rolled Wayland client -> /run/losedoze0)
 gcc -O2 -Wall -Wno-unused-function -o build/w32host \
-    win/pe.c win/ntdll.c win/kernel32.c win/user32.c win/gdi32.c \
+    win/pe.c win/ntdll.c win/kernel32.c win/user32.c win/gdi32.c win/wsprintf.c \
     win/wlclient.c win/w32host.c shell/input.c \
     -Iwin -Ishell -Ibuild -lm
 # PE apps: freestanding PE32+ (ms x64 ABI), linked with -mi386pep

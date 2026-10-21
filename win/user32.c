@@ -8,9 +8,7 @@
 #include <unistd.h>
 #include <poll.h>
 
-/* wsprintf* are implemented here with an explicit arity (see below), so the
- * variadic prototypes from w32.h must not apply to this file. */
-#define W32_NO_VSPRINTF_DECL
+/* wsprintf* live in win/wsprintf.c. */
 #include "host.h"
 
 #define WND_MAGIC 0x334e4457u
@@ -550,74 +548,5 @@ HICON LoadIconW(HINSTANCE i, LPCWSTR n) {
   return (HICON)&dummy_icon;
 }
 
-/* ---------------- wsprintf ---------------- */
-static int fmt_num(char *o, W64 v, int base, int neg) {
-  char tmp[24];
-  int n = 0;
-  do {
-    int d = (int)(v % (W64)base);
-    tmp[n++] = (char)(d < 10 ? '0' + d : 'a' + d - 10);
-    v /= (W64)base;
-  } while (v);
-  if (neg) tmp[n++] = '-';
-  int k = 0;
-  while (n) o[k++] = tmp[--n];
-  o[k] = 0;
-  return k;
-}
-
-/* MS x64 varargs: #1 in R8, #2 in R9, #3+ in the caller's stack. GCC's
- * ms_abi variadic support is broken (it builds a bogus register save area),
- * so the host takes the varargs as fixed parameters instead — GCC loads
- * those correctly.
- * ponytail: 4 varargs; widen the arity if an app ever needs more. */
-typedef struct { W64 v[4]; int idx; } MsVa;
-
-static W64 ms_va_arg(MsVa *ap) {
-  if (ap->idx >= (int)(sizeof ap->v / sizeof ap->v[0])) { ap->idx++; return 0; }
-  return ap->v[ap->idx++];
-}
-
-static int fmt_core(LPSTR out, LPCSTR fmt, MsVa *ap) {
-  int o = 0;
-  for (const char *p = fmt; *p; p++) {
-    if (*p != '%') { out[o++] = *p; continue; }
-    p++;
-    if (*p == 's') {
-      const char *s = (const char *)(W64)ms_va_arg(ap);
-      while (s && *s) out[o++] = *s++;
-    } else if (*p == 'c') {
-      out[o++] = (char)(W32)ms_va_arg(ap);
-    } else if (*p == 'd') {
-      int v = (int)(W32)ms_va_arg(ap);
-      int neg = v < 0;
-      W64 uv = neg ? (W64)(-(long)v) : (W64)(unsigned)v;
-      o += fmt_num(out + o, uv, 10, neg);
-    } else if (*p == 'u') {
-      o += fmt_num(out + o, (W64)(W32)ms_va_arg(ap), 10, 0);
-    } else if (*p == 'x') {
-      o += fmt_num(out + o, (W64)(W32)ms_va_arg(ap), 16, 0);
-    } else if (*p == '%') {
-      out[o++] = '%';
-    } else if (*p) {
-      out[o++] = *p;
-    }
-  }
-  out[o] = 0;
-  return o;
-}
-
-W32API int wsprintfA(LPSTR out, LPCSTR fmt, W64 a1, W64 a2, W64 a3, W64 a4) {
-  MsVa ap = { { a1, a2, a3, a4 }, 0 };
-  return fmt_core(out, fmt, &ap);
-}
-
-W32API int wsprintfW(LPWSTR out, LPCWSTR fmt, W64 a1, W64 a2, W64 a3, W64 a4) {
-  char fbuf[512], buf[1024];
-  int fn = w16_to_utf8(fmt, lstrlenW(fmt), fbuf, sizeof fbuf);
-  (void)fn;
-  MsVa ap = { { a1, a2, a3, a4 }, 0 };
-  int n = fmt_core(buf, fbuf, &ap);
-  for (int i = 0; i <= n; i++) out[i] = (W8)buf[i];
-  return n;
-}
+/* wsprintfA/wsprintfW live in win/wsprintf.c (full printf-style
+ * formatting, standalone testable: tools/test_wsprintf.c). */
