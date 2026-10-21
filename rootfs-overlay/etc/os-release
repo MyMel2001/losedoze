@@ -1,0 +1,8 @@
+NAME="Losedoze"
+VERSION="1.0"
+ID=losedoze
+ID_LIKE=linux
+PRETTY_NAME="Losedoze 1.0"
+ANSI_COLOR="0;36"
+HOME_URL="file:///usr/share/doc/losedoze/"
+LOGO=losedoze

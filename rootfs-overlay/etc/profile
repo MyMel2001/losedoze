@@ -1,0 +1,12 @@
+# Losedoze shell environment
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export HOME=/root
+export USER=root
+export LOGNAME=root
+export SHELL=/bin/sh
+export EDITOR=vi
+
+export WIN32_APPDATA=/root/.losedoze
+
+export PS1='\u@losedoze:\w\$ '
+umask 022

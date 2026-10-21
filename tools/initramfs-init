@@ -1,0 +1,38 @@
+#!/bin/sh
+# Losedoze initramfs: mount the live medium, switch to rootfs.ext4.
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin
+log() { echo "$*" > /dev/console; }
+
+# devtmpfs first, no redirects: /dev/null does not exist before it mounts
+mount -t devtmpfs devtmpfs /dev
+mount -t proc proc /proc 2>/dev/null
+mount -t sysfs sysfs /sys 2>/dev/null
+mkdir -p /dev/pts
+mount -t devpts devpts /dev/pts 2>/dev/null
+
+insmod /modules/loop.ko 2>/dev/null || log "LOSEDOZE INIT: insmod loop.ko failed"
+insmod /modules/isofs.ko 2>/dev/null || true
+# loop module creates no pre-set devices (MIN_COUNT=0); the control node
+# is what mount/losetup use to allocate one.
+[ -e /dev/loop-control ] || mknod /dev/loop-control c 10 237 2>/dev/null
+
+mkdir -p /cdrom
+for d in /dev/sr0 /dev/sr1 /dev/sr2; do
+    mount -t iso9660 -o ro "$d" /cdrom 2>/dev/null && { log "LOSEDOZE INIT: medium mounted on $d"; break; }
+done
+
+if [ ! -f /cdrom/rootfs.ext4 ]; then
+    log "LOSEDOZE INIT: rootfs.ext4 not found on medium"
+    ls -la /cdrom > /dev/console 2>&1
+    exec sh
+fi
+
+if ! mount -t ext4 -o loop /cdrom/rootfs.ext4 /newroot; then
+    log "LOSEDOZE INIT: loop mount of rootfs.ext4 failed"
+    log "loop devices: $(ls /dev/loop* 2>/dev/null | tr '\n' ' ')"
+    ls -la /sys/block | head -20 > /dev/console
+    exec sh
+fi
+
+log "LOSEDOZE SWITCHROOT"
+exec switch_root /newroot /sbin/init

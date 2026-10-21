@@ -1,0 +1,7 @@
+root:x:0:
+daemon:x:1:
+video:x:39:
+audio:x:29:
+input:x:998:
+plugdev:x:997:
+nogroup:x:65534:

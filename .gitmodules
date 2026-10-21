@@ -1,0 +1,4 @@
+[submodule "windows-syscalls"]
+	path = windows-syscalls
+	url = https://github.com/j00ru/windows-syscalls/
+	branch = master

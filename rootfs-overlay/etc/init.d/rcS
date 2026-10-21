@@ -1,0 +1,33 @@
+#!/bin/sh
+# Losedoze early userspace. Backing media is read-only, so writable areas
+# live on tmpfs; binaries/config on the rootfs stay read-only.
+# NOTE: /dev must be mounted on the first line, without stderr redirects —
+# until devtmpfs is up, /dev/null does not exist and redirections abort lines.
+mount -t devtmpfs devtmpfs /dev
+
+mount -t proc proc /proc 2>/dev/null
+mount -t sysfs sysfs /sys 2>/dev/null
+mkdir -p /dev/pts /dev/shm
+mount -t devpts devpts /dev/pts 2>/dev/null
+
+# writable live areas
+mount -t tmpfs -o size=1024m tmpfs /root 2>/dev/null
+mount -t tmpfs -o size=256m tmpfs /var 2>/dev/null
+mount -t tmpfs tmpfs /tmp 2>/dev/null
+mount -t tmpfs tmpfs /run 2>/dev/null
+mkdir -p /run/losedoze /var/log /var/cache /var/tmp /root/.config
+
+hostname -F /etc/hostname 2>/dev/null
+
+# GPU: devtmpfs nodes first, then in-tree DRM/KMS drivers (modules.dep built
+# at image build). First driver to bind /dev/dri/card0 wins; failures are OK.
+KVER=$(ls /lib/modules 2>/dev/null | head -1)
+if [ -n "$KVER" ] && [ ! -e /dev/dri/card0 ]; then
+    for d in bochs i915 amdgpu nouveau radeon; do
+        modprobe "$d" 2>/dev/null
+        [ -e /dev/dri/card0 ] && break
+    done
+fi
+
+echo "LOSEDOZE INIT OK" > /dev/console
+exit 0

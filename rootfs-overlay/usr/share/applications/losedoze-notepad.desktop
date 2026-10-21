@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Notepad
+Comment=Plain text editor
+Exec=w32host /opt/losedoze/apps/notes.exe
+Terminal=false
+Categories=Utility;TextEditor;
+StartupNotify=true

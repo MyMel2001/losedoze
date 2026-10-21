@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Hello
+Comment=Console test app (Win32 subsystem)
+Exec=w32host /opt/losedoze/apps/hello.exe
+Terminal=true
+Categories=Utility;
+StartupNotify=true
