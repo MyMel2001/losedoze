@@ -584,10 +584,21 @@ static void req_dmabuf_params(Cl *cl, Obj *o, uint32_t op, Cur *cur) {
     } else if (op == 2) {                           /* create(new_id buffer, width, height) */
         uint32_t id = a_u(cur);
         int32_t w = a_i(cur), h = a_i(cur);
+        Obj *ex = id < (uint32_t)cl->objs_cap ? cl->objs[id] : NULL;
+        /* re-creating an existing buffer id refreshes it in place: the client
+         * re-exports the same bo every frame (needed on copy-on-export drivers,
+         * harmless on zero-copy ones) */
+        Buf *b = (ex && ex->vt == &vt_buffer) ? (Buf *)ex->d : NULL;
+        int fresh = 0;
+        if (!b) {
+            b = calloc(1, sizeof *b);
+            if (b && obj_new(cl, id, &vt_buffer, b)) { fresh = 1; b->obj_id = id; }
+            else { free(b); b = NULL; }
+        }
         void *px = NULL;
         int iw = (int)w, ih = (int)h;                /* client-declared size */
         uint32_t len = p->stride > 0 && h > 0 ? (uint32_t)p->stride * (uint32_t)h : 0;
-        int ok = p->fd >= 0 && w > 0 && h > 0 && s && s->cb.dmabuf_import &&
+        int ok = b && p->fd >= 0 && w > 0 && h > 0 && s && s->cb.dmabuf_import &&
                  s->cb.dmabuf_import(s->cb.ud, p->fd, 0x34325258u /*XRGB8888*/,
                                       (uint32_t)p->stride, len, &px, &iw, &ih) == 0;
         if (!ok) {
@@ -598,20 +609,11 @@ static void req_dmabuf_params(Cl *cl, Obj *o, uint32_t op, Cur *cur) {
             free(p);
             return;
         }
-        Buf *b = calloc(1, sizeof *b);
-        if (!b) {
-            EV(cl, o->id, 1, { });
-            cl_flush(cl);
-            obj_free(cl, o);
-            if (p->fd >= 0) close(p->fd);
-            free(p);
-            return;
-        }
+        if (!fresh && b->dmap) { munmap(b->dmap, b->dlen); b->dmap = NULL; b->dlen = 0; }
         b->pool = NULL; b->off = 0; b->w = iw; b->h = ih; b->stride = p->stride;
         b->format = 1;                             /* XRGB8888: opaque */
-        b->px = (uint32_t *)px; b->obj_id = id; b->released = 1;
+        b->px = (uint32_t *)px; b->released = 1;
         b->dmap = px; b->dlen = len;
-        obj_new(cl, id, &vt_buffer, b);
         EV(cl, o->id, 0, { bu32(&_b, id); });        /* created(buffer) */
         cl_flush(cl);
         obj_free(cl, o);

@@ -36,7 +36,7 @@ static uint8_t *wbuf; static size_t wlen, wcap;
 
 typedef struct WlcBuf {
   W32 id; int w, h, stride; W32 *px; int released;
-  int is_dmabuf, confirmed, exported;   /* dma-buf: gbm bo + its CPU mapping */
+  int is_dmabuf, confirmed;           /* dma-buf: gbm bo + its CPU mapping */
   void *bo, *mapdata;
 } WlcBuf;
 struct WlcWin {
@@ -196,15 +196,30 @@ struct drm_prime_handle { uint32_t handle, flags; int32_t fd; };
 #define DRM_IOCTL_PRIME_HANDLE_TO_FD _IOWR('d', 0x2d, struct drm_prime_handle)
 
 static W32 dmabuf_id;
-static int dmabuf_loaded, dmabuf_disabled;
+static int dmabuf_loaded, dmabuf_disabled, dmabuf_warned, dmabuf_announced;
 static W32 dmabuf_wait_obj;
 static int dmabuf_wait_res;              /* 1 = created, -1 = failed */
+
+/* One-shot notice so the smoke/autostart scripts can see (and report) that the
+ * client tried the dma-buf path and fell back to shm. */
+static void dmabuf_note(const char *why) {
+  if (dmabuf_warned) return;
+  dmabuf_warned = 1;
+  fprintf(stderr, "wlclient: dma-buf unavailable (%s) - wl_shm fallback\n", why);
+}
+
+/* ... and the other way round: the client really handed a GPU buffer over. */
+static void dmabuf_announce(void) {
+  if (dmabuf_announced) return;
+  dmabuf_announced = 1;
+  fprintf(stderr, "wlclient: dma-buf buffer in use (client GPU memory)\n");
+}
 
 static int dmabuf_load(void) {
   if (dmabuf_loaded) return 1;
   dmabuf_loaded = 1;
   gbmh = dlopen("libgbm.so.1", RTLD_NOW);
-  if (!gbmh) return 0;
+  if (!gbmh) { dmabuf_note("libgbm.so.1 not loadable"); return 0; }
   *(void **)&p_gbm_create_device = dlsym(gbmh, "gbm_create_device");
   *(void **)&p_gbm_bo_create = dlsym(gbmh, "gbm_bo_create");
   *(void **)&p_gbm_bo_map = dlsym(gbmh, "gbm_bo_map");
@@ -213,9 +228,13 @@ static int dmabuf_load(void) {
   *(void **)&p_gbm_bo_get_stride = dlsym(gbmh, "gbm_bo_get_stride");
   *(void **)&p_gbm_bo_destroy = dlsym(gbmh, "gbm_bo_destroy");
   *(void **)&p_gbm_device_destroy = dlsym(gbmh, "gbm_device_destroy");
-  return p_gbm_create_device && p_gbm_bo_create && p_gbm_bo_map && p_gbm_bo_unmap &&
-         p_gbm_bo_get_handle && p_gbm_bo_get_stride && p_gbm_bo_destroy &&
-         p_gbm_device_destroy;
+  if (!p_gbm_create_device || !p_gbm_bo_create || !p_gbm_bo_map || !p_gbm_bo_unmap ||
+      !p_gbm_bo_get_handle || !p_gbm_bo_get_stride || !p_gbm_bo_destroy ||
+      !p_gbm_device_destroy) {
+    dmabuf_note("missing gbm symbols");
+    return 0;
+  }
+  return 1;
 }
 
 /* first DRM node we can create a gbm device on */
@@ -245,7 +264,7 @@ static void dmabuf_buf_free(WlcBuf *b) {
   }
   if (b->id && b->confirmed) { req_begin(b->id, 0, 0); flush_w(); } /* wl_buffer.destroy */
   b->bo = NULL; b->mapdata = NULL; b->px = NULL; b->id = 0;
-  b->is_dmabuf = 0; b->confirmed = 0; b->exported = 0;
+  b->is_dmabuf = 0; b->confirmed = 0;
 }
 
 static int dmabuf_wait(W32 params, int timeout_ms) {
@@ -264,21 +283,22 @@ static int dmabuf_wait(W32 params, int timeout_ms) {
 /* 0 on success: b gets a GBM bo + mapped pixels (no protocol yet) */
 static int dmabuf_buf(WlcBuf *b, int cw, int ch) {
   if (!dmabuf_load() || !dmabuf_id) return -1;
-  if (dmabuf_dev_open() < 0) return -1;
+  if (dmabuf_dev_open() < 0) { dmabuf_note("no DRM node with a gbm device"); return -1; }
   gbm_bo *bo = p_gbm_bo_create(dmabuf_dev, (uint32_t)cw, (uint32_t)ch,
                                GBM_FORMAT_XRGB8888, GBM_BO_USE_LINEAR);
-  if (!bo) return -1;
+  if (!bo) { dmabuf_note("gbm_bo_create failed"); return -1; }
   uint32_t stride = 0;
   void *md = NULL;
   void *px = p_gbm_bo_map(bo, 0, 0, (uint32_t)cw, (uint32_t)ch,
                           GBM_BO_TRANSFER_READ_WRITE, &stride, &md);
-  if (!px) { p_gbm_bo_destroy(bo); return -1; }
+  if (!px) { p_gbm_bo_destroy(bo); dmabuf_note("gbm_bo_map failed"); return -1; }
   /* probe the PRIME export now (before the app paints) so a device without
    * dma-buf export falls back to shm before any content is drawn */
   struct drm_prime_handle probe = { .handle = p_gbm_bo_get_handle(bo), .flags = 0, .fd = -1 };
   if (ioctl(dmabuf_devfd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &probe) < 0 || probe.fd < 0) {
     p_gbm_bo_unmap(bo, md);
     p_gbm_bo_destroy(bo);
+    dmabuf_note("no dma-buf export (no GEM/PRIME on this device)");
     return -1;
   }
   close(probe.fd);
@@ -290,8 +310,9 @@ static int dmabuf_buf(WlcBuf *b, int cw, int ch) {
 }
 
 /* Export the painted bo and hand it over (create_params -> add(fd) -> create).
- * Done at commit time, not at allocation time: some drivers copy on PRIME
- * export (dumb buffers), so the snapshot must be taken after the first paint. */
+ * Done at commit time, not at allocation time, and on every frame: some
+ * drivers copy on PRIME export (dumb buffers), so the snapshot must be taken
+ * after each paint; zero-copy devices simply re-import the same memory. */
 static int dmabuf_export(WlcBuf *b) {
   struct drm_prime_handle ph = { .handle = p_gbm_bo_get_handle(b->bo), .flags = 0, .fd = -1 };
   if (ioctl(dmabuf_devfd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &ph) < 0 || ph.fd < 0) return -1;
@@ -306,12 +327,11 @@ static int dmabuf_export(WlcBuf *b) {
   req_begin(params, 2, 12);                 /* create(buffer, width, height) */
   w_u32(b->id); w_i32(b->w); w_i32(b->h);
   flush_w();
-  b->exported = 1;
   if (!dmabuf_wait(params, 1000)) return -1; /* compositor imported it? */
   b->confirmed = 1;
+  dmabuf_announce();
   return 0;
 }
-
 /* ---------------- window/buffer ops ---------------- */
 static W32 comp_id, shm_id, seat_id, wmbase_id;
 
@@ -421,8 +441,8 @@ void wlc_win_commit(WlcWin *w) {
   for (int i = 0; i < 2; i++)
     if (w->bufs[i].id && w->bufs[i].px && w->bufs[i].released) { b = &w->bufs[i]; break; }
   if (!b) return;
-  if (b->is_dmabuf && !b->exported) {
-    if (dmabuf_export(b) < 0) {                 /* no PRIME export / import failed */
+  if (b->is_dmabuf) {
+    if (dmabuf_export(b) < 0) {                 /* export + hand over every frame */
       dmabuf_disabled = 1;
       for (int i = 0; i < 2; i++) buf_free(&w->bufs[i]);
       if (shm_bufs(w, w->w, w->h) < 0) return;
