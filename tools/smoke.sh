@@ -55,6 +55,9 @@ WIN32_SEEN=0
 if grep -q "LOSEDOZE AUTOSTART BEGIN" "$SER" 2>/dev/null; then
     wait_marker "LOSEDOZE WAYLAND OK" "$TIMEOUT_SHELL" || fail "wayland-socket"
     wait_marker "LOSEDOZE WIN32 OK" "$TIMEOUT_WIN32"   || fail "win32"
+    wait_marker "LOSEDOZE GL OK"     120                || fail "opengl"
+    wait_marker "LOSEDOZE VULKAN OK" 120                || fail "vulkan"
+    wait_marker "LOSEDOZE DOTNET OK" 180                || fail "dotnet"
     WIN32_SEEN=1
     sleep 4   # let the compositor draw the mapped Win32 client
 else
