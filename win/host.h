@@ -41,6 +41,7 @@ void wlc_flush(void);
 WlcWin *wlc_toplevel(const char *title, const char *appid);
 void wlc_win_surface(WlcWin *win, int cw, int ch); /* size/attach shm buffer (XRGB8888) */
 W32 *wlc_win_pixels(WlcWin *w, int *stride4);
+int wlc_win_uses_dmabuf(WlcWin *w);   /* 1 = buffer is a client GPU dma-buf */
 void wlc_win_commit(WlcWin *w);   /* attach+damage+commit+flush */
 int wlc_win_alive(WlcWin *w);     /* 0 after close_req handled/destroy */
 int wlc_win_buf_busy(WlcWin *w);  /* 1 = no free buffer right now */

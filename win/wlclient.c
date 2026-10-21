@@ -8,9 +8,11 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/mman.h>
@@ -20,7 +22,7 @@
 /* object types (client-side registry of ids we know) */
 enum { T_NONE, T_DISPLAY, T_REGISTRY, T_COMPOSITOR, T_SURFACE, T_SHM, T_POOL,
        T_BUFFER, T_SEAT, T_POINTER, T_KEYBOARD, T_WM_BASE, T_XDG_SURFACE,
-       T_XDG_TOPLEVEL, T_CALLBACK };
+       T_XDG_TOPLEVEL, T_CALLBACK, T_DMABUF, T_DMABUF_PARAMS };
 
 #define MAXOBJ 4096
 static W32 obj_type[MAXOBJ];
@@ -32,7 +34,11 @@ static uint8_t rbuf[131072]; static size_t rlen;
 static int rfds[32]; static int nrfds;
 static uint8_t *wbuf; static size_t wlen, wcap;
 
-typedef struct WlcBuf { W32 id; int w, h, stride; W32 *px; int released; } WlcBuf;
+typedef struct WlcBuf {
+  W32 id; int w, h, stride; W32 *px; int released;
+  int is_dmabuf, confirmed, exported;   /* dma-buf: gbm bo + its CPU mapping */
+  void *bo, *mapdata;
+} WlcBuf;
 struct WlcWin {
   W32 surf, xdg_s, toplevel;
   WlcBuf bufs[2];
@@ -114,15 +120,16 @@ static void flush_w(void) {
   }
   if (off) { memmove(wbuf, wbuf + off, wlen - off); wlen -= off; }
 }
-/* request carrying an fd (wl_shm.create_pool) */
-static void req_fd(W32 obj, W32 op, W32 a1, W32 a2, int fd) {
+/* request carrying an fd (wl_shm.create_pool, zwp_linux_buffer_params_v1.add) */
+static void req_fd_args(W32 obj, W32 op, const W32 *args, int nargs, int fd) {
   flush_w();
-  uint8_t pkt[16];                 /* fd args occupy no stream bytes */
-  W32 h0 = obj, h1 = (16u << 16) | op;
+  uint8_t pkt[8 + 8 * 4];           /* fd args occupy no stream bytes */
+  W32 h0 = obj, h1 = ((W32)(8 + 4 * nargs) << 16) | op;
   memcpy(pkt, &h0, 4); memcpy(pkt + 4, &h1, 4);
-  memcpy(pkt + 8, &a1, 4); memcpy(pkt + 12, &a2, 4);
+  for (int i = 0; i < nargs; i++) memcpy(pkt + 8 + 4 * i, &args[i], 4);
+  size_t len = 8 + 4 * (size_t)nargs;
   struct msghdr mh = { 0 };
-  struct iovec iov = { .iov_base = pkt, .iov_len = 16 };
+  struct iovec iov = { .iov_base = pkt, .iov_len = len };
   char cbuf[CMSG_SPACE(sizeof(int))];
   mh.msg_iov = &iov; mh.msg_iovlen = 1;
   mh.msg_control = cbuf; mh.msg_controllen = sizeof cbuf;
@@ -131,13 +138,17 @@ static void req_fd(W32 obj, W32 op, W32 a1, W32 a2, int fd) {
   cm->cmsg_len = CMSG_LEN(sizeof(int));
   memcpy(CMSG_DATA(cm), &fd, sizeof(int));
   if (wlc_trace) {
-    fprintf(stderr, "wlclient: >>> fd-msg16:");
-    for (int i = 0; i < 16; i++) fprintf(stderr, " %02x", pkt[i]);
+    fprintf(stderr, "wlclient: >>> fd-msg%zu:", len);
+    for (size_t i = 0; i < len; i++) fprintf(stderr, " %02x", pkt[i]);
     fprintf(stderr, " fd=%d\n", fd);
   }
   ssize_t sent = sendmsg(sfd, &mh, MSG_NOSIGNAL);
-  if (sent != 16)
+  if (sent != (ssize_t)len)
     fprintf(stderr, "wlclient: sendmsg fd: ret=%zd err=%s\n", sent, strerror(errno));
+}
+static void req_fd(W32 obj, W32 op, W32 a1, W32 a2, int fd) {
+  W32 args[2] = { a1, a2 };
+  req_fd_args(obj, op, args, 2, fd);
 }
 
 /* ---------------- arg readers ---------------- */
@@ -161,34 +172,165 @@ static int r_fd(void) {
 static void set_type(W32 id, W32 t) { if (id < MAXOBJ) obj_type[id] = t; }
 static W32 get_type(W32 id) { return id < MAXOBJ ? obj_type[id] : T_NONE; }
 
+/* ---------------- client dma-buf (zwp_linux_dmabuf_v1) ----------------
+ * Zero-copy path: allocate the window buffer as a GBM bo, export it as a
+ * dma-buf fd and hand that to the compositor. Falls back to shm on any
+ * failure (no DRM node, no GBM, no PRIME export). */
+typedef struct gbm_device gbm_device;
+typedef struct gbm_bo gbm_bo;
+static void *gbmh;
+static gbm_device *(*p_gbm_create_device)(int);
+static gbm_bo *(*p_gbm_bo_create)(gbm_device *, uint32_t, uint32_t, uint32_t, uint32_t);
+static void *(*p_gbm_bo_map)(gbm_bo *, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t,
+                             uint32_t *, void **);
+static void (*p_gbm_bo_unmap)(gbm_bo *, void *);
+static uint32_t (*p_gbm_bo_get_handle)(gbm_bo *);
+static uint32_t (*p_gbm_bo_get_stride)(gbm_bo *);
+static void (*p_gbm_bo_destroy)(gbm_bo *);
+static void (*p_gbm_device_destroy)(gbm_device *);
+
+#define GBM_FORMAT_XRGB8888 0x34325258u
+#define GBM_BO_USE_LINEAR (1u << 4)
+#define GBM_BO_TRANSFER_READ_WRITE 3u
+struct drm_prime_handle { uint32_t handle, flags; int32_t fd; };
+#define DRM_IOCTL_PRIME_HANDLE_TO_FD _IOWR('d', 0x2d, struct drm_prime_handle)
+
+static W32 dmabuf_id;
+static int dmabuf_loaded, dmabuf_disabled;
+static W32 dmabuf_wait_obj;
+static int dmabuf_wait_res;              /* 1 = created, -1 = failed */
+
+static int dmabuf_load(void) {
+  if (dmabuf_loaded) return 1;
+  dmabuf_loaded = 1;
+  gbmh = dlopen("libgbm.so.1", RTLD_NOW);
+  if (!gbmh) return 0;
+  *(void **)&p_gbm_create_device = dlsym(gbmh, "gbm_create_device");
+  *(void **)&p_gbm_bo_create = dlsym(gbmh, "gbm_bo_create");
+  *(void **)&p_gbm_bo_map = dlsym(gbmh, "gbm_bo_map");
+  *(void **)&p_gbm_bo_unmap = dlsym(gbmh, "gbm_bo_unmap");
+  *(void **)&p_gbm_bo_get_handle = dlsym(gbmh, "gbm_bo_get_handle");
+  *(void **)&p_gbm_bo_get_stride = dlsym(gbmh, "gbm_bo_get_stride");
+  *(void **)&p_gbm_bo_destroy = dlsym(gbmh, "gbm_bo_destroy");
+  *(void **)&p_gbm_device_destroy = dlsym(gbmh, "gbm_device_destroy");
+  return p_gbm_create_device && p_gbm_bo_create && p_gbm_bo_map && p_gbm_bo_unmap &&
+         p_gbm_bo_get_handle && p_gbm_bo_get_stride && p_gbm_bo_destroy &&
+         p_gbm_device_destroy;
+}
+
+/* first DRM node we can create a gbm device on */
+static gbm_device *dmabuf_dev;
+static int dmabuf_devfd = -2;
+static int dmabuf_dev_open(void) {
+  if (dmabuf_devfd != -2) return dmabuf_devfd;
+  dmabuf_devfd = -1;
+  const char *nodes[] = { "/dev/dri/renderD128", "/dev/dri/renderD129",
+                          "/dev/dri/card0", "/dev/dri/card1" };
+  for (unsigned i = 0; i < sizeof nodes / sizeof nodes[0]; i++) {
+    int fd = open(nodes[i], O_RDWR | O_CLOEXEC);
+    if (fd < 0) continue;
+    gbm_device *d = p_gbm_create_device(fd);
+    if (!d) { close(fd); continue; }
+    dmabuf_dev = d;
+    dmabuf_devfd = fd;
+    break;
+  }
+  return dmabuf_devfd;
+}
+
+static void dmabuf_buf_free(WlcBuf *b) {
+  if (b->is_dmabuf && b->bo) {
+    if (b->mapdata) p_gbm_bo_unmap(b->bo, b->mapdata);
+    p_gbm_bo_destroy(b->bo);
+  }
+  if (b->id && b->confirmed) { req_begin(b->id, 0, 0); flush_w(); } /* wl_buffer.destroy */
+  b->bo = NULL; b->mapdata = NULL; b->px = NULL; b->id = 0;
+  b->is_dmabuf = 0; b->confirmed = 0; b->exported = 0;
+}
+
+static int dmabuf_wait(W32 params, int timeout_ms) {
+  dmabuf_wait_obj = params;
+  dmabuf_wait_res = 0;
+  while (!dmabuf_wait_res && timeout_ms > 0) {
+    struct pollfd p = { .fd = sfd, .events = POLLIN };
+    poll(&p, 1, 20);
+    wlc_dispatch();
+    timeout_ms -= 20;
+  }
+  dmabuf_wait_obj = 0;
+  return dmabuf_wait_res > 0;
+}
+
+/* 0 on success: b gets a GBM bo + mapped pixels (no protocol yet) */
+static int dmabuf_buf(WlcBuf *b, int cw, int ch) {
+  if (!dmabuf_load() || !dmabuf_id) return -1;
+  if (dmabuf_dev_open() < 0) return -1;
+  gbm_bo *bo = p_gbm_bo_create(dmabuf_dev, (uint32_t)cw, (uint32_t)ch,
+                               GBM_FORMAT_XRGB8888, GBM_BO_USE_LINEAR);
+  if (!bo) return -1;
+  uint32_t stride = 0;
+  void *md = NULL;
+  void *px = p_gbm_bo_map(bo, 0, 0, (uint32_t)cw, (uint32_t)ch,
+                          GBM_BO_TRANSFER_READ_WRITE, &stride, &md);
+  if (!px) { p_gbm_bo_destroy(bo); return -1; }
+  /* probe the PRIME export now (before the app paints) so a device without
+   * dma-buf export falls back to shm before any content is drawn */
+  struct drm_prime_handle probe = { .handle = p_gbm_bo_get_handle(bo), .flags = 0, .fd = -1 };
+  if (ioctl(dmabuf_devfd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &probe) < 0 || probe.fd < 0) {
+    p_gbm_bo_unmap(bo, md);
+    p_gbm_bo_destroy(bo);
+    return -1;
+  }
+  close(probe.fd);
+  b->id = next_id++;
+  set_type(b->id, T_BUFFER);
+  b->w = cw; b->h = ch; b->stride = (int)stride; b->px = px; b->released = 1;
+  b->bo = bo; b->mapdata = md; b->is_dmabuf = 1;
+  return 0;
+}
+
+/* Export the painted bo and hand it over (create_params -> add(fd) -> create).
+ * Done at commit time, not at allocation time: some drivers copy on PRIME
+ * export (dumb buffers), so the snapshot must be taken after the first paint. */
+static int dmabuf_export(WlcBuf *b) {
+  struct drm_prime_handle ph = { .handle = p_gbm_bo_get_handle(b->bo), .flags = 0, .fd = -1 };
+  if (ioctl(dmabuf_devfd, DRM_IOCTL_PRIME_HANDLE_TO_FD, &ph) < 0 || ph.fd < 0) return -1;
+  W32 params = next_id++;
+  set_type(params, T_DMABUF_PARAMS);
+  req_begin(dmabuf_id, 0, 4);               /* create_params(params) */
+  w_u32(params);
+  flush_w();
+  W32 add[3] = { 0, 0, (W32)b->stride };    /* plane_idx, offset, stride */
+  req_fd_args(params, 1, add, 3, ph.fd);    /* add(fd, plane, offset, stride) */
+  close(ph.fd);
+  req_begin(params, 2, 12);                 /* create(buffer, width, height) */
+  w_u32(b->id); w_i32(b->w); w_i32(b->h);
+  flush_w();
+  b->exported = 1;
+  if (!dmabuf_wait(params, 1000)) return -1; /* compositor imported it? */
+  b->confirmed = 1;
+  return 0;
+}
+
 /* ---------------- window/buffer ops ---------------- */
 static W32 comp_id, shm_id, seat_id, wmbase_id;
 
+
 static void buf_free(WlcBuf *b) {
   if (!b->id) return;
+  if (b->is_dmabuf) { dmabuf_buf_free(b); return; }
   req_begin(b->id, 0, 0);          /* wl_buffer.destroy */
   b->id = 0; b->px = NULL;
 }
 
-void wlc_win_surface(WlcWin *w, int cw, int ch) {
-  if (cw < 1) cw = 1;
-  if (ch < 1) ch = 1;
-  if (!w->configured) return;      /* wait for toplevel configure first */
-  if (w->bufs[0].id && w->w == cw && w->h == ch) return;
-  /* drop old buffers + pool (server frees them; ponytail: no pool reuse) */
-  for (int i = 0; i < 2; i++) buf_free(&w->bufs[i]);
-  if (w->pool_id) { req_begin(w->pool_id, 0, 0); w->pool_id = 0; } /* pool.destroy */
-  if (w->pool_map && w->pool_map != MAP_FAILED) {
-    munmap(w->pool_map, w->pool_len);
-    w->pool_map = NULL;
-  }
-  w->w = cw; w->h = ch;
+/* shm fallback: one pool with two buffers */
+static int shm_bufs(WlcWin *w, int cw, int ch) {
   size_t stride = (size_t)cw * 4, total = stride * (size_t)ch * 2;
   int pfd = memfd_create("w32-buf", 0);
-  if (pfd < 0) return;
-  if (ftruncate(pfd, (off_t)total) < 0) { close(pfd); return; }
+  if (pfd < 0) return -1;
+  if (ftruncate(pfd, (off_t)total) < 0) { close(pfd); return -1; }
   W32 *map = mmap(NULL, total, PROT_READ | PROT_WRITE, MAP_SHARED, pfd, 0);
-  if (map == MAP_FAILED) { close(pfd); return; }
+  if (map == MAP_FAILED) { close(pfd); return -1; }
   w->pool_map = map;
   w->pool_len = total;
   w->pool_id = next_id++;
@@ -199,7 +341,7 @@ void wlc_win_surface(WlcWin *w, int cw, int ch) {
   req_fd(shm_id, 0 /*wl_shm.create_pool(new, fd, size)*/, w->pool_id, (W32)total,
          pfd);
   close(pfd);
-  if (getenv("WLC_POOLONLY")) { w->configured = 2; flush_w(); return; }
+  if (getenv("WLC_POOLONLY")) { w->configured = 2; flush_w(); return 0; }
   for (int i = 0; i < 2; i++) {
     WlcBuf *b = &w->bufs[i];
     b->id = next_id++;
@@ -215,6 +357,39 @@ void wlc_win_surface(WlcWin *w, int cw, int ch) {
   }
   w->configured = 1;
   flush_w();
+  return 0;
+}
+
+void wlc_win_surface(WlcWin *w, int cw, int ch) {
+  if (cw < 1) cw = 1;
+  if (ch < 1) ch = 1;
+  if (!w->configured) return;      /* wait for toplevel configure first */
+  if (w->bufs[0].id && w->w == cw && w->h == ch) return;
+  /* drop old buffers + pool (server frees them; ponytail: no pool reuse) */
+  for (int i = 0; i < 2; i++) buf_free(&w->bufs[i]);
+  if (w->pool_id) { req_begin(w->pool_id, 0, 0); w->pool_id = 0; } /* pool.destroy */
+  if (w->pool_map && w->pool_map != MAP_FAILED) {
+    munmap(w->pool_map, w->pool_len);
+    w->pool_map = NULL;
+  }
+  w->w = cw; w->h = ch;
+  /* dma-buf first (zero copy); shm fallback below */
+  if (!dmabuf_disabled && dmabuf_id) {
+    WlcBuf tmp[2];
+    memset(tmp, 0, sizeof tmp);
+    int i = 0;
+    for (; i < 2; i++)
+      if (dmabuf_buf(&tmp[i], cw, ch) < 0) break;
+    if (i == 2) {
+      for (int k = 0; k < 2; k++) w->bufs[k] = tmp[k];
+      w->configured = 1;
+      flush_w();
+      return;
+    }
+    for (int k = 0; k < i; k++) dmabuf_buf_free(&tmp[k]);
+    dmabuf_disabled = 1;
+  }
+  shm_bufs(w, cw, ch);
 }
 
 W32 *wlc_win_pixels(WlcWin *w, int *stride4) {
@@ -224,6 +399,12 @@ W32 *wlc_win_pixels(WlcWin *w, int *stride4) {
       return w->bufs[i].px;
     }
   return NULL;
+}
+
+int wlc_win_uses_dmabuf(WlcWin *w) {
+  for (int i = 0; i < 2; i++)
+    if (w->bufs[i].id && w->bufs[i].is_dmabuf) return 1;
+  return 0;
 }
 
 void wlc_win_commit(WlcWin *w) {
@@ -240,6 +421,17 @@ void wlc_win_commit(WlcWin *w) {
   for (int i = 0; i < 2; i++)
     if (w->bufs[i].id && w->bufs[i].px && w->bufs[i].released) { b = &w->bufs[i]; break; }
   if (!b) return;
+  if (b->is_dmabuf && !b->exported) {
+    if (dmabuf_export(b) < 0) {                 /* no PRIME export / import failed */
+      dmabuf_disabled = 1;
+      for (int i = 0; i < 2; i++) buf_free(&w->bufs[i]);
+      if (shm_bufs(w, w->w, w->h) < 0) return;
+      b = NULL;
+      for (int i = 0; i < 2; i++)
+        if (w->bufs[i].id && w->bufs[i].px && w->bufs[i].released) { b = &w->bufs[i]; break; }
+      if (!b) return;
+    }
+  }
   b->released = 0;
   if (wlc_trace)
     fprintf(stderr, "wlclient: attach buf=%u surf=%u %dx%d\n",
@@ -353,6 +545,12 @@ static void handle_registry(W32 op, Rd *r) {
       set_type(pp, T_POINTER);
       req_begin(id, 1, 4); w_u32(pk);   /* get_keyboard */
       req_begin(id, 0, 4); w_u32(pp);   /* get_pointer */
+    } else if (!strcmp(ifn, "zwp_linux_dmabuf_v1")) {
+      W32 id = next_id++;
+      set_type(id, T_DMABUF);
+      dmabuf_id = id;
+      req_begin(2, 0, 0);
+      w_u32(name); w_str(ifn); w_u32(1); w_u32(id);
     } else if (!strcmp(ifn, "xdg_wm_base")) {
       W32 id = next_id++;
       set_type(id, T_WM_BASE);
@@ -450,6 +648,14 @@ static void dispatch(W32 obj, W32 op, Rd *r) {
     } else if (op == 1) {            /* close */
       for (WlcWin *w = wins; w; w = w->next)
         if (w->toplevel == cur_obj && cbs.close_req) cbs.close_req(cbs.ud, w);
+    }
+    break;
+  case T_DMABUF_PARAMS:
+    if (op == 0) {                   /* created(buffer) */
+      r_u32(r);
+      if (cur_obj == dmabuf_wait_obj) dmabuf_wait_res = 1;
+    } else if (op == 1) {            /* failed */
+      if (cur_obj == dmabuf_wait_obj) dmabuf_wait_res = -1;
     }
     break;
   case T_BUFFER:

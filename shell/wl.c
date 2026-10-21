@@ -67,7 +67,8 @@ struct Cl {
 };
 
 struct Pool { uint8_t *map; size_t len; int fd; int refs; };
-struct Buf { Pool *pool; int off, w, h, stride, format; uint32_t *px; uint32_t obj_id; int released; };
+struct Buf { Pool *pool; int off, w, h, stride, format; uint32_t *px; uint32_t obj_id; int released;
+              void *dmap; size_t dlen; };   /* dmap: dma-buf mapping (not pool memory) */
 typedef struct Fc { uint32_t id; struct Fc *next; } Fc;
 
 struct Surf {
@@ -231,14 +232,15 @@ static const ObjVt vt_display, vt_registry, vt_compositor, vt_surface, vt_region
     vt_shm, vt_pool, vt_buffer, vt_seat, vt_pointer, vt_keyboard, vt_output,
     vt_wm_base, vt_xdg_surface, vt_xdg_toplevel, vt_xdg_positioner, vt_xdg_popup,
     vt_subcompositor, vt_subsurface, vt_ddm, vt_data_offer, vt_data_device,
-    vt_callback;
+    vt_callback, vt_dmabuf, vt_dmabuf_params;
 
 static const ObjVt *iface_by_name(const char *n) {
     static const ObjVt *all[] = { &vt_compositor, &vt_surface, &vt_region, &vt_shm,
         &vt_pool, &vt_buffer, &vt_seat, &vt_pointer, &vt_keyboard, &vt_output,
         &vt_wm_base, &vt_xdg_surface, &vt_xdg_toplevel, &vt_xdg_positioner,
         &vt_xdg_popup, &vt_subcompositor, &vt_subsurface, &vt_ddm,
-        &vt_data_offer, &vt_data_device, &vt_callback, NULL };
+        &vt_data_offer, &vt_data_device, &vt_callback, &vt_dmabuf,
+        &vt_dmabuf_params, NULL };
     for (int i = 0; all[i]; i++)
         if (!strcmp(all[i]->name, n)) return all[i];
     return NULL;
@@ -373,6 +375,7 @@ static const struct { uint32_t name; const char *iface; uint32_t ver; } globals[
     { 5, "xdg_wm_base", 6 },
     { 6, "wl_data_device_manager", 3 },
     { 7, "wl_subcompositor", 1 },
+    { 8, "zwp_linux_dmabuf_v1", 1 },
 };
 
 /* ---------------- request handlers ---------------- */
@@ -409,6 +412,8 @@ static void req_registry(Cl *cl, Obj *o, uint32_t op, Cur *cur) {
     if (!no) return;
     if (!strcmp(ifn, "wl_seat")) bind_seat(cl, no);
     else if (!strcmp(ifn, "wl_output")) bind_output(cl, no);
+    else if (!strcmp(ifn, "zwp_linux_dmabuf_v1"))
+        EV(cl, id, 0, { bu32(&_b, 0x34325258u); });  /* format: XRGB8888 */
     else if (!strcmp(ifn, "xdg_wm_base"))
         EV(cl, id, 0, { bu32(&_b, ++((wlserver *)no->d)->serial); });  /* ping */
     (void)name;
@@ -536,12 +541,92 @@ static void req_pool(Cl *cl, Obj *o, uint32_t op, Cur *cur) {
     }
 }
 
+
+/* ---------------- dmabuf (zwp_linux_dmabuf_v1) ----------------
+ * Client-side GPU buffers: the client allocates a dma-buf (gbm bo + PRIME
+ * export) and hands us the fd; we import it and composite it like an shm
+ * buffer.  Deviation from upstream v1: params.create carries the wl_buffer
+ * new_id (client allocated) instead of a server allocated id, because our
+ * object table is a flat array indexed by id and cannot hold the 0xff000000
+ * server id range.
+ */
+typedef struct DmabufParams {
+    int fd;                     /* dma-buf fd from params.add */
+    int32_t plane, offset, stride;
+} DmabufParams;
+
+static void req_dmabuf(Cl *cl, Obj *o, uint32_t op, Cur *cur) {
+    if (op == 0) {                                  /* create_params(new_id) */
+        uint32_t id = a_u(cur);
+        DmabufParams *p = calloc(1, sizeof *p);
+        if (!p) return;
+        p->fd = -1;
+        if (!obj_new(cl, id, &vt_dmabuf_params, p)) free(p);
+    } else if (op == 1) {                           /* destroy */
+        obj_free(cl, o);
+    }
+}
+
+static void req_dmabuf_params(Cl *cl, Obj *o, uint32_t op, Cur *cur) {
+    DmabufParams *p = (DmabufParams *)o->d;
+    wlserver *s = (wlserver *)(cl->objs[1] ? cl->objs[1]->d : NULL);
+    if (op == 0) {                                  /* destroy */
+        obj_free(cl, o);
+        if (p->fd >= 0) close(p->fd);
+        free(p);
+    } else if (op == 1) {                           /* add(fd, plane_idx, offset, stride) */
+        int fd = a_fd(cur);
+        int32_t plane = a_i(cur), off = a_i(cur), stride = a_i(cur);
+        if (fd >= 0 && plane == 0 && stride > 0) {
+            if (p->fd >= 0) close(p->fd);
+            p->fd = fd; p->plane = plane; p->offset = off; p->stride = stride;
+        } else if (fd >= 0) close(fd);
+    } else if (op == 2) {                           /* create(new_id buffer, width, height) */
+        uint32_t id = a_u(cur);
+        int32_t w = a_i(cur), h = a_i(cur);
+        void *px = NULL;
+        int iw = (int)w, ih = (int)h;                /* client-declared size */
+        uint32_t len = p->stride > 0 && h > 0 ? (uint32_t)p->stride * (uint32_t)h : 0;
+        int ok = p->fd >= 0 && w > 0 && h > 0 && s && s->cb.dmabuf_import &&
+                 s->cb.dmabuf_import(s->cb.ud, p->fd, 0x34325258u /*XRGB8888*/,
+                                      (uint32_t)p->stride, len, &px, &iw, &ih) == 0;
+        if (!ok) {
+            EV(cl, o->id, 1, { });                  /* failed */
+            cl_flush(cl);
+            obj_free(cl, o);
+            if (p->fd >= 0) close(p->fd);
+            free(p);
+            return;
+        }
+        Buf *b = calloc(1, sizeof *b);
+        if (!b) {
+            EV(cl, o->id, 1, { });
+            cl_flush(cl);
+            obj_free(cl, o);
+            if (p->fd >= 0) close(p->fd);
+            free(p);
+            return;
+        }
+        b->pool = NULL; b->off = 0; b->w = iw; b->h = ih; b->stride = p->stride;
+        b->format = 1;                             /* XRGB8888: opaque */
+        b->px = (uint32_t *)px; b->obj_id = id; b->released = 1;
+        b->dmap = px; b->dlen = len;
+        obj_new(cl, id, &vt_buffer, b);
+        EV(cl, o->id, 0, { bu32(&_b, id); });        /* created(buffer) */
+        cl_flush(cl);
+        obj_free(cl, o);
+        if (p->fd >= 0) close(p->fd);
+        free(p);
+    }
+}
+
 static void req_buffer(Cl *cl, Obj *o, uint32_t op, Cur *cur) {
     (void)cur;
     if (op != 0) return;
     Buf *b = (Buf *)o->d;
     obj_free(cl, o);
     pool_unref(b->pool);
+    if (b->dmap) munmap(b->dmap, b->dlen);
     free(b);
 }
 
@@ -809,6 +894,8 @@ static const ObjVt vt_subsurface = { "wl_subsurface", req_subsurface };
 static const ObjVt vt_ddm = { "wl_data_device_manager", req_ddm };
 static const ObjVt vt_data_offer = { "wl_data_offer", req_data_offer };
 static const ObjVt vt_data_device = { "wl_data_device", req_data_device };
+static const ObjVt vt_dmabuf = { "zwp_linux_dmabuf_v1", req_dmabuf };
+static const ObjVt vt_dmabuf_params = { "zwp_linux_buffer_params_v1", req_dmabuf_params };
 
 /* ---------------- fd plumbing ---------------- */
 static int a_fd(Cur *c) {
