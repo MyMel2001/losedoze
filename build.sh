@@ -4,11 +4,12 @@
 #   SMOKE_AUTOSTART=1 ./build.sh  dev image (Win32 self-test on login)
 #
 # Graphics policy: NO Xorg/X11/Xext/xkbcomp/X libraries in the image.
-# GPU display acceleration = in-tree DRM/KMS drivers (i915, amdgpu, nouveau,
-# radeon, bochs) with hardware scanout + page flip; the shell composites on CPU.
-# Fedora Mesa's libEGL_mesa hard-links libX11 (EGL_X11 platform), so Mesa EGL
-# is excluded by the X ban; kms.c still dlopens libEGL/libgbm at runtime and
-# degrades gracefully ("EGL: none") when absent. Ceiling + upgrade path: AGENT_NOTES.md.
+# Fedora's libEGL_mesa hard-links libX11 (EGL_X11 platform), so Mesa is built
+# from source instead (tools/build-mesa.sh): X-free Mesa 26.2.4 gives the guest
+# EGL + OpenGL ES 2 (llvmpipe) and Vulkan (lavapipe). The *display* path stays
+# DRM/KMS (hardware scanout + page flip) with CPU compositing; kms.c dlopens
+# libEGL/libgbm at runtime and degrades gracefully ("EGL: none") when absent.
+# Ceilings + upgrade paths: AGENT_NOTES.md.
 set -eu
 cd "$(cd "$(dirname "$0")" && pwd)"
 
@@ -68,7 +69,7 @@ busybox_install() {   # $1 = target root
 }
 
 # ---------------------------------------------------------------- checks
-say "0/10 checks"
+say "0/13 checks"
 need "$KIMG"
 need "$MODSRC/modules.dep"
 need "$BUSYBOX"
@@ -81,7 +82,7 @@ command -v "$PE_LIB" >/dev/null 2>&1 || die "$PE_LIB not found (need llvm-lib fo
 printf 'kernel:   %s\nbusybox:  %s\npe-cc:    %s\n%s\n' "$KIMG" "$BUSYBOX" "$PE_CC" "$KVM_NOTE"
 
 # ---------------------------------------------------------------- stage overlay
-say "1/10 staging overlay"
+say "1/13 staging overlay"
 rm -rf "$ROOT" "$INITRD" build/iso
 mkdir -p "$ROOT"
 cp -a rootfs-overlay/. "$ROOT/"
@@ -90,11 +91,11 @@ chmod 1777 "$ROOT/tmp" "$ROOT/var/tmp"
 chmod 755 "$ROOT/usr/local/bin/session.sh" "$ROOT/etc/init.d/rcS"
 
 # ---------------------------------------------------------------- busybox
-say "2/10 busybox userland"
+say "2/13 busybox userland"
 busybox_install "$ROOT"
 
 # ---------------------------------------------------------------- programs
-say "3/10 native programs (loseshell, losyscall)"
+say "3/13 native programs (loseshell, losyscall)"
 mkdir -p build
 python3 tools/gen_syscalls.py build/syscalls.inc
 # wl_keyboard.keymap (XKB_V1) — build-time host tool only, nothing X ships
@@ -110,7 +111,7 @@ put build/loseshell "$ROOT/usr/bin/loseshell"
 put build/losyscall "$ROOT/usr/bin/losyscall"
 
 # ---------------------------------------------------------------- wayland + firmware (no X, no Mesa-EGL)
-say "4/10 wayland/xkb runtime + gpu firmware"
+say "4/13 wayland/xkb runtime + gpu firmware"
 mkdir -p "$ROOT/usr/lib64" "$ROOT/lib/firmware"
 # X-free runtime libs for the hand-rolled Wayland client (wlclient.c)
 copy_named /usr/lib64/libwayland-client.so.0 /usr/lib64/libwayland-egl.so.1 \
@@ -127,8 +128,43 @@ done
 mkdir -p "$ROOT/lib64"
 put /lib64/ld-linux-x86-64.so.2 "$ROOT/lib64/ld-linux-x86-64.so.2"
 
+# ---------------------------------------------------------------- mesa graphics stack
+# X-free Mesa built from source (Fedora's libEGL_mesa hard-links libX11).
+# Gives the guest EGL + GLES2 (llvmpipe) and Vulkan (lavapipe).
+say "5/13 mesa graphics stack (EGL/GLES2/gbm/lavapipe)"
+MESA_ROOT=${MESA_ROOT:-/tmp/mesa/root}
+MESA_SRC=${MESA_SRC:-/tmp/mesa/mesa-src}
+if [ -d "$MESA_ROOT/usr/lib64" ]; then
+    mkdir -p "$ROOT/usr/lib64/gbm" "$ROOT/usr/share/vulkan/icd.d"
+    for f in libEGL.so.1 libGLESv2.so.2 libGLESv1_CM.so.1 libgbm.so.1 \
+             libgallium-26.2.4.so libvulkan_lvp.so; do
+        [ -e "$MESA_ROOT/usr/lib64/$f" ] && put "$MESA_ROOT/usr/lib64/$f" "$ROOT/usr/lib64/$f"
+    done
+    [ -e "$MESA_ROOT/usr/lib64/gbm/dri_gbm.so" ] && \
+        put "$MESA_ROOT/usr/lib64/gbm/dri_gbm.so" "$ROOT/usr/lib64/gbm/dri_gbm.so"
+    for j in "$MESA_ROOT/usr/share/vulkan/icd.d/"*.json; do
+        [ -e "$j" ] && put "$j" "$ROOT/usr/share/vulkan/icd.d/$(basename "$j")"
+    done
+    # X-free runtime deps of the mesa stack
+    copy_named /usr/lib64/libvulkan.so.1 /usr/lib64/libdrm.so.2 /usr/lib64/libexpat.so.1 \
+               /usr/lib64/libzstd.so.1 /usr/lib64/libstdc++.so.6 /usr/lib64/libgcc_s.so.1 \
+               /usr/lib64/libSPIRV-Tools.so
+    copy_libs /usr/lib64/libvulkan.so.1 /usr/lib64/libdrm.so.2 /usr/lib64/libexpat.so.1 \
+              /usr/lib64/libzstd.so.1 /usr/lib64/libstdc++.so.6 /usr/lib64/libgcc_s.so.1 \
+              /usr/lib64/libSPIRV-Tools.so
+    # guest-side probes (EGL/GLES2 + Vulkan) that print machine-checkable markers
+    gcc -O2 -Wall -o build/losegl tools/losegl.c -I"$MESA_ROOT/usr/include" \
+        -L"$MESA_ROOT/usr/lib64" -lEGL -lGLESv2 -lgbm
+    gcc -O2 -Wall -o build/losvulkan tools/losvulkan.c -I"$MESA_SRC/include" \
+        -L/usr/lib64 -l:libvulkan.so.1
+    put build/losegl "$ROOT/usr/bin/losegl"
+    put build/losvulkan "$ROOT/usr/bin/losvulkan"
+else
+    printf 'skip mesa: %s missing (build it with tools/build-mesa.sh)\n' "$MESA_ROOT"
+fi
+
 # ---------------------------------------------------------------- fonts + fontconfig
-say "5/10 fonts"
+say "6/13 fonts"
 mkdir -p "$ROOT/usr/share/fonts/TTF" "$ROOT/var/cache/fontconfig"
 for f in /usr/share/fonts/liberation-sans-fonts/*.ttf; do
     put "$f" "$ROOT/usr/share/fonts/TTF/$(basename "$f")"
@@ -141,7 +177,7 @@ copy_named /usr/bin/fc-cache
 copy_libs /usr/bin/fc-cache
 
 # ---------------------------------------------------------------- kernel modules (DRM/KMS included)
-say "6/10 kernel modules"
+say "7/13 kernel modules"
 for m in $MODULES_REL; do
     need "$MODSRC/$m"
     mkdir -p "$ROOT/lib/modules/$KVER/$(dirname "$m")"
@@ -163,7 +199,7 @@ depmod -b "$ROOT" "$KVER" > build/depmod.log 2>&1 || \
 # ---------------------------------------------------------------- homemade Win32 subsystem
 # PE32+ loader + own ntdll/kernel32/user32/gdi32 over Linux syscalls, hosted by
 # w32host (ELF) which runs the PE app as a child of loseshell. No Wine anywhere.
-say "7/10 win32 subsystem (w32host + PE apps)"
+say "8/13 win32 subsystem (w32host + PE apps)"
 mkdir -p build build/winapps
 python3 win/gen_ntsyscalls.py build/ntsyscalls.inc
 python3 win/gen_importlibs.py win/w32host.c build/winapps
@@ -171,7 +207,7 @@ python3 win/gen_importlibs.py win/w32host.c build/winapps
 gcc -O2 -Wall -Wno-unused-function -o build/w32host \
     win/pe.c win/ntdll.c win/kernel32.c win/user32.c win/gdi32.c win/wsprintf.c \
     win/wlclient.c win/w32host.c shell/input.c \
-    -Iwin -Ishell -Ibuild -lm
+    -Iwin -Ishell -Ibuild -lm -ldl
 # PE apps: freestanding PE32+ (ms x64 ABI), linked with -mi386pep
 PE_CFLAGS="--target=x86_64-pc-windows-msvc -ffreestanding -fno-builtin -O2 -Iwin"
 PE_LDFLAGS="-mi386pep"
@@ -191,6 +227,46 @@ put build/w32host "$ROOT/usr/bin/w32host"
 mkdir -p "$ROOT/opt/losedoze/apps"
 put build/winapps/hello.exe "$ROOT/opt/losedoze/apps/hello.exe"
 put build/winapps/notes.exe  "$ROOT/opt/losedoze/apps/notes.exe"
+
+# ---------------------------------------------------------------- .NET runtime
+# A Linux .NET runtime lives in the guest so the OS can run .NET programs.
+# (Running .NET *PE* apps through the Win32 layer needs a real NT layer --
+# see AGENT_NOTES.md "ceilings".)
+say "9/13 .NET runtime"
+DOTNET_ROOT=${DOTNET_ROOT:-/tmp/dotnet}
+DOTNET_APP=${DOTNET_APP:-/tmp/dnapp/out}
+if [ -x "$DOTNET_ROOT/dotnet" ] && [ -f "$DOTNET_APP/dnapp.dll" ]; then
+    mkdir -p "$ROOT/opt/dotnet"
+    put "$DOTNET_ROOT/dotnet" "$ROOT/opt/dotnet/dotnet"
+    for d in "$DOTNET_ROOT/shared/"*; do
+        [ -d "$d" ] || continue
+        mkdir -p "$ROOT/opt/dotnet/shared/$(basename "$d")"
+        cp -a "$d/." "$ROOT/opt/dotnet/shared/$(basename "$d")/"
+    done
+    for d in "$DOTNET_ROOT/host/fxr/"*; do
+        [ -d "$d" ] || continue
+        mkdir -p "$ROOT/opt/dotnet/host/fxr/$(basename "$d")"
+        cp -a "$d/." "$ROOT/opt/dotnet/host/fxr/$(basename "$d")/"
+    done
+    mkdir -p "$ROOT/opt/dotnet/apps/dnapp"
+    cp -a "$DOTNET_APP/." "$ROOT/opt/dotnet/apps/dnapp/"
+    copy_named /usr/lib64/libstdc++.so.6 /usr/lib64/libgcc_s.so.1 /usr/lib64/libz.so.1 \
+               /usr/lib64/libdl.so.2 /usr/lib64/libpthread.so.0 /usr/lib64/librt.so.1
+    copy_libs /usr/lib64/libstdc++.so.6 /usr/lib64/libdl.so.2 /usr/lib64/libpthread.so.0 \
+              /usr/lib64/librt.so.1
+    cat > "$ROOT/usr/bin/losdotnet" <<'EOF'
+#!/bin/sh
+# Run the bundled .NET demo app on the guest runtime.
+export DOTNET_ROOT=/opt/dotnet
+export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1   # no ICU in the image
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+export DOTNET_NOLOGO=1
+exec /opt/dotnet/dotnet /opt/dotnet/apps/dnapp/dnapp.dll "$@"
+EOF
+    chmod 755 "$ROOT/usr/bin/losdotnet"
+else
+    printf 'skip dotnet: runtime %s or app %s missing\n' "$DOTNET_ROOT" "$DOTNET_APP"
+fi
 
 # ---------------------------------------------------------------- ld cache
 cat > "$ROOT/etc/ld.so.conf" <<'EOF'
@@ -236,12 +312,21 @@ if [ "$HOK" = 1 ] && [ "$NOK" = 1 ] && [ "$MOK" = 1 ]; then
 else
     echo "LOSEDOZE WIN32 FAIL (hello=$HOK notes=$NOK mapped=$MOK hrc=$HRC)" > /dev/console
 fi
+
+# graphics + .NET probes (EGL/GLES2, Vulkan/lavapipe, .NET runtime)
+losegl    > /tmp/losegl.log    2>&1
+losvulkan > /tmp/losvulkan.log 2>&1
+losdotnet > /tmp/losdotnet.log 2>&1
+grep -q "LOSEDOZE GL OK"      /tmp/losegl.log    2>/dev/null && echo "LOSEDOZE GL OK"      > /dev/console || echo "LOSEDOZE GL FAIL"      > /dev/console
+grep -q "LOSEDOZE VULKAN OK"  /tmp/losvulkan.log 2>/dev/null && echo "LOSEDOZE VULKAN OK"  > /dev/console || echo "LOSEDOZE VULKAN FAIL"  > /dev/console
+grep -q "LOSEDOZE DOTNET OK"  /tmp/losdotnet.log 2>/dev/null && echo "LOSEDOZE DOTNET OK"  > /dev/console || echo "LOSEDOZE DOTNET FAIL"  > /dev/console
+cat /tmp/losegl.log /tmp/losvulkan.log /tmp/losdotnet.log > /dev/console
 EOF
     chmod 755 "$ROOT/etc/losedoze/autostart.sh"
 fi
 
 # ---------------------------------------------------------------- rootfs.ext4
-say "8/10 rootfs.ext4"
+say "11/13 rootfs.ext4"
 USED_K=$(du -sk "$ROOT" | cut -f1)
 SIZE_K=$((USED_K + USED_K / 2 + 262144))
 printf 'used=%sK size=%sK\n' "$USED_K" "$SIZE_K"
@@ -251,7 +336,7 @@ mke2fs -F -t ext4 -L LOSEDOZE -d "$ROOT" build/rootfs.ext4 > build/mke2fs.log 2>
     || { cat build/mke2fs.log; die "mke2fs failed"; }
 
 # ---------------------------------------------------------------- initramfs
-say "9/10 initramfs"
+say "12/13 initramfs"
 busybox_install "$INITRD"
 mkdir -p "$INITRD"/{dev,proc,sys,newroot,cdrom,modules,etc}
 put tools/initramfs-init "$INITRD/init"
@@ -261,7 +346,7 @@ cp "$ROOT/lib/modules/$KVER/kernel/fs/isofs/isofs.ko" "$INITRD/modules/isofs.ko"
 ( cd "$INITRD" && find . | cpio -o -H newc --quiet ) | gzip -9 > build/initramfs.cpio.gz
 
 # ---------------------------------------------------------------- ISO
-say "10/10 ISO"
+say "13/13 ISO"
 mkdir -p build/iso/boot/grub
 put "$KIMG" build/iso/boot/vmlinuz
 cp build/initramfs.cpio.gz build/iso/boot/initramfs.cpio.gz
