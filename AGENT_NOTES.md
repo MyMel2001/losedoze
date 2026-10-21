@@ -42,7 +42,8 @@
     → NVIDIA-via-nouveau firmware ceiling (note in README).
 - QEMU guest GPU: `-vga std` (bochs-drm). bochs has no Mesa DRI driver → EGL/GBM screen
   creation fails on the guest too, but `losegl` passes via the surfaceless platform (llvmpipe)
-  and `losvulkan` via lavapipe; the compositor composites on CPU.
+  and `losvulkan` via lavapipe; the compositor composites on CPU. bochs-drm still has
+  GEM/PRIME, so the guest Win32 client's dma-buf export/import works (`LOSEDOZE DMABUF GPU OK`).
 - Host GPU: NVIDIA `10de:2504`, proprietary driver; Mesa EGL selftest skips gracefully.
 - Mesa DRI drivers on host: i915, radeonsi, nouveau, virtio_gpu, swrast, kms_swrast.
 - **X-free Mesa 26.2.4 built from source** (`tools/build-mesa.sh`, prefix=/usr, DESTDIR=/tmp/mesa/root):
@@ -155,12 +156,15 @@ win/
   `create_params(new_id)`, `add(fd, plane_idx, offset, stride)` (fd via SCM_RIGHTS) and
   `create(new_id wl_buffer, width, height)` — the client allocates the buffer id, because our flat
   object table cannot hold the upstream 0xff000000 server-id range; the server replies
-  `created(buffer)` (op 0) or `failed` (op 1) on the params object. Client side: gbm bo
+  `created(buffer)` (op 0) or `failed` (op 1) on the params object; `create` on an
+  already-existing buffer id **refreshes it in place** (munmap the old mapping). Client side: gbm bo
   (`GBM_FORMAT_XRGB8888` + `GBM_BO_USE_LINEAR`) + `gbm_bo_map` + `DRM_IOCTL_PRIME_HANDLE_TO_FD`;
-  the export is **lazy at the first commit after painting** (dumb-buffer PRIME export copies at
-  export time), with a cheap export probe at allocation time to decide dmabuf-vs-shm before any
-  paint; shm fallback on any failure. Compositor side: `mmap(fd, stride*h, PROT_READ)` +
-  best-effort `DRM_IOCTL_PRIME_FD_TO_HANDLE` proof; FNV-1a pixel sum logged as
+  the export is **done on every commit** (dumb-buffer PRIME export copies at export time, so a
+  repaint needs a re-export; zero-copy devices re-import the same memory), with a cheap export
+  probe at allocation time to decide dmabuf-vs-shm before any paint; shm fallback on any failure,
+  reported once on stderr (`wlclient: dma-buf unavailable (...) - wl_shm fallback` /
+  `wlclient: dma-buf buffer in use (client GPU memory)`). Compositor side: `mmap(fd, stride*h,
+  PROT_READ)` + best-effort `DRM_IOCTL_PRIME_FD_TO_HANDLE` proof; FNV-1a pixel sum logged as
   `dmabuf: import WxH stride=S sum=X` (verification hook, compared by `tools/dmabuf_test.sh`).
 - xdg_popup grab: basic (serial check + dismiss on outside click).
 - Env for w32host: `XDG_RUNTIME_DIR=/run`, `WAYLAND_DISPLAY=losedoze0`.
@@ -180,8 +184,9 @@ win/
   and `losdotnet`. Linux .NET apps; .NET PE apps need CoreCLR → NT layer (deferred).
 - **Client DMA-BUF** (see "Wayland server requirements"): host end-to-end check
   `LD_LIBRARY_PATH=/tmp/mesa/root/usr/lib64 sh tools/dmabuf_test.sh` →
-  `DMABUF PASS: compositor read client GPU buffer`. The guest cannot exercise it
-  (bochs-drm has no GEM/PRIME) → the client falls back to shm there; smoke still PASSes.
+  `DMABUF PASS: compositor read both client GPU frames`. The guest exercises it too:
+  bochs-drm has GEM/PRIME → the guest smoke reports `LOSEDOZE DMABUF GPU OK`; a device
+  without export makes the client fall back to shm (`LOSEDOZE DMABUF SHM OK`).
 - build.sh now: wayland-client/egl/cursor + xkbcommon/xkbregistry (X-free,
   deps of win/wlclient.c verified via ldd), firmware {i915,amdgpu,radeon}
   (nouveau dir absent on host), module trees gpu/video/cec/lib + depmod -b,
@@ -229,9 +234,12 @@ win/
   CPU compositing is the working path; a matching gallium driver makes `card_egl_init`
   take over with no shell changes.
 - Desktop GL not built (`-Dglx=disabled`) → OpenGL ES 2.0 only (EGL + GLESv2).
-- Guest DMA-BUF untestable: bochs-drm has no GEM/PRIME → client export probe fails →
-  shm fallback; host test is the real evidence. Copy-on-export devices snapshot at
-  export time (client exports lazily at first commit after painting); zero-copy GPUs unaffected.
+- Guest DMA-BUF works: bochs-drm (kernel 7.2.8) has GEM/PRIME → the guest smoke
+  logs `LOSEDOZE KMS: dmabuf: PRIME import ok handle=N` + `dmabuf: import WxH
+  stride=S sum=X` and the marker `LOSEDOZE DMABUF GPU OK`; a device without export
+  makes the client fall back to shm (`LOSEDOZE DMABUF SHM OK`). Copy-on-export
+  devices snapshot at export time → the client re-exports on every commit and the
+  server re-imports into the same buffer id (both frames checked by dmabuf_test.sh).
 - .NET PE apps via the Win32 layer need a real NT layer (CoreCLR) → deferred.
 - wsprintf: 8 vararg slots (MS x64 variadic ABI; no va_start on clang → explicit arity).
 - Nouveau firmware dir missing on host → NVIDIA accel needs linux-firmware copy.
@@ -257,6 +265,7 @@ win/
 - [x] X-free Mesa 26.2.4 in the image (EGL/GLES2 llvmpipe + Vulkan lavapipe; guest probes)
 - [x] .NET runtime in the image (`losdotnet` → LOSEDOZE DOTNET OK)
 - [x] Key repeat (compositor-synthesized: 500 ms / 40 ms) + wsprintf (ms_abi variadic, 29/29)
-- [x] Client DMA-BUF: linux-dmabuf v1 (both ends) + host end-to-end test (`tools/dmabuf_test.sh`)
-- [x] Guest smoke → SMOKE PASS (INIT/READY/EGL/WAYLAND/WIN32/GL/VULKAN/DOTNET + screendump)
+- [x] Client DMA-BUF: linux-dmabuf v1 (both ends) + host end-to-end test (`tools/dmabuf_test.sh`,
+      two frames so the per-commit re-export is checked) + guest evidence (`LOSEDOZE DMABUF GPU OK`)
+- [x] Guest smoke → SMOKE PASS (INIT/READY/EGL/WAYLAND/WIN32/DMABUF/GL/VULKAN/DOTNET + screendump)
 - [x] Final report

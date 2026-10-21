@@ -11,9 +11,8 @@ GRUB → Linux kernel (7.2.8) → Busybox init → loseshell (DRM/KMS compositor
                                                      │
                               /run/losedoze0 (Wayland socket: hand-rolled server + client)
                                                      │
-                w32host (PE32+ loader, builtin Win32 DLLs) → Win32 PE apps
-                    │                              └─ losdotnet → .NET app (/opt/dotnet)
-                    └─ shm or client DMA-BUF (linux-dmabuf v1)
+                 w32host (PE32+ loader, builtin Win32 DLLs)      │  losdotnet
+                    → Win32 PE apps (shm or client DMA-BUF)      → .NET app (/opt/dotnet)
 ```
 
 ## Features
@@ -28,8 +27,8 @@ GRUB → Linux kernel (7.2.8) → Busybox init → loseshell (DRM/KMS compositor
 | Display server | Hand-rolled Wayland compositor (no libwayland-server): wl_compositor/shm/seat/keyboard/pointer/output/xdg-shell (toplevel + popup) + **linux-dmabuf v1** (client-allocated buffer ids), wire protocol implemented byte-by-byte in `shell/wl.c` |
 | Win32 compat | Homemade subsystem (`win/`): `w32host` (ELF) loads PE32+ executables, binds imports to our own ntdll/kernel32/user32/gdi32 implemented over Linux syscalls, and renders through a hand-rolled Wayland client (`win/wlclient.c`, no libwayland-client). PE apps built freestanding with clang (`--target=x86_64-pc-windows-msvc`, `ld -mi386pep`); NT syscall numbers (from public reference CSVs) compiled into `build/ntsyscalls.inc` and the `losyscall` CLI |
 | .NET | A Linux .NET runtime (muxer + `Microsoft.NETCore.App` + `host/fxr`) lives in the guest at `/opt/dotnet`; `losdotnet` runs the bundled demo app → `LOSEDOZE DOTNET OK` |
-| Client DMA-BUF | The Win32 client allocates its window buffer as a GBM bo, exports it as a dma-buf fd (`DRM_IOCTL_PRIME_HANDLE_TO_FD`) and hands it over with `zwp_linux_dmabuf_v1`; the compositor imports it (`mmap` + PRIME proof) and composites the client's GPU memory directly; shm fallback on any failure |
-| Verification | `loseshell --selftest`, `kms` host selftest, `tools/wltest.c` protocol test against real libwayland-client, `tools/dmabuf_test.sh` (host end-to-end dma-buf: the pixel checksum the client wrote is compared against the one the compositor computed from its own `mmap` of the buffer), `tools/test_wsprintf.c` (29/29), QEMU smoke test (`tools/smoke.sh`): console markers `LOSEDOZE INIT OK` / `READY` / `EGL:` / `WAYLAND OK` / `WIN32 OK` / `GL OK` / `VULKAN OK` / `DOTNET OK`, framebuffer screendump (taskbar band, color variety, white pixels of the Win32 client window) → `SMOKE PASS` |
+| Client DMA-BUF | The Win32 client allocates its window buffer as a GBM bo, exports it as a dma-buf fd (`DRM_IOCTL_PRIME_HANDLE_TO_FD`) and hands it over with `zwp_linux_dmabuf_v1` **on every commit**; the compositor imports it (`mmap` + PRIME proof) and composites the client's GPU memory directly; shm fallback on any failure |
+| Verification | `loseshell --selftest`, `kms` host selftest, `tools/wltest.c` protocol test against real libwayland-client, `tools/dmabuf_test.sh` (host end-to-end dma-buf: two frames with different content — both pixel checksums the client wrote are compared against the ones the compositor computed from its own `mmap` of the buffer), `tools/test_wsprintf.c` (29/29), QEMU smoke test (`tools/smoke.sh`): console markers `LOSEDOZE INIT OK` / `READY` / `EGL:` / `WAYLAND OK` / `WIN32 OK` / `DMABUF GPU OK` / `GL OK` / `VULKAN OK` / `DOTNET OK`, framebuffer screendump (taskbar band, color variety, white pixels of the Win32 client window) → `SMOKE PASS` |
 
 ## What is NOT here (by design)
 
@@ -126,14 +125,15 @@ AGENT_NOTES.md           working spec / design notes
   same `card_egl_init` path takes over with no shell changes.
 * **Desktop GL is not built** (`-Dglx=disabled`) → the project ships OpenGL ES
   2.0 (EGL + GLESv2); `kms.c` uses `EGL_OPENGL_ES_API` only.
-* **Guest DMA-BUF is untestable.** bochs-drm has no GEM/PRIME, so the Win32
-  client's export probe fails and it falls back to `wl_shm` in the guest; the
-  host test (`tools/dmabuf_test.sh`) is the real evidence. On real hardware with a
-  GEM-capable card the same path imports client GPU memory.
+* **Guest DMA-BUF works.** bochs-drm in this kernel has GEM/PRIME, so the guest
+  smoke shows the compositor importing the client's buffer
+  (`LOSEDOZE KMS: dmabuf: import 660x460 ...` → `LOSEDOZE DMABUF GPU OK`). On a
+  device without dma-buf export the client says so and falls back to `wl_shm`
+  (`LOSEDOZE DMABUF SHM OK`).
 * **Copy-on-export devices.** Some drivers (e.g. the host NVIDIA dumb buffer)
-  snapshot the buffer at PRIME export time, so a client that repaints the same bo
-  would show the first frame; the client therefore exports lazily at the first
-  commit after painting. Zero-copy GPUs are unaffected.
+  snapshot the buffer at PRIME export time, so the client re-exports on every
+  commit and the compositor re-imports into the same buffer id. Zero-copy GPUs
+  are unaffected.
 * **.NET *PE* apps** through the Win32 layer need a real NT layer (CoreCLR) —
   the shipped runtime runs Linux .NET apps (`losdotnet`). Deferred.
 * **wsprintf** carries 8 vararg slots (`ponytail:` ceiling; MS x64 variadic call
