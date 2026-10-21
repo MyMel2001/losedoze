@@ -55,6 +55,11 @@ const char *card_gpu_renderer(struct card *c); /* GL_RENDERER string, or NULL */
 int card_gpu_frame(struct card *c, int x, int y, int w, int h, unsigned t_ms);
 void card_gpu_shutdown(struct card *c);
 
+/* Client dma-buf import (zwp_linux_dmabuf_v1): map the client's buffer for CPU
+ * compositing and prove the PRIME import. 0 on success. c may be NULL (headless). */
+int card_dmabuf_import(struct card *c, int fd, uint32_t format, uint32_t stride,
+                       uint32_t length, void **px, int *w, int *h);
+
 /* Host-side selftest: create GL context on a render node (no modeset), clear, read back. */
 int kms_selftest(void);
 
@@ -132,6 +137,10 @@ struct wlserver_cbs {
   void (*title)(void *ud, WlWin *w);         /* title/appid changed */
   void (*resized)(void *ud, WlWin *w, int bw, int bh); /* new buffer size */
   void (*close_req)(void *ud, WlWin *w);     /* xdg ping timeout n/a; popup grabs end */
+  /* zwp_linux_dmabuf_v1: a client hands us a dma-buf fd. Returns 0 on success
+   * and fills the CPU view (px, w, h) of the imported buffer. */
+  int (*dmabuf_import)(void *ud, int fd, uint32_t format, uint32_t stride,
+                        uint32_t length, void **px, int *w, int *h);
   void *ud;
 };
 

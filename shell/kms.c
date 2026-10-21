@@ -526,6 +526,10 @@ typedef unsigned int EGLenum, EGLBoolean, EGLint_;
 #define EGL_OPENGL_ES_API 0x30A0
 
 typedef EGLDisplay (*PFN_eglGetDisplay)(void *);
+typedef EGLDisplay (*PFN_eglGetPlatformDisplay)(uint32_t, void *, const EGLint_ *);
+#ifndef EGL_PLATFORM_GBM_MESA
+#define EGL_PLATFORM_GBM_MESA 0x31D7
+#endif
 typedef EGLBoolean (*PFN_eglInitialize)(EGLDisplay, EGLint_ *, EGLint_ *);
 typedef EGLBoolean (*PFN_eglBindAPI)(EGLenum);
 typedef EGLBoolean (*PFN_eglChooseConfig)(EGLDisplay, const EGLint_ *, EGLConfig *, EGLint_,
@@ -557,6 +561,7 @@ typedef void (*PFN_gbm_device_destroy)(struct gbm_device *);
 
 static struct {
   PFN_eglGetDisplay GetDisplay;
+  PFN_eglGetPlatformDisplay GetPlatformDisplay;
   PFN_eglInitialize Initialize;
   PFN_eglBindAPI BindAPI;
   PFN_eglChooseConfig ChooseConfig;
@@ -687,34 +692,35 @@ int card_egl_init(struct card *c) {
     LOG("EGL: libEGL/libgbm not loadable (%s) — GPU accel unavailable", dlerror());
     return -1;
   }
-#define LOAD(mod, name)                                                        \
-  E.name = (__typeof__(E.name))(uintptr_t)dlsym(c->mod, #name);                \
-  if (!E.name) {                                                               \
-    LOG("EGL: missing %s", #name);                                             \
+#define LOAD(mod, field, sym)                                                  \
+  E.field = (__typeof__(E.field))(uintptr_t)dlsym(c->mod, sym);                 \
+  if (!E.field) {                                                               \
+    LOG("EGL: missing %s", sym);                                                \
     return -1;                                                                 \
   }
-  LOAD(egl, GetDisplay);
-  LOAD(egl, Initialize);
-  LOAD(egl, BindAPI);
-  LOAD(egl, ChooseConfig);
-  LOAD(egl, CreateContext);
-  LOAD(egl, CreateWindowSurface);
-  LOAD(egl, MakeCurrent);
-  LOAD(egl, SwapBuffers);
-  LOAD(egl, QueryString);
-  LOAD(egl, GetProcAddress);
-  LOAD(egl, DestroySurface);
-  LOAD(egl, DestroyContext);
-  LOAD(egl, Terminate);
-  LOAD(egl, GetError);
-  LOAD(gbm, gbm_create_device);
-  LOAD(gbm, gbm_surface_create);
-  LOAD(gbm, gbm_surface_lock_front_buffer);
-  LOAD(gbm, gbm_surface_release_buffer);
-  LOAD(gbm, gbm_bo_get_handle);
-  LOAD(gbm, gbm_bo_get_stride);
-  LOAD(gbm, gbm_surface_destroy);
-  LOAD(gbm, gbm_device_destroy);
+  LOAD(egl, GetDisplay, "eglGetDisplay");
+  LOAD(egl, GetPlatformDisplay, "eglGetPlatformDisplay");
+  LOAD(egl, Initialize, "eglInitialize");
+  LOAD(egl, BindAPI, "eglBindAPI");
+  LOAD(egl, ChooseConfig, "eglChooseConfig");
+  LOAD(egl, CreateContext, "eglCreateContext");
+  LOAD(egl, CreateWindowSurface, "eglCreateWindowSurface");
+  LOAD(egl, MakeCurrent, "eglMakeCurrent");
+  LOAD(egl, SwapBuffers, "eglSwapBuffers");
+  LOAD(egl, QueryString, "eglQueryString");
+  LOAD(egl, GetProcAddress, "eglGetProcAddress");
+  LOAD(egl, DestroySurface, "eglDestroySurface");
+  LOAD(egl, DestroyContext, "eglDestroyContext");
+  LOAD(egl, Terminate, "eglTerminate");
+  LOAD(egl, GetError, "eglGetError");
+  LOAD(gbm, gbm_create_device, "gbm_create_device");
+  LOAD(gbm, gbm_surface_create, "gbm_surface_create");
+  LOAD(gbm, gbm_surface_lock_front_buffer, "gbm_surface_lock_front_buffer");
+  LOAD(gbm, gbm_surface_release_buffer, "gbm_surface_release_buffer");
+  LOAD(gbm, gbm_bo_get_handle, "gbm_bo_get_handle");
+  LOAD(gbm, gbm_bo_get_stride, "gbm_bo_get_stride");
+  LOAD(gbm, gbm_surface_destroy, "gbm_surface_destroy");
+  LOAD(gbm, gbm_device_destroy, "gbm_device_destroy");
 #undef LOAD
 
   c->gbm_dev = E.gbm_create_device(c->fd);
@@ -722,7 +728,9 @@ int card_egl_init(struct card *c) {
     LOG("EGL: gbm_create_device failed");
     return -1;
   }
-  c->egl_dpy = E.GetDisplay(c->gbm_dev);
+  c->egl_dpy = E.GetPlatformDisplay
+                   ? E.GetPlatformDisplay(EGL_PLATFORM_GBM_MESA, c->gbm_dev, NULL)
+                   : E.GetDisplay((void *)0);
   if (!c->egl_dpy || !E.Initialize(c->egl_dpy, NULL, NULL)) {
     LOG("EGL: init failed (err 0x%x)", E.GetError ? E.GetError() : 0);
     return -1;
@@ -793,6 +801,39 @@ int card_egl_init(struct card *c) {
   c->gpu_ok = 1;
   c->gl_tex_w = c->gl_tex_h = 0;
   LOG("GPU accel ON: renderer=\"%s\"", c->gl_renderer ? c->gl_renderer : "?");
+  return 0;
+}
+
+/* Import a client dma-buf (zwp_linux_dmabuf_v1): prove the PRIME import into
+ * our DRM device (best effort, no GPU screen needed) and map the buffer for
+ * CPU compositing. ponytail: linear buffers only — the client allocates with
+ * GBM_BO_USE_LINEAR; a tiled layout would need the GPU/EGL path. */
+int card_dmabuf_import(struct card *c, int fd, uint32_t format, uint32_t stride,
+                       uint32_t length, void **px, int *w, int *h) {
+  (void)format;
+  if (fd < 0 || stride < 4 || length < stride) return -1;
+  if (c && c->fd >= 0) {                          /* PRIME import proof */
+    struct drm_prime_handle ph = { .handle = 0, .flags = 0, .fd = fd };
+    if (drm_ioctl(c->fd, DRM_IOCTL_PRIME_FD_TO_HANDLE, &ph) == 0)
+      LOG("dmabuf: PRIME import ok handle=%u", ph.handle);
+    else
+      LOG("dmabuf: PRIME import failed: %s (mmap path continues)", strerror(errno));
+  }
+  void *map = mmap(NULL, length, PROT_READ, MAP_SHARED, fd, 0);
+  if (map == MAP_FAILED) {
+    LOG("dmabuf: mmap(%u) failed: %s", length, strerror(errno));
+    return -1;
+  }
+  int dw = *w > 0 ? *w : (int)(stride / 4);
+  int dh = *h > 0 ? *h : (int)(length / stride);
+  uint32_t sum = 2166136261u;                     /* FNV-1a over the pixels */
+  const uint32_t *p = (const uint32_t *)map;
+  for (int y = 0; y < dh; y++)
+    for (int x = 0; x < dw; x++) sum = (sum ^ p[(size_t)y * (stride / 4) + x]) * 16777619u;
+  LOG("dmabuf: import %dx%d stride=%u sum=%08x", dw, dh, stride, sum);
+  *px = map;
+  *w = dw;
+  *h = dh;
   return 0;
 }
 
