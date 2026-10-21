@@ -2173,12 +2173,87 @@ static void alt_commit(void) {
 }
 
 /* ---------------- key routing (evdev codes; replaced X grabs) ---------- */
-typedef struct { int down; int code; unsigned mods; u32 ch; } KeyEvent;
+typedef struct { int down; int code; unsigned mods; u32 ch; int rep; } KeyEvent;
 /* input_mods(): bit0 shift, bit1 caps, bit2 ctrl, bit3 alt, bit4 logo, bit5 num */
 #define M_SHIFT 0x1u
 #define M_CTRL  0x4u
 #define M_ALT   0x8u
 #define M_LOGO  0x10u
+
+/* ---------------- key repeat ---------------- */
+/* evdev gives no repeats for PS/2 atkbd (the kernel only repeats on
+ * keyboards that implement it themselves), so the compositor synthesises
+ * them: 500 ms delay, then 25 Hz — the same numbers advertised as
+ * wl_keyboard.repeat_info, so a client doing its own repeating agrees. */
+#define REPEAT_DELAY_MS  500
+#define REPEAT_PERIOD_MS 40
+#define REPEAT_MAX 8
+
+typedef struct { int code; unsigned next; } HeldKey;
+typedef struct {
+    HeldKey k[REPEAT_MAX];
+    int n;
+    unsigned delay;
+    unsigned period;
+} RepeatState;
+
+static void rep_press(RepeatState *r, int code, unsigned now) {
+    for (int i = 0; i < r->n; i++) {
+        if (r->k[i].code == code) { r->k[i].next = now + r->delay; return; }
+    }
+    if (r->n >= REPEAT_MAX) return;
+    r->k[r->n].code = code;
+    r->k[r->n].next = now + r->delay;
+    r->n++;
+}
+
+static void rep_release(RepeatState *r, int code) {
+    int w = 0;
+    for (int i = 0; i < r->n; i++)
+        if (r->k[i].code != code) r->k[w++] = r->k[i];
+    r->n = w;
+}
+
+/* Emit every key whose repeat is due, reschedule it, return the count. */
+static int rep_tick(RepeatState *r, unsigned now,
+                    int (*emit)(int code, void *ud), void *ud) {
+    int emitted = 0;
+    for (int i = 0; i < r->n; i++) {
+        if (now >= r->k[i].next) {
+            r->k[i].next = now + r->period;
+            if (emit) emitted += emit(r->k[i].code, ud);
+        }
+    }
+    return emitted;
+}
+
+/* Earliest deadline (0 = none): keeps poll() from sleeping past a repeat. */
+static unsigned rep_next(const RepeatState *r) {
+    unsigned t = 0;
+    for (int i = 0; i < r->n; i++)
+        if (!t || r->k[i].next < t) t = r->k[i].next;
+    return t;
+}
+
+static RepeatState repeat = { .delay = REPEAT_DELAY_MS, .period = REPEAT_PERIOD_MS };
+static int rep_test_emitted, rep_test_last;
+static int rep_test_emit(int code, void *ud) {
+    (void)ud;
+    rep_test_emitted++;
+    rep_test_last = code;
+    return 1;
+}
+static void on_key(KeyEvent *e);   /* defined below */
+
+/* A repeat is delivered like a fresh key press (state=pressed). */
+static int repeat_emit(int code, void *ud) {
+    (void)ud;
+    unsigned mods = input_mods();
+    KeyEvent ke = { .down = 1, .code = code, .mods = mods,
+                    .ch = input_key_char(code, mods & 1), .rep = 1 };
+    on_key(&ke);
+    return 1;
+}
 
 static void alt_key(KeyEvent *e) {
     if (!e->down) return;
@@ -2268,14 +2343,14 @@ static int root_key(KeyEvent *e) {
     snap_dismiss();
     if (st == M_LOGO) {
         switch (e->code) {
-        case KEY_A: key_quick_toggle(); return 1;
-        case KEY_N: key_cal_toggle(); return 1;
-        case KEY_S: key_start_open_search(); return 1;
-        case KEY_R: key_run_open(); return 1;
-        case KEY_L: key_lock(); return 1;
-        case KEY_D: show_desktop_toggle(); return 1;
-        case KEY_E: files_browse(NULL); return 1;
-        case KEY_TAB: key_taskview_open(); return 1;
+        case KEY_A: if (!e->rep) key_quick_toggle(); return 1;
+        case KEY_N: if (!e->rep) key_cal_toggle(); return 1;
+        case KEY_S: if (!e->rep) key_start_open_search(); return 1;
+        case KEY_R: if (!e->rep) key_run_open(); return 1;
+        case KEY_L: if (!e->rep) key_lock(); return 1;
+        case KEY_D: if (!e->rep) show_desktop_toggle(); return 1;
+        case KEY_E: if (!e->rep) files_browse(NULL); return 1;
+        case KEY_TAB: if (!e->rep) key_taskview_open(); return 1;
         case KEY_LEFT: if (focused) snap_apply(focused, SNAP_L); return 1;
         case KEY_RIGHT: if (focused) snap_apply(focused, SNAP_R); return 1;
         case KEY_UP: if (focused && !focused->max) set_max(focused, 1); return 1;
@@ -2294,11 +2369,11 @@ static int root_key(KeyEvent *e) {
         return 1;
     }
     if (st == M_ALT) {
-        if (e->code == KEY_F4) { if (focused) close_client(focused); return 1; }
-        if (e->code == KEY_TAB) { key_alt_open(1); return 1; }
+        if (e->code == KEY_F4) { if (focused && !e->rep) close_client(focused); return 1; }
+        if (e->code == KEY_TAB) { if (!e->rep) key_alt_open(1); return 1; }
         return 1;
     }
-    if (st == (M_ALT | M_SHIFT) && e->code == KEY_TAB) { key_alt_open(-1); return 1; }
+    if (st == (M_ALT | M_SHIFT) && e->code == KEY_TAB) { if (!e->rep) key_alt_open(-1); return 1; }
     return 0;
 }
 /* input_mods() layout -> wl_keyboard xkb depressed mask */
@@ -2629,6 +2704,22 @@ static int selftest(void) {
     CHK(mix(0xffffff, 0x000000, 128) == mix(0xffffff, 0x000000, 128) &&
         mix(0xffffff, 0x000000, 0) == 0xffffff && mix(0xffffff, 0x000000, 255) == 0,
         "color mix endpoints");
+    /* key repeat: no repeat before the delay, then one per period, and a
+     * release stops it. */
+    {
+        RepeatState r = { .delay = REPEAT_DELAY_MS, .period = REPEAT_PERIOD_MS };
+        rep_test_emitted = rep_test_last = 0;
+        rep_press(&r, 30, 1000);
+        CHK(rep_next(&r) == 1000 + REPEAT_DELAY_MS, "repeat deadline scheduled");
+        CHK(rep_tick(&r, 1000 + REPEAT_DELAY_MS - 1, rep_test_emit, NULL) == 0, "no repeat before delay");
+        CHK(rep_tick(&r, 1000 + REPEAT_DELAY_MS, rep_test_emit, NULL) == 1 && rep_test_last == 30, "repeat fires");
+        CHK(rep_tick(&r, 1000 + REPEAT_DELAY_MS + 10, rep_test_emit, NULL) == 0, "no early repeat");
+        CHK(rep_tick(&r, 1000 + REPEAT_DELAY_MS + REPEAT_PERIOD_MS, rep_test_emit, NULL) == 1,
+            "repeat repeats");
+        rep_release(&r, 30);
+        CHK(r.n == 0 && rep_next(&r) == 0, "release clears repeat");
+        CHK(rep_tick(&r, 1000 + REPEAT_DELAY_MS + 1000, rep_test_emit, NULL) == 0, "no repeat after release");
+    }
 #undef CHK
     fprintf(stderr, "selftest %s\n", fail ? "FAIL" : "OK");
     return fail;
@@ -2766,6 +2857,7 @@ static void composite(void) {
 }
 
 static void present(void) {
+    if (!card) { needs_composite = 0; return; }   /* headless: Wayland server only */
     if (needs_composite) composite();
     if (use_gpu) card_gpu_frame(card, 0, 0, sw, sh, (unsigned)now_ms());
     card_flip(card);
@@ -2774,6 +2866,11 @@ static void present(void) {
 
 /* ---------------- wayland client callbacks ---------------- */
 static void cb_mapped(void *ud, WlWin *w) { (void)ud; manage(w); }
+static int cb_dmabuf_import(void *ud, int fd, uint32_t format, uint32_t stride,
+                            uint32_t length, void **px, int *w, int *h) {
+    (void)ud;
+    return card_dmabuf_import(card, fd, format, stride, length, px, w, h);
+}
 static void cb_unmapped(void *ud, WlWin *w) {
     (void)ud;
     Client *c = client_of_wl(w);
@@ -2798,24 +2895,30 @@ int main(int argc, char **argv) {
     lg = fopen(LOGPATH, "a");
     setvbuf(stdout, NULL, _IOLBF, 0);
 
-    card = card_open();
-    if (!card) { fprintf(stderr, "loseshell: no KMS device\n"); return 1; }
-    if (card_modeset(card, 0, 0) != 0) { fprintf(stderr, "loseshell: modeset failed\n"); return 1; }
-    sw = card_fbwidth(card);
-    sh = card_fbheight(card);
-    use_gpu = card_egl_init(card) == 0 && card_gpu_ok(card);
-    logmsg("display: %dx%d backend=%s driver=%s gpu=%s", sw, sh,
-           card_backend(card), card_driver(card), use_gpu ? card_gpu_renderer(card) : "none");
+    if (getenv("LOSESHELL_HEADLESS")) {
+        sw = 1024; sh = 768;                /* headless: Wayland server only */
+        logmsg("display: headless %dx%d (no KMS device)", sw, sh);
+    } else {
+        card = card_open();
+        if (!card) { fprintf(stderr, "loseshell: no KMS device\n"); return 1; }
+        if (card_modeset(card, 0, 0) != 0) { fprintf(stderr, "loseshell: modeset failed\n"); return 1; }
+        sw = card_fbwidth(card);
+        sh = card_fbheight(card);
+        use_gpu = card_egl_init(card) == 0 && card_gpu_ok(card);
+        logmsg("display: %dx%d backend=%s driver=%s gpu=%s", sw, sh,
+               card_backend(card), card_driver(card), use_gpu ? card_gpu_renderer(card) : "none");
+    }
 
     input_set_screen(sw, sh);
     int ifds[16];
-    int ninputs = input_open(ifds, 16);
+    int ninputs = card ? input_open(ifds, 16) : 0;
     logmsg("input: %d evdev device(s)", ninputs);
 
-    wl = wlserver_create("losedoze0");
+    wl = wlserver_create(getenv("LOSESHELL_SOCKET") ? getenv("LOSESHELL_SOCKET") : "losedoze0");
     if (!wl) { fprintf(stderr, "loseshell: wayland server failed\n"); return 1; }
     struct wlserver_cbs cb = { .mapped = cb_mapped, .unmapped = cb_unmapped,
-                               .title = cb_title, .resized = cb_resized };
+                               .title = cb_title, .resized = cb_resized,
+                               .dmabuf_import = cb_dmabuf_import };
     wlserver_set_cbs(wl, &cb);
     setenv("XDG_RUNTIME_DIR", "/run", 1);
     setenv("WAYLAND_DISPLAY", wlserver_socket_path(wl), 1);
@@ -2899,11 +3002,20 @@ int main(int argc, char **argv) {
                 if (left < to) to = left;
             }
         }
+        if (repeat.n) {
+            unsigned nx = rep_next(&repeat);
+            int left = (int)(nx - n) + 1;
+            if (left > 0 && left < to) to = left;
+        }
         int r = poll(pfd, (nfds_t)nf, to);
         if (r < 0) {
             if (errno == EINTR) continue;
             logmsg("poll: %s", strerror(errno));
             break;
+        }
+        if (repeat.n) {
+            int emitted = rep_tick(&repeat, now_ms(), repeat_emit, NULL);
+            if (emitted) needs_composite = 1;
         }
         int cursor_moved = 0;
         for (int i = 0; i < nf; i++) {
@@ -2921,6 +3033,8 @@ int main(int argc, char **argv) {
                 KeyEvent ke = { .down = keys[k].pressed != 0, .code = keys[k].code,
                                 .mods = mods, .ch = input_key_char(keys[k].code, mods & 1) };
                 on_key(&ke);
+                if (ke.down) rep_press(&repeat, ke.code, n);
+                else rep_release(&repeat, ke.code);
             }
             if (m.changed) {
                 int nx = mouse_x, ny = mouse_y;
