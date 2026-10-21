@@ -40,10 +40,22 @@
   - `virtio_gpu.ko` **MISSING** despite `CONFIG_DRM_VIRTIO_GPU=m` → no virtio-gpu in guest.
   - Firmware on host: `/usr/lib/firmware/{i915,amdgpu,radeon}` exist; **nouveau/ dir absent**
     → NVIDIA-via-nouveau firmware ceiling (note in README).
-- QEMU guest GPU: `-vga std` (bochs-drm). bochs has no Mesa DRI driver → EGL on
-  guest likely fails → CPU/kms path; selftest may show llvmpipe via render node if present.
+- QEMU guest GPU: `-vga std` (bochs-drm). bochs has no Mesa DRI driver → EGL/GBM screen
+  creation fails on the guest too, but `losegl` passes via the surfaceless platform (llvmpipe)
+  and `losvulkan` via lavapipe; the compositor composites on CPU.
 - Host GPU: NVIDIA `10de:2504`, proprietary driver; Mesa EGL selftest skips gracefully.
 - Mesa DRI drivers on host: i915, radeonsi, nouveau, virtio_gpu, swrast, kms_swrast.
+- **X-free Mesa 26.2.4 built from source** (`tools/build-mesa.sh`, prefix=/usr, DESTDIR=/tmp/mesa/root):
+  `-Dplatforms=wayland -Dgbm=enabled -Degl=enabled -Dgles2=enabled -Dopengl=true -Dglx=disabled
+  -Dglvnd=disabled -Dgallium-drivers=llvmpipe -Dvulkan-drivers=swrast -Dshared-llvm=disabled`.
+  Mesa 26 megadriver = `libgallium-26.2.4.so`, linked directly into libEGL (no `dri/` dir, no
+  `swrast_dri.so`); only `gbm/dri_gbm.so` ships. Desktop GL is not built (glx=disabled).
+- **.NET runtime in the guest**: `/tmp/dotnet` (SDK) + `/tmp/dnapp/out` (published app) →
+  `/opt/dotnet` + `losdotnet`. Linux .NET apps only (CoreCLR PE → NT layer deferred).
+- Host DRM: only `/dev/dri/card1` + `/dev/dri/renderD128` (driver nvidia, 10DE:2504). PRIME export
+  works (`export fd=4 handle=1`); dma-buf fd `mmap` works with PROT_READ only (PROT_WRITE → EACCES);
+  `gbm_bo_import` fails ENOSYS here (no Mesa screen for the NVIDIA device) → compositor imports by
+  mapping the client fd directly.
 - Host libs copied for runtime: `libwayland-client.so.0`, `libwayland-egl.so.1`,
   `libwayland-cursor.so.0`, `libxkbcommon.so.0`, `libxkbregistry.so.0`
   (deps of the hand-rolled Wayland client `win/wlclient.c` — verified via ldd).
@@ -129,29 +141,47 @@ win/
 ## Wayland server requirements (w32host / win/wlclient.c)
 
 - Advertised globals: wl_compositor(4), wl_shm(1), wl_seat(5), wl_output(2),
-  xdg_wm_base(1), wl_data_device_manager(3), wl_subcompositor(1).
-- NOT advertised (win/wlclient.c does not need them): zwp_linux_dmabuf, viewporter,
-  relative-pointer, cursor-shape, presentation-time, xdg-decoration (we draw SSD frames ourselves).
+  xdg_wm_base(1), wl_data_device_manager(3), wl_subcompositor(1), zwp_linux_dmabuf_v1(8).
+- NOT advertised: viewporter, relative-pointer, cursor-shape, presentation-time,
+  xdg-decoration (we draw SSD frames ourselves).
 - wl_keyboard.keymap = format 1 (XKB_V1) + memfd with xkb string (build-time embed).
-- wl_keyboard repeat_info: sent by server; w32host ignores it (no client-side repeat).
+- wl_keyboard repeat_info: sent by server; the compositor also **synthesizes repeats**
+  (evdev/atkbd deliver none): 500 ms delay, 40 ms period, `RepeatState` in loseshell.c.
 - Keycodes sent = evdev code (xkb keycode = evdev+8; consistent with embedded keymap).
 - Modifier masks hardcoded: shift=0x1 caps=0x2 ctrl=0x4 alt=0x8 logo=0x40 num=0x10.
-- Buffers: wl_shm only (ARGB8888/XRGB8888); release after composite copy;
-  frame callbacks done at composite. Ceiling: client GL via linux-dmabuf not implemented.
+- Buffers: wl_shm (ARGB8888/XRGB8888) **or client DMA-BUF**; release after composite copy;
+  frame callbacks done at composite. **linux-dmabuf v1 (ours, both ends in-tree)**: global #8, the
+  `format` event (XRGB8888 `0x34325258`) is sent on bind; requests are
+  `create_params(new_id)`, `add(fd, plane_idx, offset, stride)` (fd via SCM_RIGHTS) and
+  `create(new_id wl_buffer, width, height)` — the client allocates the buffer id, because our flat
+  object table cannot hold the upstream 0xff000000 server-id range; the server replies
+  `created(buffer)` (op 0) or `failed` (op 1) on the params object. Client side: gbm bo
+  (`GBM_FORMAT_XRGB8888` + `GBM_BO_USE_LINEAR`) + `gbm_bo_map` + `DRM_IOCTL_PRIME_HANDLE_TO_FD`;
+  the export is **lazy at the first commit after painting** (dumb-buffer PRIME export copies at
+  export time), with a cheap export probe at allocation time to decide dmabuf-vs-shm before any
+  paint; shm fallback on any failure. Compositor side: `mmap(fd, stride*h, PROT_READ)` +
+  best-effort `DRM_IOCTL_PRIME_FD_TO_HANDLE` proof; FNV-1a pixel sum logged as
+  `dmabuf: import WxH stride=S sum=X` (verification hook, compared by `tools/dmabuf_test.sh`).
 - xdg_popup grab: basic (serial check + dismiss on outside click).
 - Env for w32host: `XDG_RUNTIME_DIR=/run`, `WAYLAND_DISPLAY=losedoze0`.
 
 ## Build/image notes
 
 - DONE: Xorg/xkbcomp/XKB-data/libX11/libXext/udev steps REMOVED from build.sh.
-- **Mesa EGL exclusion (verified)**: Fedora `libEGL_mesa.so.0` hard-links
-  `libX11.so.6`/`libxcb*` (EGL_X11 platform compiled in) → X ban excludes it.
-  `libEGL.so.1` (glvnd), `libgbm.so.1`, dri drivers are X-free, but EGL can never
-  load without the vendor lib. => NO Mesa in the image; kms.c dlopen degrades
-  to "EGL: none" (CPU composite + DRM dumb buffers). GPU acceleration =
-  in-tree KMS drivers (i915/amdgpu/nouveau/radeon/bochs): hw scanout, page
-  flip, vblank pacing. Upgrade path (ponytail): X-free mesa build
-  (mesa -Dplatforms=gbm, or once ban lifts) → drop-in, no code changes.
+- **X-free Mesa now shipped** (replaces the old "no Mesa" ceiling): Fedora's
+  `libEGL_mesa.so.0` hard-links `libX11.so.6` (EGL_X11 platform), so we build
+  Mesa 26.2.4 from source instead (`tools/build-mesa.sh`; step 5/13). It gives
+  the guest EGL + GLES2 (llvmpipe) and Vulkan (lavapipe). The *display* path is
+  still DRM/KMS (hardware scanout + page flip) with CPU compositing, because
+  `card_egl_init`'s dri2 GBM screen creation fails with this build (`egl: failed
+  to create dri2 screen` — no gallium driver for bochs-drm/NVIDIA); the EGL
+  path is proven by the guest `losegl` probe on the surfaceless platform.
+- **.NET runtime** (step 9/13): `/tmp/dotnet` + `/tmp/dnapp/out` → `/opt/dotnet`
+  and `losdotnet`. Linux .NET apps; .NET PE apps need CoreCLR → NT layer (deferred).
+- **Client DMA-BUF** (see "Wayland server requirements"): host end-to-end check
+  `LD_LIBRARY_PATH=/tmp/mesa/root/usr/lib64 sh tools/dmabuf_test.sh` →
+  `DMABUF PASS: compositor read client GPU buffer`. The guest cannot exercise it
+  (bochs-drm has no GEM/PRIME) → the client falls back to shm there; smoke still PASSes.
 - build.sh now: wayland-client/egl/cursor + xkbcommon/xkbregistry (X-free,
   deps of win/wlclient.c verified via ldd), firmware {i915,amdgpu,radeon}
   (nouveau dir absent on host), module trees gpu/video/cec/lib + depmod -b,
@@ -194,13 +224,19 @@ win/
 
 ## Ceilings (ponytail) to document in README
 
-- Mesa EGL absent by design (libEGL_mesa links libX11; X ban wins) → CPU composite
-  + hardware KMS scanout/pageflip; `EGL: none`. Upgrade: X-free mesa build, drop-in.
-- Client GL via linux-dmabuf: not implemented (shm only) → add when needed.
+- Compositor EGL-GBM screen creation fails with the shipped Mesa (dri2: no gallium
+  driver for bochs-drm/NVIDIA; surfaceless platform works and is used by `losegl`).
+  CPU compositing is the working path; a matching gallium driver makes `card_egl_init`
+  take over with no shell changes.
+- Desktop GL not built (`-Dglx=disabled`) → OpenGL ES 2.0 only (EGL + GLESv2).
+- Guest DMA-BUF untestable: bochs-drm has no GEM/PRIME → client export probe fails →
+  shm fallback; host test is the real evidence. Copy-on-export devices snapshot at
+  export time (client exports lazily at first commit after painting); zero-copy GPUs unaffected.
+- .NET PE apps via the Win32 layer need a real NT layer (CoreCLR) → deferred.
+- wsprintf: 8 vararg slots (MS x64 variadic ABI; no va_start on clang → explicit arity).
 - Nouveau firmware dir missing on host → NVIDIA accel needs linux-firmware copy.
 - No virtio-gpu module in guest kernel tree → QEMU uses bochs (CPU path); real HW
   gets i915/amdgpu/radeon/nouveau accel.
-- Keypad keys not in shell keymap; key repeat for shell fields not implemented.
 - wl_data_device clipboard: minimal (offer transfer implemented basic; drag-drop no-op).
 - Mode setting: preferred mode only, no modeline selection.
 
@@ -218,4 +254,9 @@ win/
 - [x] Guest smoke → SMOKE PASS (markers + screendump incl. Win32 app window:
       white pixels in the notes.exe client area, status bar reads `chars: 0`)
 - [x] README.md (feature table, build steps, legal-distinctness, ceilings)
+- [x] X-free Mesa 26.2.4 in the image (EGL/GLES2 llvmpipe + Vulkan lavapipe; guest probes)
+- [x] .NET runtime in the image (`losdotnet` → LOSEDOZE DOTNET OK)
+- [x] Key repeat (compositor-synthesized: 500 ms / 40 ms) + wsprintf (ms_abi variadic, 29/29)
+- [x] Client DMA-BUF: linux-dmabuf v1 (both ends) + host end-to-end test (`tools/dmabuf_test.sh`)
+- [x] Guest smoke → SMOKE PASS (INIT/READY/EGL/WAYLAND/WIN32/GL/VULKAN/DOTNET + screendump)
 - [x] Final report
