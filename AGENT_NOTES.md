@@ -212,13 +212,35 @@ win/
 - **X-free Mesa now shipped** (replaces the old "no Mesa" ceiling): Fedora's
   `libEGL_mesa.so.0` hard-links `libX11.so.6` (EGL_X11 platform), so we build
   Mesa 26.2.4 from source instead (`tools/build-mesa.sh`; step 5/13). It gives
-  the guest EGL + GLES2 (llvmpipe) and Vulkan (lavapipe). The *display* path is
-  still DRM/KMS (hardware scanout + page flip) with CPU compositing, because
-  `card_egl_init`'s dri2 GBM screen creation fails with this build (`egl: failed
-  to create dri2 screen` — no gallium driver for bochs-drm/NVIDIA); the EGL
-  path is proven by the guest `losegl` probe on the surfaceless platform.
-- **.NET runtime** (step 9/13): `/tmp/dotnet` + `/tmp/dnapp/out` → `/opt/dotnet`
-  and `losdotnet`. Linux .NET apps; .NET PE apps need CoreCLR → NT layer (deferred).
+  the guest EGL + GLES2 + desktop GL and Vulkan (lavapipe). Built with the HW
+  gallium drivers that match the shipped kernel drivers (`llvmpipe,nouveau,
+  radeonsi`) **and `-Dshared-llvm=disabled`** (static LLVM inside
+  `libgallium-26.2.4.so`) — the image must not depend on a libLLVM.so that is
+  not on the host distro. Consequence: the Mesa runtime deps to copy are
+  libvulkan/libdrm/libexpat/libzstd/libstdc++/libgcc_s/libSPIRV-Tools **plus
+  libelf + libdrm_amdgpu** (radeonsi/nouveau in libgallium). The *display* path
+  is still DRM/KMS (hardware scanout + page flip) with CPU compositing, because
+  `card_egl_init`'s dri2 GBM screen creation has no gallium driver for
+  bochs-drm/virtio-gpu (that needs virglrenderer); the EGL path is proven by the
+  guest `losegl` probe on the surfaceless platform.
+- **GPU**: in-tree DRM/KMS modules ship in the image (`kernel/drivers/gpu` plus
+  the `virtio` bus for virtio-gpu/virtio-net), loaded in rcS with no early
+  break; `tools/losgpu.c` prints the card + the bound kernel driver
+  (`LOSEDOZE GPU OK card0=virtio_gpu`). `SMOKE_GPU=virtio` switches QEMU to
+  `-device virtio-vga`, default stays bochs (`-vga std`).
+- **.NET desktop**: the Win32 layer is also built as `libwin32.so`
+  (`win/hostlib.c`, `-DW32_ABI_SYSV` because CoreCLR P/Invoke on Linux is SysV,
+  not ms_abi); `tools/dotnet/Losedoze.Desktop` is a managed app that P/Invokes
+  RegisterClassExW/CreateWindowExW + GDI and runs the message loop → a real
+  window in the compositor (`losnetdesktop` → `LOSEDOZE .NET DESKTOP OK`).
+- **Network**: NIC/wifi modules (e1000, e1000e, virtio-net, r8169, cfg80211,
+  mac80211, iwlwifi, ath10k) + firmware in `/lib/firmware`; no udev → rcS
+  coldplugs by PCI modalias; `rootfs-overlay/usr/local/bin/losenet`
+  (busybox `ip`/`udhcpc`) brings the interface up + DHCP →
+  `LOSEDOZE NET OK eth0=…`; `/etc/resolv.conf` → `/run/resolv.conf` (ro root).
+- **Settings**: `tools/loseset.c` (native, linked against libwin32.so) edits
+  `~/.config/losedoze.conf` (network/wifi, wallpaper, theme, brightness);
+  loseshell polls the file mtime (2 s) and reloads it live.
 - **Client DMA-BUF** (see "Wayland server requirements"): host end-to-end check
   `LD_LIBRARY_PATH=/tmp/mesa/root/usr/lib64 sh tools/dmabuf_test.sh` →
   `DMABUF PASS: compositor read both client GPU frames`. The guest exercises it too:
@@ -229,13 +251,25 @@ win/
   (nouveau dir absent on host), module trees gpu/video/cec/lib + depmod -b,
   loseshell = loseshell.c+kms.c+input.c+wl.c, -lm -ldl only, keymap gen step
   (build-time xkbcomp; only shell/keymap.h ships).
-- rcS: devtmpfs first; modprobe bochs/i915/amdgpu/nouveau/radeon (stop at first
-  /dev/dri/card0); NO udevd (devtmpfs gives /dev/input/* + /dev/dri/*).
+- rcS: devtmpfs first; modprobe bochs_drm/virtio_gpu/i915/xe/amdgpu/nouveau/radeon
+  (no early break: every candidate, the first to bind a card wins); PCI coldplug by
+  modalias (no udevd — devtmpfs gives /dev/input/* + /dev/dri/*); `losenet up` in
+  the background (DHCP does not block boot).
 - session.sh: no Xorg — exports XDG_RUNTIME_DIR=/run, WAYLAND_DISPLAY=losedoze0,
   waits for /run/losedoze0 then prints `LOSEDOZE WAYLAND OK` + runs autostart.
-- Smoke: serial markers `LOSEDOZE INIT OK`, `LOSEDOZE READY`, `EGL: <renderer|none>`,
-  `LOSEDOZE WAYLAND OK`, `LOSEDOZE WIN32 OK`; QMP screendump: taskbar band + color variety
-  + white-pixel count for the Win32 client window. `SMOKE_AUTOSTART=1` installs a
+- Smoke: serial markers `LOSEDOZE INIT OK`, `LOSEDOZE NET OK`, `LOSEDOZE READY`,
+  `EGL: <renderer|none>`, `LOSEDOZE WAYLAND OK`, `LOSEDOZE WIN32 OK`,
+  `LOSEDOZE GPU OK`, `LOSEDOZE .NET DESKTOP OK`, `LOSEDOZE SETTINGS OK`; QMP
+  screendump: taskbar band + color variety + client-drawn pixels counted over the
+  whole desktop (white canvas of the Win32 client window + orange row of the
+  settings app) — the later client windows stack on top of notes.exe, so a fixed
+  rect would be covered; counting over the whole desktop is state-based, not
+  timing-based. The guest console is streamed over a unix socket, not `-serial file:`:
+  QEMU buffers a file chardev in 4 KB chunks, so the smoke would only see the
+  markers at the end of the boot and the screendump would land after the Win32
+  window was covered by the later apps (settings, .NET desktop). A FIFO does not
+  work: QEMU opens the pipe read/write and steals half the console output.
+  `SMOKE_AUTOSTART=1` installs a
   login self-test (hello.exe console marker + notes.exe GUI); the release image ships
   without it (`build.sh` prints `=== done`, `rc=0`).
 - Desktop file manager is native: `app_add("Files", "__files__")` + `files_open/
@@ -266,10 +300,12 @@ win/
 
 ## Ceilings (ponytail) to document in README
 
-- Compositor EGL-GBM screen creation fails with the shipped Mesa (dri2: no gallium
-  driver for bochs-drm/NVIDIA; surfaceless platform works and is used by `losegl`).
-  CPU compositing is the working path; a matching gallium driver makes `card_egl_init`
-  take over with no shell changes.
+- Compositor EGL-GBM screen creation still uses the CPU path for the QEMU GPUs
+  (dri2 has no gallium driver for bochs-drm/virtio-gpu — that needs virglrenderer;
+  the surfaceless platform works and is used by `losegl`). Real Intel/AMD/NVIDIA
+  cards get their driver now (nouveau/radeonsi in libgallium). CPU compositing is
+  the working path; a matching gallium driver makes `card_egl_init` take over
+  with no shell changes.
 - Desktop GL comes through EGL, not GLX (`-Dglx=disabled`, no libGL/libGLX/libOpenGL
   in the image): `eglBindAPI(EGL_OPENGL_API)` + `EGL_OPENGL_BIT` pbuffer on the
   surfaceless platform → Mesa hands out `4.6 (Compatibility Profile)`. Passing
@@ -291,10 +327,19 @@ win/
   devices snapshot at export time → the client re-exports on every commit and the
   server re-imports into the same buffer id (both frames checked by dmabuf_test.sh).
 - .NET PE apps via the Win32 layer need a real NT layer (CoreCLR) → deferred.
+- .NET *desktop* = our own Win32 layer as `libwin32.so` (SysV ABI for P/Invoke),
+  not Microsoft's: WinForms/WPF are Windows-only binaries → out of reach.
+  `gl32_swap` is a stub in the shared library → managed callers get GDI only.
+- No `iris` (Intel gallium): its SPIR-V shaders are built by `mesa_clc`, which
+  aborts ("double free or corruption") in a static-LLVM build. Intel keeps KMS
+  modesetting through i915/xe; add `iris` back when mesa_clc is fixed.
+- WiFi needs hardware: QEMU emulates no WiFi device, so the guest can only show
+  that the driver+firmware stack is there; joining needs a real adapter
+  (`losenet wifi <ssid> <psk>`). Ethernet is proven end-to-end (QEMU e1000).
 - wsprintf: 8 vararg slots (MS x64 variadic ABI; no va_start on clang → explicit arity).
 - Nouveau firmware dir missing on host → NVIDIA accel needs linux-firmware copy.
-- No virtio-gpu module in guest kernel tree → QEMU uses bochs (CPU path); real HW
-  gets i915/amdgpu/radeon/nouveau accel.
+- virtio-gpu has no virgl → QEMU `-device virtio-vga` gets KMS modesetting but
+  renders through llvmpipe/swrast.
 - wl_data_device clipboard: minimal (offer transfer implemented basic; drag-drop no-op).
 - Mode setting: preferred mode only, no modeline selection.
 
@@ -348,4 +393,16 @@ win/
 - [x] Evidence (guest): SMOKE PASS with INIT/READY/EGL/AUTOSTART/WAYLAND/WIN32/DMABUF/
       DLL OK/PE32 PARSE OK/GL DEMO OK/GL OK/GL DESKTOP OK/VULKAN/DOTNET, framebuffer
       1280x800 colors=1082 taskbar=True white=8387
+- [x] GPU drivers: in-tree DRM/KMS modules in the image (bochs_drm, virtio_gpu,
+      i915, xe, amdgpu, nouveau, radeon + the virtio bus), rcS loads every
+      candidate (no early break), PCI coldplug by modalias, guest probe
+      `tools/losgpu.c` → `LOSEDOZE GPU OK card0=…`; Mesa rebuilt with the matching
+      HW gallium drivers (`llvmpipe,nouveau,radeonsi`, static LLVM → no libLLVM dep)
+- [x] .NET desktop: the Win32 layer as `libwin32.so` (SysV ABI for P/Invoke) +
+      `tools/dotnet/Losedoze.Desktop` (managed window, GDI painting) →
+      `LOSEDOZE .NET DESKTOP OK`
+- [x] Network: NIC + wireless modules and firmware, modalias coldplug,
+      `losenet` (busybox ip/udhcpc) → `LOSEDOZE NET OK eth0=…`; QEMU e1000 NIC
+- [x] Settings: `loseset` (native GUI over libwin32.so) writes
+      `~/.config/losedoze.conf`; loseshell reloads it on mtime change (live)
 - [x] Final report
