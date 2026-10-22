@@ -11,7 +11,7 @@ GRUB → Linux kernel (7.2.8) → Busybox init → loseshell (DRM/KMS compositor
                                                      │
                               /run/losedoze0 (Wayland socket: hand-rolled server + client)
                                                      │
-                 w32host (dual-arch PE loader, builtin Win32 DLLs)   │  losdotnet
+                  w32host (PE32+, x86-64) / w32host32 (PE32, i386) hosts   │  losdotnet
                     → Win32 PE apps + on-disk PE DLLs (shm or DMA-BUF) → .NET app (/opt/dotnet)
 ```
 
@@ -25,10 +25,10 @@ GRUB → Linux kernel (7.2.8) → Busybox init → loseshell (DRM/KMS compositor
 | GL / Vulkan | Mesa 26.2.4 **built from source, X-free** (`-Dplatforms=wayland -Dglx=disabled -Dglvnd=disabled -Dgallium-drivers=llvmpipe -Dvulkan-drivers=swrast`; reproducer `tools/build-mesa.sh`): EGL + OpenGL ES 2.0 (llvmpipe) **and desktop OpenGL** (`eglBindAPI(EGL_OPENGL_API)` + `EGL_OPENGL_BIT` pbuffer → compatibility profile, no GLX/libGL needed) and Vulkan (lavapipe) ship in the image; guest probes `losegl` / `losvulkan` print `LOSEDOZE GL OK` / `LOSEDOZE GL DESKTOP OK` / `LOSEDOZE VULKAN OK` |
 | Input | Raw evdev (`EVIOCGRAB`), PS/2 + USB keyboards/mice via in-tree kernel drivers; US QWERTY tables; keymap shipped to Wayland clients as XKB_V1; the compositor **synthesizes key repeat** (500 ms delay / 40 ms period — evdev/atkbd deliver none) |
 | Display server | Hand-rolled Wayland compositor (no libwayland-server): wl_compositor/shm/seat/keyboard/pointer/output/xdg-shell (toplevel + popup) + **linux-dmabuf v1** (client-allocated buffer ids), wire protocol implemented byte-by-byte in `shell/wl.c` |
-| Win32 compat | Homemade subsystem (`win/`): `w32host` (ELF) loads PE images with a **dual-arch loader** (`pe.c`: parses PE32/i386 *and* PE32+/x86-64 — headers, sections, base relocations, import/export directories; executes 64-bit only), binds imports to our own ntdll/kernel32/user32/gdi32/opengl32 implemented over Linux syscalls, loads **on-disk PE DLLs** (search path, refcounting, real unload, DllMain attach/detach, exports by name or `#ordinal`) and renders through a hand-rolled Wayland client (`win/wlclient.c`, no libwayland-client). Desktop GL for apps: `opengl32.dll` (WGL + GL entry points via `eglGetProcAddress`) presented with `gdi32!SwapBuffers`. PE apps built freestanding with clang (`--target=x86_64-pc-windows-msvc`, `ld -mi386pep`); NT syscall numbers (from public reference CSVs) compiled into `build/ntsyscalls.inc` and the `losyscall` CLI |
+| Win32 compat | Homemade subsystem (`win/`): `w32host` (x86-64 ELF) and `w32host32` (i386 ELF, static musl) run PE images through one **dual-arch loader** (`pe.c`: parses PE32/i386 *and* PE32+/x86-64 — headers, sections, base relocations, import/export directories; each image executes in the host of its own architecture, the other host refuses it with a pointer at the right one), binds imports to our own ntdll/kernel32/user32/gdi32/opengl32 implemented over Linux syscalls (stdcall on i386, ms ABI on x64), loads **on-disk PE DLLs** (search path, refcounting, real unload, DllMain attach/detach, exports by name or `#ordinal`) and renders through a hand-rolled Wayland client (`win/wlclient.c`, no libwayland-client). Desktop GL for apps: `opengl32.dll` (WGL + GL entry points via `eglGetProcAddress`) presented with `gdi32!SwapBuffers` (64-bit host; there is no i386 Mesa — see Ceilings). PE32+ apps built freestanding with clang (`--target=x86_64-pc-windows-msvc`, `ld -mi386pep`); PE32 apps/DLLs with zig's bundled clang + LLD (`-target x86-windows-gnu`); NT syscall numbers (from public reference CSVs) compiled into `build/ntsyscalls.inc` and the `losyscall` CLI |
 | .NET | A Linux .NET runtime (muxer + `Microsoft.NETCore.App` + `host/fxr`) lives in the guest at `/opt/dotnet`; `losdotnet` runs the bundled demo app → `LOSEDOZE DOTNET OK` |
 | Client DMA-BUF | The Win32 client allocates its window buffer as a GBM bo, exports it as a dma-buf fd (`DRM_IOCTL_PRIME_HANDLE_TO_FD`) and hands it over with `zwp_linux_dmabuf_v1` **on every commit**; the compositor imports it (`mmap` + PRIME proof) and composites the client's GPU memory directly; shm fallback on any failure |
-| Verification | `loseshell --selftest`, `kms` host selftest, `tools/wltest.c` protocol test against real libwayland-client, `tools/dmabuf_test.sh` (host end-to-end dma-buf: two frames with different content — both pixel checksums the client wrote are compared against the ones the compositor computed from its own `mmap` of the buffer), `tools/test_wsprintf.c` (29/29), host runs of `build/w32host` (PE DLL test app, desktop-GL demo, `--inspect` of a 32-bit PE32 image), QEMU smoke test (`tools/smoke.sh`): console markers `LOSEDOZE INIT OK` / `READY` / `EGL:` / `WAYLAND OK` / `WIN32 OK` / `DMABUF GPU OK` / `DLL OK` / `PE32 PARSE OK` / `GL DEMO OK` / `GL OK` / `GL DESKTOP OK` / `VULKAN OK` / `DOTNET OK`, framebuffer screendump (taskbar band, color variety, white pixels of the Win32 client window) → `SMOKE PASS` |
+| Verification | `loseshell --selftest`, `kms` host selftest, `tools/wltest.c` protocol test against real libwayland-client, `tools/dmabuf_test.sh` (host end-to-end dma-buf: two frames with different content — both pixel checksums the client wrote are compared against the ones the compositor computed from its own `mmap` of the buffer), `tools/test_wsprintf.c` (29/29), host runs of `build/w32host` (PE DLL test app, desktop-GL demo, `--inspect` of a 32-bit PE32 image) and `build/w32host32` (32-bit hello/dlltest PE32 apps + i386 DLLs, refusal of a PE32+ image), QEMU smoke test (`tools/smoke.sh`): console markers `LOSEDOZE INIT OK` / `READY` / `EGL:` / `WAYLAND OK` / `WIN32 OK` / `DMABUF GPU OK` / `DLL OK` / `PE32 PARSE OK` / `PE32 EXEC OK` / `PE32 DLL OK` / `PE32 GUI OK` / `GL DEMO OK` / `GL OK` / `GL DESKTOP OK` / `VULKAN OK` / `DOTNET OK`, framebuffer screendump (taskbar band, color variety, white pixels of the Win32 client window) → `SMOKE PASS` |
 
 ## What is NOT here (by design)
 
@@ -41,9 +41,9 @@ GRUB → Linux kernel (7.2.8) → Busybox init → loseshell (DRM/KMS compositor
   EGL/GLES2/Vulkan; the *display* path itself stays DRM/KMS (hardware scanout +
   page flip) with CPU compositing. See Ceilings.
 * **No Wine.** The Win32 compatibility layer is written from scratch: our own
-  dual-arch PE loader (PE32 + PE32+ parse, 64-bit execute), syscall dispatch,
-  and windowing/GL rendering over Linux syscalls + the hand-rolled Wayland
-  client in `win/wlclient.c`.
+  dual-arch PE loader (PE32 + PE32+ parsed by both hosts, executed by the
+  matching one), syscall dispatch, and windowing/GL rendering over Linux
+  syscalls + the hand-rolled Wayland client in `win/wlclient.c`.
 * **No Microsoft code.** The Windows look-and-feel is reimplemented: original
   widgets, icons, sounds, and layout. Public syscall-number CSVs were used
   only as numeric reference data for `losyscall` and `build/ntsyscalls.inc`.
@@ -52,10 +52,11 @@ GRUB → Linux kernel (7.2.8) → Busybox init → loseshell (DRM/KMS compositor
 
 Host requirements: Fedora-like x86_64 host with the guest kernel + module tree,
 busybox static binary, clang + `ld` with `-mi386pep` + `llvm-lib` (PE32+
-toolchain; this host has no `i386pe` linker script, so the 32-bit PE32 test
-image is generated by `tools/gen_pe32.py` instead of being linked),
-`grub2-mkrescue`, `mke2fs`, `cpio`, `xkbcomp` (build-time only,
-for the embedded keyboard map), no root required.
+toolchain) and `zig` (bundles a static i386 musl for `w32host32` and an LLD
+that links PE32 — binutils here ships no `i386pe` linker script; without zig
+the build skips the 32-bit host/apps and the smoke test reports an honest
+`PE32 EXEC SKIP`), `grub2-mkrescue`, `mke2fs`, `cpio`, `xkbcomp` (build-time
+only, for the embedded keyboard map), no root required.
 
 ```sh
 # optional overrides (defaults shown)
@@ -98,12 +99,15 @@ shell/                   loseshell: lost.h, kms.c, input.c, wl.c, loseshell.c
 tools/gen_syscalls.py    NT syscall CSV → build/syscalls.inc
 tools/losyscall.c        syscall database CLI (losyscall)
 win/                     homemade Win32 subsystem: pe.c (dual-arch PE loader:
-                         PE32/PE32+ parse + 64-bit execute, on-disk DLLs,
+                         PE32/PE32+ parse + reloc + import binding; executes
+                         the matching architecture only, on-disk DLLs,
                          exports), ntdll.c/kernel32.c/user32.c/gdi32.c/gl32.c
                          (over Linux), wlclient.c (hand-rolled Wayland client:
-                         shm + DMA-BUF), wsprintf.c (ms_abi variadic
-                         formatter), w32host.c (host process), apps/ (hello,
-                         notes, dlltest, gldemo, dllmath/dllstate DLLs),
+                         shm + DMA-BUF), wsprintf.c (variadic formatter:
+                         x64 fixed slots, i386 stdarg), w32host.c (host
+                         process; built twice: w32host x86-64, w32host32 i386),
+                         apps/ (hello, notes, dlltest, gldemo, dllmath/dllstate
+                         DLLs — built for both arches),
                          gen_ntsyscalls.py/gen_importlibs.py (codegen)
 tools/gen_pe32.py        PE32 (i386) fixture image for the dual-arch parse check
 tools/gen_keymap.sh      build-time XKB keymap → shell/keymap.h
@@ -136,14 +140,21 @@ AGENT_NOTES.md           working spec / design notes
   `tools/losegl.c`) — so no libGL/libGLX/libOpenGL ships in the X-free image.
   The compositor itself still composites on CPU (`kms.c` uses
   `EGL_OPENGL_ES_API` only, see the ceiling above).
-* **32-bit x86 (PE32) images are parsed, not executed.** The loader maps,
-  relocates and binds their imports, then refuses at run time (a 64-bit process
-  cannot run 32-bit code): `w32host --inspect` prints the parse report, running
-  one prints the refusal. The PE32 test image is *generated*
-  (`tools/gen_pe32.py`) because this host's binutils knows the `i386pe`
-  emulation but ships no `ldscripts/i386pe.x`, and there is no lld/mingw on the
-  host. Upgrade path: a 32-bit PE linker (lld-link or mingw gcc) → link a real
-  PE32 app; executing it additionally needs a 32-bit loader/interpreter.
+* **32-bit x86 (PE32) apps run in a separate 32-bit host.** A 64-bit process
+  cannot execute 32-bit code, so PE32 EXEs/DLLs run in `w32host32` (i386 ELF,
+  static musl): `w32host32 apps32/hello32.exe` executes, `w32host` (x86-64)
+  refuses the same image with "run it with w32host32" — and vice versa. The
+  loader itself is dual-arch: both hosts parse, relocate and inspect PE32 and
+  PE32+ images; only the matching one binds imports and executes. The 32-bit
+  side is built with `zig` (bundled static i386 musl + an LLD that links PE32 —
+  this host's binutils ships no `ldscripts/i386pe.x`); without zig the build
+  skips `w32host32` and the smoke reports an honest `PE32 EXEC SKIP`.
+* **No 32-bit GL.** There is no i386 Mesa, so `w32host32` cannot load
+  libgbm/libEGL: its Wayland client falls back to `wl_shm` and `opengl32.dll`
+  (WGL/desktop GL) stays 64-bit-only. Upgrade path: build Mesa for i386.
+* The generated PE32 image (`tools/gen_pe32.py`) still exists as the
+  *rebase* fixture: the 64-bit host must map it away from its preferred base
+  and apply its HIGHLOW relocations before it refuses to run it.
 * **Guest DMA-BUF works.** bochs-drm in this kernel has GEM/PRIME, so the guest
   smoke shows the compositor importing the client's buffer
   (`LOSEDOZE KMS: dmabuf: import 660x460 ...` → `LOSEDOZE DMABUF GPU OK`). On a
@@ -156,7 +167,9 @@ AGENT_NOTES.md           working spec / design notes
 * **.NET *PE* apps** through the Win32 layer need a real NT layer (CoreCLR) —
   the shipped runtime runs Linux .NET apps (`losdotnet`). Deferred.
 * **wsprintf** carries 8 vararg slots (`ponytail:` ceiling; MS x64 variadic call
-  ABI has no va_start on clang — explicit arity instead).
+  ABI has no va_start on clang — explicit arity instead). On i386 the exports are
+  plain cdecl variadic (stdcall is ignored on variadic) and the args are read
+  with `va_arg` by walking the format, so the same 8-slot ceiling applies there.
 * Nouveau firmware is absent from the build host → NVIDIA KMS works, but
   accelerated firmware paths need `/usr/lib/firmware/nouveau` added.
 * No virtio-gpu module in the guest kernel tree → QEMU uses `-vga std` (bochs).
