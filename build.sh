@@ -27,7 +27,9 @@ INITRD=build/initrd
 ISO=build/losedoze.iso
 # loop/isofs/e1000 stay explicit (initrd + net); GPU tree gives KMS drivers
 MODULES_REL="kernel/drivers/block/loop.ko kernel/fs/isofs/isofs.ko kernel/drivers/net/ethernet/intel/e1000/e1000.ko"
-MODULES_TREE="kernel/drivers/gpu kernel/drivers/video kernel/drivers/cec kernel/lib"
+# gpu: bochs-drm/virtio-gpu/i915/xe/amdgpu/nouveau/radeon; virtio: the bus
+# (virtio_pci) that carries virtio-gpu + virtio-net
+MODULES_TREE="kernel/drivers/gpu kernel/drivers/video kernel/drivers/cec kernel/lib kernel/drivers/virtio"
 
 say()  { printf '\n=== %s\n' "$*"; }
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -145,13 +147,14 @@ if [ -d "$MESA_ROOT/usr/lib64" ]; then
     for j in "$MESA_ROOT/usr/share/vulkan/icd.d/"*.json; do
         [ -e "$j" ] && put "$j" "$ROOT/usr/share/vulkan/icd.d/$(basename "$j")"
     done
-    # X-free runtime deps of the mesa stack
+    # X-free runtime deps of the mesa stack (libelf/libdrm_amdgpu come from the
+    # HW gallium drivers radeonsi/nouveau linked into libgallium)
     copy_named /usr/lib64/libvulkan.so.1 /usr/lib64/libdrm.so.2 /usr/lib64/libexpat.so.1 \
                /usr/lib64/libzstd.so.1 /usr/lib64/libstdc++.so.6 /usr/lib64/libgcc_s.so.1 \
-               /usr/lib64/libSPIRV-Tools.so
+               /usr/lib64/libSPIRV-Tools.so /usr/lib64/libelf.so.1 /usr/lib64/libdrm_amdgpu.so.1
     copy_libs /usr/lib64/libvulkan.so.1 /usr/lib64/libdrm.so.2 /usr/lib64/libexpat.so.1 \
               /usr/lib64/libzstd.so.1 /usr/lib64/libstdc++.so.6 /usr/lib64/libgcc_s.so.1 \
-              /usr/lib64/libSPIRV-Tools.so
+              /usr/lib64/libSPIRV-Tools.so /usr/lib64/libelf.so.1 /usr/lib64/libdrm_amdgpu.so.1
     # guest-side probes (EGL/GLES2 + Vulkan) that print machine-checkable markers
     gcc -O2 -Wall -o build/losegl tools/losegl.c -I"$MESA_ROOT/usr/include" \
         -L"$MESA_ROOT/usr/lib64" -lEGL -lGLESv2 -lgbm
@@ -195,6 +198,10 @@ for f in modules.builtin modules.builtin.modinfo modules.order; do
 done
 depmod -b "$ROOT" "$KVER" > build/depmod.log 2>&1 || \
     printf 'depmod warnings (see build/depmod.log)\n'
+
+# GPU probe: which DRM devices exist and which kernel driver bound them
+gcc -O2 -Wall -o build/losgpu tools/losgpu.c
+put build/losgpu "$ROOT/usr/bin/losgpu"
 
 # ---------------------------------------------------------------- homemade Win32 subsystem
 # PE32+ (x86-64) and PE32 (i386) loader + own ntdll/kernel32/user32/gdi32
@@ -484,11 +491,13 @@ fi
 losegl    > /tmp/losegl.log    2>&1
 losvulkan > /tmp/losvulkan.log 2>&1
 losdotnet > /tmp/losdotnet.log 2>&1
+losgpu    > /tmp/losgpu.log    2>&1
 grep -q "LOSEDOZE GL OK"      /tmp/losegl.log    2>/dev/null && echo "LOSEDOZE GL OK"      > /dev/console || echo "LOSEDOZE GL FAIL"      > /dev/console
 grep -q "LOSEDOZE GL DESKTOP OK" /tmp/losegl.log 2>/dev/null && echo "LOSEDOZE GL DESKTOP OK" > /dev/console || echo "LOSEDOZE GL DESKTOP FAIL" > /dev/console
 grep -q "LOSEDOZE VULKAN OK"  /tmp/losvulkan.log 2>/dev/null && echo "LOSEDOZE VULKAN OK"  > /dev/console || echo "LOSEDOZE VULKAN FAIL"  > /dev/console
 grep -q "LOSEDOZE DOTNET OK"  /tmp/losdotnet.log 2>/dev/null && echo "LOSEDOZE DOTNET OK"  > /dev/console || echo "LOSEDOZE DOTNET FAIL"  > /dev/console
-cat /tmp/losegl.log /tmp/losvulkan.log /tmp/losdotnet.log > /dev/console
+grep -q "LOSEDOZE GPU OK"     /tmp/losgpu.log    2>/dev/null && echo "LOSEDOZE GPU OK"     > /dev/console || echo "LOSEDOZE GPU SKIP"     > /dev/console
+cat /tmp/losegl.log /tmp/losvulkan.log /tmp/losdotnet.log /tmp/losgpu.log > /dev/console
 cat /tmp/w32dll /tmp/w32pe32 /tmp/w32gl > /dev/console 2>/dev/null
 cat /tmp/w32hello32 /tmp/w32dll32 /tmp/w32rev32 /tmp/w32notes32 > /dev/console 2>/dev/null
 # crash evidence: kernel fault reports (ip + module offset) and the

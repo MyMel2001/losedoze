@@ -48,10 +48,13 @@ if [ ! -d "$BUILD" ]; then
         -Dopengl=true \
         -Dglvnd=disabled \
         -Dglx=disabled \
-        -Dgallium-drivers=llvmpipe \
+        -Dgallium-drivers=llvmpipe,nouveau,radeonsi \
         -Dvulkan-drivers=swrast \
         -Dllvm=enabled \
         -Dshared-llvm=disabled
+        # ponytail: no iris (Intel gallium) — its SPIR-V shaders need mesa_clc,
+        # which aborts ("double free or corruption") in a static-LLVM build.
+        # Add "iris" back once mesa_clc is fixed; Intel then gets 3D accel.
 fi
 
 say "build + install into $DESTDIR"

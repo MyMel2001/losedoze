@@ -9,6 +9,12 @@ ISO=${ISO:-build/losedoze.iso}
 TIMEOUT_INIT=${TIMEOUT_INIT:-300}
 TIMEOUT_SHELL=${TIMEOUT_SHELL:-300}
 TIMEOUT_WIN32=${TIMEOUT_WIN32:-420}
+# GPU under test: "std" (QEMU std VGA -> bochs-drm) or "virtio" (virtio-gpu
+# driver). Both are open-source in-tree DRM drivers.
+case "${SMOKE_GPU:-std}" in
+    virtio) VGA_ARG="-device virtio-vga" ;;
+    *)      VGA_ARG="-vga std" ;;
+esac
 QMP=/tmp/loseterm-qmp.sock
 SER=/tmp/loseterm-serial.log
 SHOT=${SHOT:-/tmp/loseterm.ppm}
@@ -19,7 +25,7 @@ KVM_ARG=""
 rm -f "$QMP" "$SER" "$SHOT"
 
 qemu-system-x86_64 $KVM_ARG -m 3072 -smp 2 \
-    -cdrom "$ISO" -boot d -vga std \
+    -cdrom "$ISO" -boot d $VGA_ARG \
     -display none -serial "file:$SER" -no-reboot \
     -qmp "unix:$QMP,server,nowait" &
 QPID=$!
@@ -78,6 +84,7 @@ if wait_marker "LOSEDOZE AUTOSTART BEGIN" 90; then
     wait_marker "LOSEDOZE GL DESKTOP OK" 120            || fail "desktop-gl"
     wait_marker "LOSEDOZE VULKAN OK" 120                || fail "vulkan"
     wait_marker "LOSEDOZE DOTNET OK" 180                || fail "dotnet"
+    wait_marker "LOSEDOZE GPU OK" 120                   || fail "gpu-probe"
     WIN32_SEEN=1
     sleep 4   # let the compositor draw the mapped Win32 client
 else

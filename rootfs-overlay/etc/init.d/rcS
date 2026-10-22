@@ -19,13 +19,15 @@ mkdir -p /run/losedoze /var/log /var/cache /var/tmp /root/.config
 
 hostname -F /etc/hostname 2>/dev/null
 
-# GPU: devtmpfs nodes first, then in-tree DRM/KMS drivers (modules.dep built
-# at image build). First driver to bind /dev/dri/card0 wins; failures are OK.
+# GPU: devtmpfs nodes first, then in-tree DRM/KMS drivers (modules.dep
+# built at image build). Every candidate is loaded so each attached GPU gets
+# its driver (the first one to bind a card wins); failures are OK (no device).
+# The open-source stack: bochs (QEMU std VGA), virtio-gpu, i915/xe, amdgpu,
+# nouveau, radeon.
 KVER=$(ls /lib/modules 2>/dev/null | head -1)
-if [ -n "$KVER" ] && [ ! -e /dev/dri/card0 ]; then
-    for d in bochs i915 amdgpu nouveau radeon; do
+if [ -n "$KVER" ]; then
+    for d in bochs_drm virtio_gpu i915 xe amdgpu nouveau radeon; do
         modprobe "$d" 2>/dev/null
-        [ -e /dev/dri/card0 ] && break
     done
 fi
 
