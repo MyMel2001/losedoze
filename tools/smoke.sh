@@ -17,20 +17,45 @@ case "${SMOKE_GPU:-std}" in
 esac
 QMP=/tmp/loseterm-qmp.sock
 SER=/tmp/loseterm-serial.log
+SER_SOCK=/tmp/loseterm-ser.sock
 SHOT=${SHOT:-/tmp/loseterm.ppm}
 
 [ -f "$ISO" ] || { echo "missing $ISO — run ./build.sh first"; exit 1; }
 KVM_ARG=""
 [ -e /dev/kvm ] && KVM_ARG="-enable-kvm"
-rm -f "$QMP" "$SER" "$SHOT"
+rm -f "$QMP" "$SER" "$SER_SOCK" "$SHOT"
+# Stream the guest console over a unix socket instead of `-serial file:`: a
+# file chardev is buffered by QEMU in 4 KB chunks, so the smoke would only see
+# the markers once the whole boot had been buffered -- and the framebuffer
+# shot would land long after the Win32 client window was covered by later
+# apps. (A FIFO is not usable here: QEMU opens the pipe read/write and would
+# steal half the console output from the reader.)
+python3 - "$SER_SOCK" "$SER" <<'PY' &
+import socket, sys, time
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+while True:
+    try:
+        s.connect(sys.argv[1])
+        break
+    except OSError:
+        time.sleep(0.2)
+out = open(sys.argv[2], "wb", buffering=0)
+while True:
+    b = s.recv(65536)
+    if not b:
+        break
+    out.write(b)
+PY
+SER_PID=$!
 
 qemu-system-x86_64 $KVM_ARG -m 3072 -smp 2 \
     -cdrom "$ISO" -boot d $VGA_ARG \
     -netdev user,id=n0 -device e1000,netdev=n0 \
-    -display none -serial "file:$SER" -no-reboot \
+    -display none -chardev socket,id=ser0,path="$SER_SOCK",server=on,wait=off \
+    -serial chardev:ser0 -no-reboot \
     -qmp "unix:$QMP,server,nowait" &
 QPID=$!
-trap 'kill $QPID 2>/dev/null; wait $QPID 2>/dev/null' EXIT
+trap 'kill $QPID $SER_PID 2>/dev/null; wait $QPID $SER_PID 2>/dev/null' EXIT
 
 wait_marker() {
     local mark=$1 timeout=$2 t=0
@@ -59,6 +84,41 @@ wait_marker "LOSEDOZE INIT OK" "$TIMEOUT_INIT"   || fail "init"
 wait_marker "LOSEDOZE NET OK" 120                || fail "network"
 wait_marker "LOSEDOZE READY"   "$TIMEOUT_SHELL"  || fail "loseshell"
 wait_marker "EGL: "            30                || fail "egl marker"
+
+# QMP screendump of the guest framebuffer -> $SHOT
+shot() {
+    python3 - "$QMP" "$SHOT" <<'PY'
+import json, socket, sys, time
+qmp, shot = sys.argv[1], sys.argv[2]
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+for _ in range(30):
+    try:
+        s.connect(qmp)
+        break
+    except OSError:
+        time.sleep(1)
+else:
+    sys.exit("QMP connect failed")
+f = s.makefile("rwb")
+f.readline()
+def cmd(obj):
+    f.write(json.dumps(obj).encode() + b"\n")
+    f.flush()
+    while True:
+        line = f.readline()
+        if not line:
+            sys.exit("QMP connection closed")
+        m = json.loads(line)
+        if "return" in m or "error" in m:
+            return m
+cmd({"execute": "qmp_capabilities"})
+r = cmd({"execute": "screendump", "arguments": {"filename": shot}})
+if "error" in r:
+    sys.exit("screendump failed: %s" % r)
+print("screendump:", shot)
+PY
+    [ $? -eq 0 ] || fail "screendump"
+}
 
 WIN32_SEEN=0
 # dev images print AUTOSTART BEGIN right after login; release images never do.
@@ -91,43 +151,12 @@ if wait_marker "LOSEDOZE AUTOSTART BEGIN" 90; then
     wait_marker "LOSEDOZE .NET DESKTOP OK" 250          || fail "dotnet-desktop"
     wait_marker "LOSEDOZE SETTINGS OK" 180              || fail "settings-app"
     WIN32_SEEN=1
-    sleep 4   # let the compositor draw the mapped Win32 client
+    sleep 4   # let the compositor draw the last client windows
+    shot
 else
     sleep 8   # let the UI settle
+    shot
 fi
-
-python3 - "$QMP" "$SHOT" <<'PY'
-import json, socket, sys, time
-qmp, shot = sys.argv[1], sys.argv[2]
-s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-for _ in range(30):
-    try:
-        s.connect(qmp)
-        break
-    except OSError:
-        time.sleep(1)
-else:
-    sys.exit("QMP connect failed")
-f = s.makefile("rwb")
-f.readline()
-def cmd(obj):
-    f.write(json.dumps(obj).encode() + b"\n")
-    f.flush()
-    while True:
-        line = f.readline()
-        if not line:
-            sys.exit("QMP connection closed")
-        m = json.loads(line)
-        if "return" in m or "error" in m:
-            return m
-cmd({"execute": "qmp_capabilities"})
-r = cmd({"execute": "screendump", "arguments": {"filename": shot}})
-if "error" in r:
-    sys.exit("screendump failed: %s" % r)
-cmd({"execute": "quit"})
-print("screendump:", shot)
-PY
-[ $? -eq 0 ] || fail "screendump"
 
 sleep 2
 python3 - "$SHOT" "$WIN32_SEEN" <<'PY'
@@ -175,20 +204,32 @@ print(f"framebuffer {w}x{h}, distinct colors (sampled)={len(colors)}, taskbar ba
 ok = len(colors) >= 12 and found_tb
 
 if want_win32:
-    # the Win32 client (notes.exe) paints a white 660x460 canvas at +40+30
-    # -> look for a big block of near-white pixels in that area
-    x0, x1, y0, y1 = 42, 700, 64, 490
+    # Client-drawn pixels, not one fixed rect: the later client windows (GL
+    # demo, .NET desktop, settings) stack on top of notes.exe, so its white
+    # canvas only shows in strips -- but nothing the shell draws is anywhere
+    # near white, so a large white area can only come from a Win32 client.
     white = 0
-    for y in range(y0, y1, 3):
+    for y in range(40, h - 60, 2):        # everything above the taskbar band
         base = y * w * 3
-        for x in range(x0, x1, 3):
+        for x in range(0, w, 2):
             o = base + x * 3
             r, g, b = px[o], px[o+1], px[o+2]
             if r >= 235 and g >= 235 and b >= 235:
                 white += 1
-    print(f"win32 client white pixels={white}")
-    if white < 4000:
+    # the settings app highlights the active row in orange (237,111,47):
+    # a second, independent client-drawn colour
+    orange = 0
+    for y in range(0, h - 60):
+        base = y * w * 3
+        for x in range(0, w):
+            o = base + x * 3
+            if px[o] == 237 and px[o+1] == 111 and px[o+2] == 47:
+                orange += 1
+    print(f"win32 client white pixels={white}, orange pixels={orange}")
+    if white < 8000:
         sys.exit("win32 client window not visible in framebuffer")
+    if orange < 5000:
+        sys.exit("settings client window not visible in framebuffer")
     ok = True
 
 if ok:
@@ -197,4 +238,6 @@ else:
     sys.exit(1)
 PY
 [ $? -eq 0 ] || fail "framebuffer check (shot: $SHOT)"
+
+kill "$QPID" 2>/dev/null; wait "$QPID" 2>/dev/null
 exit 0
