@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Install to disk
+Comment=Install Losedoze to another disk (ext4 + swap)
+Exec=losinstall
+Icon=drive-harddisk
+Terminal=false
+Categories=System;

@@ -75,7 +75,7 @@ busybox_install() {   # $1 = target root
 }
 
 # ---------------------------------------------------------------- checks
-say "0/13 checks"
+say "0/14 checks"
 need "$KIMG"
 need "$MODSRC/modules.dep"
 need "$BUSYBOX"
@@ -88,7 +88,7 @@ command -v "$PE_LIB" >/dev/null 2>&1 || die "$PE_LIB not found (need llvm-lib fo
 printf 'kernel:   %s\nbusybox:  %s\npe-cc:    %s\n%s\n' "$KIMG" "$BUSYBOX" "$PE_CC" "$KVM_NOTE"
 
 # ---------------------------------------------------------------- stage overlay
-say "1/13 staging overlay"
+say "1/14 staging overlay"
 rm -rf "$ROOT" "$INITRD" build/iso
 mkdir -p "$ROOT"
 cp -a rootfs-overlay/. "$ROOT/"
@@ -97,11 +97,11 @@ chmod 1777 "$ROOT/tmp" "$ROOT/var/tmp"
 chmod 755 "$ROOT/usr/local/bin/session.sh" "$ROOT/etc/init.d/rcS"
 
 # ---------------------------------------------------------------- busybox
-say "2/13 busybox userland"
+say "2/14 busybox userland"
 busybox_install "$ROOT"
 
 # ---------------------------------------------------------------- programs
-say "3/13 native programs (loseshell, losyscall)"
+say "3/14 native programs (loseshell, losyscall, mke2fs)"
 mkdir -p build
 python3 tools/gen_syscalls.py build/syscalls.inc
 # wl_keyboard.keymap (XKB_V1) — build-time host tool only, nothing X ships
@@ -115,9 +115,15 @@ gcc -O2 -Wall -o build/losyscall tools/losyscall.c -Ibuild
 ./build/loseshell --selftest >/dev/null
 put build/loseshell "$ROOT/usr/bin/loseshell"
 put build/losyscall "$ROOT/usr/bin/losyscall"
+# e2fsprogs mke2fs: busybox's mke2fs is ext2 only, the installer needs ext4
+MK2FS=$(command -v mke2fs || true)
+[ -n "$MK2FS" ] || die "mke2fs not found (e2fsprogs; the installer needs ext4)"
+put "$MK2FS" "$ROOT/usr/sbin/mke2fs"
+copy_libs "$MK2FS"
+[ -e /etc/mke2fs.conf ] && put /etc/mke2fs.conf "$ROOT/etc/mke2fs.conf"
 
 # ---------------------------------------------------------------- wayland + firmware (no X, no Mesa-EGL)
-say "4/13 wayland/xkb runtime + gpu firmware"
+say "4/14 wayland/xkb runtime + gpu firmware"
 mkdir -p "$ROOT/usr/lib64" "$ROOT/lib/firmware"
 # X-free runtime libs for the hand-rolled Wayland client (wlclient.c)
 copy_named /usr/lib64/libwayland-client.so.0 /usr/lib64/libwayland-egl.so.1 \
@@ -143,7 +149,7 @@ put /lib64/ld-linux-x86-64.so.2 "$ROOT/lib64/ld-linux-x86-64.so.2"
 # ---------------------------------------------------------------- mesa graphics stack
 # X-free Mesa built from source (Fedora's libEGL_mesa hard-links libX11).
 # Gives the guest EGL + GLES2 (llvmpipe) and Vulkan (lavapipe).
-say "5/13 mesa graphics stack (EGL/GLES2/gbm/lavapipe)"
+say "5/14 mesa graphics stack (EGL/GLES2/gbm/lavapipe)"
 MESA_ROOT=${MESA_ROOT:-/tmp/mesa/root}
 MESA_SRC=${MESA_SRC:-/tmp/mesa/mesa-src}
 if [ -d "$MESA_ROOT/usr/lib64" ]; then
@@ -177,7 +183,7 @@ else
 fi
 
 # ---------------------------------------------------------------- fonts + fontconfig
-say "6/13 fonts"
+say "6/14 fonts"
 mkdir -p "$ROOT/usr/share/fonts/TTF" "$ROOT/var/cache/fontconfig"
 for f in /usr/share/fonts/liberation-sans-fonts/*.ttf; do
     put "$f" "$ROOT/usr/share/fonts/TTF/$(basename "$f")"
@@ -190,7 +196,7 @@ copy_named /usr/bin/fc-cache
 copy_libs /usr/bin/fc-cache
 
 # ---------------------------------------------------------------- kernel modules (DRM/KMS included)
-say "7/13 kernel modules"
+say "7/14 kernel modules"
 for m in $MODULES_REL; do
     need "$MODSRC/$m"
     mkdir -p "$ROOT/lib/modules/$KVER/$(dirname "$m")"
@@ -217,7 +223,7 @@ put build/losgpu "$ROOT/usr/bin/losgpu"
 # PE32+ (x86-64) and PE32 (i386) loader + own ntdll/kernel32/user32/gdi32
 # over Linux syscalls: w32host (x86-64 ELF) runs PE32+ apps, w32host32 (i386,
 # static musl via zig) runs PE32 apps; each refuses the other architecture.
-say "8/13 win32 subsystem (w32host + PE apps)"
+say "8/14 win32 subsystem (w32host + PE apps)"
 mkdir -p build build/winapps
 python3 win/gen_ntsyscalls.py build/ntsyscalls.inc
 python3 win/gen_importlibs.py win/w32host.c build/winapps
@@ -330,7 +336,7 @@ fi
 # The desktop app drives the Win32 layer (libwin32.so) through P/Invoke:
 # our own Win32 implementation over the compositor, not Microsoft's Windows
 # Desktop runtime (see AGENT_NOTES.md "ceilings").
-say "9/13 .NET runtime"
+say "9/14 .NET runtime"
 DOTNET_ROOT=${DOTNET_ROOT:-/tmp/dotnet}
 DNAPP_OUT=${DNAPP_OUT:-/tmp/dnapp/out}
 # build the in-tree apps when the SDK is here (offline: no package refs)
@@ -398,7 +404,7 @@ fi
 # The same user32/gdi32/wlclient sources the PE host uses, built as a Linux
 # .so with the SysV ABI (that is what .NET P/Invoke uses on Linux). Managed
 # apps and native tools link/P/Invoke it to open windows and paint.
-say "10/13 win32 shared library + settings app"
+say "10/14 win32 shared library + settings app + installer"
 gcc -shared -fPIC -O2 -Wall -DW32_ABI_SYSV -o build/libwin32.so \
     win/hostlib.c win/ntdll.c win/kernel32.c win/user32.c win/gdi32.c \
     win/wlclient.c win/pe.c shell/input.c \
@@ -407,6 +413,11 @@ put build/libwin32.so "$ROOT/usr/lib64/libwin32.so"
 gcc -O2 -Wall -DW32_ABI_SYSV -Iwin -o build/loseset tools/loseset.c \
     -Lbuild -lwin32 -Wl,-rpath,/usr/lib64
 put build/loseset "$ROOT/usr/bin/loseset"
+# disk installer: same Win32 layer, so it is a real desktop app
+gcc -O2 -Wall -DW32_ABI_SYSV -Iwin -o build/losinstall tools/losinstall.c \
+    -Lbuild -lwin32 -Wl,-rpath,/usr/lib64
+LD_LIBRARY_PATH=build ./build/losinstall --selftest > /dev/null
+put build/losinstall "$ROOT/usr/bin/losinstall"
 
 # wireless tools: scan/join (iw) and WPA/WPA2 supplicant (wpa_supplicant)
 for t in /usr/sbin/iw /usr/sbin/wpa_supplicant; do
@@ -429,8 +440,34 @@ if [ "${SMOKE_AUTOSTART:-0}" = 1 ]; then
     mkdir -p "$ROOT/etc/losedoze"
     cat > "$ROOT/etc/losedoze/autostart.sh" <<'EOF'
 #!/bin/sh
-echo "LOSEDOZE AUTOSTART BEGIN" > /dev/console
+echo "LOSEDOZE AUTOSTART BEGIN pid=$$ ppid=$PPID" > /dev/console
 export XDG_RUNTIME_DIR=/run WAYLAND_DISPLAY=losedoze0
+EOF
+    # disk installer: the live system installs itself onto the target disk
+    # (the smoke attaches it as an IDE disk -> /dev/sda). Runs first so the
+    # smoke does not have to wait for the whole self-test suite.
+    if [ "${SMOKE_INSTALL:-0}" = 1 ]; then
+        cat >> "$ROOT/etc/losedoze/autostart.sh" <<'EOF'
+# persistence probe: on an installed system /var is on the disk, so this
+# counter survives the reboot
+if [ -f /etc/losedoze/installed ]; then
+    N=$(cat /var/losedoze-boots 2>/dev/null || echo 0)
+    N=$((N + 1))
+    echo "$N" > /var/losedoze-boots
+    echo "LOSEDOZE BOOT COUNT $N" > /dev/console
+    # flush it to the disk: the smoke kills QEMU right after READY, and a
+    # write that is still in the page cache would be lost
+    sync
+fi
+if [ ! -f /etc/losedoze/installed ] && [ -b /dev/sda ]; then
+    losinstall --yes --device=/dev/sda --swap=512 > /tmp/losinstall-smoke.log 2>&1
+    grep -q "LOSEDOZE INSTALL OK" /tmp/losinstall-smoke.log 2>/dev/null \
+        && echo "LOSEDOZE INSTALL OK" > /dev/console \
+        || echo "LOSEDOZE INSTALL FAIL" > /dev/console
+fi
+EOF
+    fi
+    cat >> "$ROOT/etc/losedoze/autostart.sh" <<'EOF'
 # console app: stdout carries the marker
 w32host /opt/losedoze/apps/hello.exe > /tmp/w32hello 2>&1; HRC=$?
 grep -q "LOSEDOZE WIN32 APP OK" /tmp/w32hello 2>/dev/null && HOK=1 || HOK=0
@@ -611,8 +648,28 @@ EOF
     chmod 755 "$ROOT/etc/losedoze/autostart.sh"
 fi
 
+# ---------------------------------------------------------------- GRUB install bits
+say "11/14 GRUB install bits (boot sector + core image)"
+command -v grub2-mkimage >/dev/null 2>&1 || die "grub2-mkimage not found"
+[ -e /usr/lib/grub/i386-pc/boot.img ] || die "GRUB i386-pc boot.img missing"
+# The core image finds the installed root by its filesystem label and loads
+# the grub.cfg on it. The boot sector (first 446 bytes of sector 0) goes in
+# front of the partition table, the core image in the gap behind the MBR.
+cat > build/grub-embedded.cfg <<'EOF'
+search --label LOSEDOZE --set=root
+configfile ($root)/boot/grub/grub.cfg
+EOF
+grub2-mkimage -O i386-pc -o build/grub-core.img -c build/grub-embedded.cfg \
+    -p /boot/grub ext2 part_msdos biosdisk configfile search search_label \
+    linux serial terminal normal boot > build/grub-mkimage.log 2>&1 \
+    || { cat build/grub-mkimage.log; die "grub2-mkimage failed"; }
+cp /usr/lib/grub/i386-pc/boot.img build/grub-boot.img
+mkdir -p "$ROOT/usr/lib/losedoze/installer"
+put build/grub-boot.img "$ROOT/usr/lib/losedoze/installer/boot.img"
+put build/grub-core.img "$ROOT/usr/lib/losedoze/installer/core.img"
+
 # ---------------------------------------------------------------- rootfs.ext4
-say "11/13 rootfs.ext4"
+say "12/14 rootfs.ext4"
 USED_K=$(du -sk "$ROOT" | cut -f1)
 SIZE_K=$((USED_K + USED_K / 2 + 262144))
 printf 'used=%sK size=%sK\n' "$USED_K" "$SIZE_K"
@@ -622,7 +679,7 @@ mke2fs -F -t ext4 -L LOSEDOZE -d "$ROOT" build/rootfs.ext4 > build/mke2fs.log 2>
     || { cat build/mke2fs.log; die "mke2fs failed"; }
 
 # ---------------------------------------------------------------- initramfs
-say "12/13 initramfs"
+say "13/14 initramfs"
 busybox_install "$INITRD"
 mkdir -p "$INITRD"/{dev,proc,sys,newroot,cdrom,modules,etc}
 put tools/initramfs-init "$INITRD/init"
@@ -632,7 +689,7 @@ cp "$ROOT/lib/modules/$KVER/kernel/fs/isofs/isofs.ko" "$INITRD/modules/isofs.ko"
 ( cd "$INITRD" && find . | cpio -o -H newc --quiet ) | gzip -9 > build/initramfs.cpio.gz
 
 # ---------------------------------------------------------------- ISO
-say "13/13 ISO"
+say "14/14 ISO"
 mkdir -p build/iso/boot/grub
 put "$KIMG" build/iso/boot/vmlinuz
 cp build/initramfs.cpio.gz build/iso/boot/initramfs.cpio.gz
