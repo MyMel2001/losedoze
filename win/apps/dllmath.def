@@ -1,0 +1,7 @@
+LIBRARY dllmath.dll
+EXPORTS
+dll_add
+dll_mul
+dll_version
+dll_attach_count
+dll_detach_count

@@ -6,15 +6,22 @@
 /* ---------------- PE loader (pe.c) ---------------- */
 typedef struct PeImage PeImage;
 
-/* Load PE32+ from file; resolve imports against the builtin export table
- * (pe_register_dll); apply relocations. Returns NULL + *err on failure. */
+/* Load a PE32 (i386) or PE32+ (AMD64) image from file; resolve imports against
+ * the builtin export tables and PE DLLs loaded from disk; apply relocations.
+ * Returns NULL + *err on failure. */
 PeImage *pe_load(const char *path, const char **err);
-void *pe_entry(PeImage *m);
+void *pe_entry(PeImage *m);           /* NULL for 32-bit images (not runnable) */
+const char *pe_refuse(PeImage *m);    /* why a loaded image cannot be run */
+void pe_inspect(PeImage *m);
+HMODULE pe_load_library(const char *name, const char **err);
+BOOL pe_release(HMODULE h);
+HMODULE pe_find_module(const char *name);
 HMODULE pe_module(PeImage *m);
 void pe_register_dll(const char *name, const char *const *funcs, void **fns);
 HMODULE pe_dll_handle(const char *name);
 FARPROC pe_get_export(HMODULE h, const char *name);
 const char *pe_image_name(PeImage *m);
+
 
 /* ---------------- wayland client (wlclient.c) ---------------- */
 typedef struct WlcWin WlcWin;
@@ -69,6 +76,9 @@ typedef struct W32Canvas {
 
 W32GdiObj *gdi_stock(int idx);
 void gdi_textout(W32Canvas *c, int x, int y, const W16 *s, int n);
+
+/* ---------------- desktop GL (gl32.c) ---------------- */
+int gl32_swap(W32Canvas *c);   /* present the current GL context into a canvas */
 
 /* ---------------- shared host state (w32host.c) ---------------- */
 void host_log(const char *fmt, ...);void user32_key_event(int code, int down, unsigned mods); /* evdev -> MSGs */

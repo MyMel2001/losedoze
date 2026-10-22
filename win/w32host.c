@@ -56,19 +56,36 @@ HMODULE pe_module_main(void) { return main_img ? pe_module(main_img) : NULL; }
 #define G32_LIST(X) \
   X(TextOutW) X(TextOutA) X(Rectangle) X(SetTextColor) X(SetBkColor) \
   X(SetBkMode) X(CreateSolidBrush) X(CreatePen) X(DeleteObject) \
-  X(SelectObject) X(GetStockObject) X(MoveToEx) X(LineTo)
+  X(SelectObject) X(GetStockObject) X(MoveToEx) X(LineTo) X(SwapBuffers)
+
+/* opengl32.dll: desktop GL (compat profile) over EGL. WGL context binding +
+ * the GL entry points live in win/gl32.c. */
+#define GL32_LIST(X) \
+  X(wglCreateContext) X(wglMakeCurrent) X(wglDeleteContext) \
+  X(glGetString) X(glGetError) X(glGetIntegerv) X(glCheckFramebufferStatus) \
+  X(glGenTextures) X(glGenFramebuffers) X(glDeleteTextures) \
+  X(glDeleteFramebuffers) X(glFramebufferTexture2D) X(glViewport) \
+  X(glClearColor) X(glClear) X(glEnable) X(glDisable) X(glDepthMask) \
+  X(glFrontFace) X(glShadeModel) X(glMatrixMode) X(glLoadIdentity) \
+  X(glPushMatrix) X(glPopMatrix) X(glOrtho) X(glTranslatef) X(glRotatef) \
+  X(glScalef) X(glBegin) X(glEnd) X(glVertex2f) X(glVertex3f) X(glColor3f) \
+  X(glColor4f) X(glFlush) X(glFinish) X(glPixelStorei) X(glBindTexture) \
+  X(glBindFramebuffer) X(glTexImage2D) X(glTexParameteri) X(glReadPixels) \
+  X(glDrawArrays)
 
 #define XN(n) #n,
 static const char *const nt_names_[] = { NT_LIST(XN) NULL };
 static const char *const k32_names_[] = { K32_LIST(XN) NULL };
 static const char *const u32_names_[] = { U32_LIST(XN) NULL };
 static const char *const g32_names_[] = { G32_LIST(XN) NULL };
+static const char *const gl32_names_[] = { GL32_LIST(XN) NULL };
 #undef XN
 #define XF(n) (void *)n,
 static void *nt_fns[] = { NT_LIST(XF) NULL };
 static void *k32_fns[] = { K32_LIST(XF) NULL };
 static void *u32_fns[] = { U32_LIST(XF) NULL };
 static void *g32_fns[] = { G32_LIST(XF) NULL };
+static void *gl32_fns[] = { GL32_LIST(XF) NULL };
 #undef XF
 
 /* name -> handle (both "kernel32.dll" and "kernel32" spellings) */
@@ -130,8 +147,13 @@ int main(int argc, char **argv) {
     setenv("NT_TRACE", "1", 1);
     argi++;
   }
+  int inspect = 0;
+  if (argi < argc && !strcmp(argv[argi], "--inspect")) {
+    inspect = 1;
+    argi++;
+  }
   if (argi >= argc) {
-    fprintf(stderr, "usage: w32host [-v] <app.exe> [args...]\n");
+    fprintf(stderr, "usage: w32host [-v] [--inspect] <app.exe|app.dll> [args...]\n");
     return 2;
   }
 
@@ -143,6 +165,7 @@ int main(int argc, char **argv) {
   reg("kernel32.dll", k32_names_, k32_fns);
   reg("user32.dll", u32_names_, u32_fns);
   reg("gdi32.dll", g32_names_, g32_fns);
+  reg("opengl32.dll", gl32_names_, gl32_fns);
 
   if (wlc_connect() == 0) {
     struct WlcCbs cb = {
@@ -166,8 +189,16 @@ int main(int argc, char **argv) {
     return 1;
   }
   host_log("loaded %s", pe_image_name(main_img));
+  if (inspect) {   /* dual-arch parse report: PE32 (i386) and PE32+ (AMD64) */
+    pe_inspect(main_img);
+    return 0;
+  }
 
   void (*entry)(void) = (void (*)(void))pe_entry(main_img);
+  if (!entry) {
+    host_log("%s: %s", argv[argi], pe_refuse(main_img));
+    return 1;
+  }
   entry();
   host_log("entry returned");
   return 0;

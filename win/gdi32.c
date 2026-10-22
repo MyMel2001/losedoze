@@ -276,3 +276,6 @@ HGDIOBJ SelectObject(HDC dc, HGDIOBJ h) {
   return old;
 }
 HGDIOBJ GetStockObject(int idx) { return (HGDIOBJ)gdi_stock(idx); }
+
+/* SwapBuffers: present the current opengl32 context into the DC's canvas. */
+BOOL SwapBuffers(HDC dc) { return gl32_swap(cv(dc)) ? W32_TRUE : W32_FALSE; }

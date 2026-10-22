@@ -197,36 +197,61 @@ depmod -b "$ROOT" "$KVER" > build/depmod.log 2>&1 || \
     printf 'depmod warnings (see build/depmod.log)\n'
 
 # ---------------------------------------------------------------- homemade Win32 subsystem
-# PE32+ loader + own ntdll/kernel32/user32/gdi32 over Linux syscalls, hosted by
-# w32host (ELF) which runs the PE app as a child of loseshell. No Wine anywhere.
+# PE32+ (x86-64) and PE32 (i386) loader + own ntdll/kernel32/user32/gdi32
+# over Linux syscalls, hosted by w32host (ELF) which runs the PE app as a child
+# of loseshell. Parsing is dual-arch; execution is 64-bit only. No Wine anywhere.
 say "8/13 win32 subsystem (w32host + PE apps)"
 mkdir -p build build/winapps
 python3 win/gen_ntsyscalls.py build/ntsyscalls.inc
 python3 win/gen_importlibs.py win/w32host.c build/winapps
+# PE32 (i386) fixture: no i386pe linker script on this host, so the test image
+# is generated (see tools/gen_pe32.py) — the loader parses it for real.
+python3 tools/gen_pe32.py build/winapps/hello32.exe
 # w32host: ELF host process (hand-rolled Wayland client -> /run/losedoze0)
 gcc -O2 -Wall -Wno-unused-function -o build/w32host \
-    win/pe.c win/ntdll.c win/kernel32.c win/user32.c win/gdi32.c win/wsprintf.c \
-    win/wlclient.c win/w32host.c shell/input.c \
+    win/pe.c win/ntdll.c win/kernel32.c win/user32.c win/gdi32.c win/gl32.c \
+    win/wsprintf.c win/wlclient.c win/w32host.c shell/input.c \
     -Iwin -Ishell -Ibuild -lm -ldl
 # PE apps: freestanding PE32+ (ms x64 ABI), linked with -mi386pep
 PE_CFLAGS="--target=x86_64-pc-windows-msvc -ffreestanding -fno-builtin -O2 -Iwin"
 PE_LDFLAGS="-mi386pep"
-build_pe_app() {  # $1=name  $2=subsystem(windows|console)
+build_pe_app() {  # $1=name  $2=subsystem(windows|console)  [$3=extra libs]
     local n=$1 sub=$2
     "$PE_CC" $PE_CFLAGS -c "win/apps/$n.c" -o "build/winapps/$n.o"
     "$PE_CC" $PE_CFLAGS -c win/apps/crt.s -o build/winapps/crt.o
     "$PE_LD" $PE_LDFLAGS --subsystem "$sub" -e "${n}_entry" \
         -L build/winapps -o "build/winapps/$n.exe" \
         "build/winapps/$n.o" build/winapps/crt.o \
-        -lntdll -lkernel32 -luser32 -lgdi32
+        -lntdll -lkernel32 -luser32 -lgdi32 ${3:-}
     need "build/winapps/$n.exe"
 }
 build_pe_app hello console
 build_pe_app notes windows
+# PE DLLs on disk: exports come from --export-all-symbols, entry = the app's
+# DllMain. Each DLL gets its own preferred ImageBase: binutils does not emit a
+# .reloc section for these, so the loader can only map it at its preferred base.
+build_pe_dll() {  # $1=name  $2=image base (win/apps/$1.def lists its exports)
+    local n=$1 base=$2
+    "$PE_LIB" /def:"win/apps/$n.def" /machine:x64 /out:"build/winapps/lib$n.a"
+    "$PE_CC" $PE_CFLAGS -c "win/apps/$n.c" -o "build/winapps/$n.o"
+    "$PE_LD" $PE_LDFLAGS --dll -e "${n}_dllmain" --export-all-symbols \
+        --image-base "$base" \
+        -o "build/winapps/$n.dll" "build/winapps/$n.o"
+    need "build/winapps/$n.dll"
+}
+build_pe_dll dllmath 0x180000000
+build_pe_dll dllstate 0x181000000
+build_pe_app dlltest console "-ldllmath"
+build_pe_app gldemo windows "-lopengl32"
 put build/w32host "$ROOT/usr/bin/w32host"
 mkdir -p "$ROOT/opt/losedoze/apps"
-put build/winapps/hello.exe "$ROOT/opt/losedoze/apps/hello.exe"
-put build/winapps/notes.exe  "$ROOT/opt/losedoze/apps/notes.exe"
+put build/winapps/hello.exe    "$ROOT/opt/losedoze/apps/hello.exe"
+put build/winapps/notes.exe    "$ROOT/opt/losedoze/apps/notes.exe"
+put build/winapps/dlltest.exe  "$ROOT/opt/losedoze/apps/dlltest.exe"
+put build/winapps/gldemo.exe   "$ROOT/opt/losedoze/apps/gldemo.exe"
+put build/winapps/hello32.exe  "$ROOT/opt/losedoze/apps/hello32.exe"
+put build/winapps/dllmath.dll  "$ROOT/opt/losedoze/apps/dllmath.dll"
+put build/winapps/dllstate.dll "$ROOT/opt/losedoze/apps/dllstate.dll"
 
 # ---------------------------------------------------------------- .NET runtime
 # A Linux .NET runtime lives in the guest so the OS can run .NET programs.
@@ -322,14 +347,56 @@ elif grep -q "dma-buf unavailable" /tmp/w32notes 2>/dev/null; then
     echo "LOSEDOZE DMABUF SHM OK" > /dev/console
 fi
 
-# graphics + .NET probes (EGL/GLES2, Vulkan/lavapipe, .NET runtime)
+# --- homemade Win32 subsystem: PE DLLs on disk, dual-arch PE loader, desktop GL
+# DLLs: static import at load time + LoadLibraryA/GetProcAddress/FreeLibrary,
+# including a real unload/reload (the DLL's own state starts over).
+w32host /opt/losedoze/apps/dlltest.exe > /tmp/w32dll 2>&1
+grep -q "LOSEDOZE DLL OK" /tmp/w32dll 2>/dev/null && echo "LOSEDOZE DLL OK" > /dev/console || echo "LOSEDOZE DLL FAIL" > /dev/console
+
+# PE32 (i386): parsed, relocated, imports bound -> then refused, because only
+# 64-bit PE images are executed (see w32host --inspect / pe_refuse()).
+w32host --inspect /opt/losedoze/apps/hello32.exe > /tmp/w32pe32 2>&1
+w32host /opt/losedoze/apps/hello32.exe >> /tmp/w32pe32 2>&1
+if grep -q "LOSEDOZE PE32 PARSE OK" /tmp/w32pe32 2>/dev/null && \
+   grep -q "cannot execute in a 64-bit process" /tmp/w32pe32 2>/dev/null; then
+    echo "LOSEDOZE PE32 PARSE OK" > /dev/console
+else
+    echo "LOSEDOZE PE32 FAIL" > /dev/console
+fi
+
+# desktop GL demo: opengl32.dll (desktop GL over EGL) bound to the window DC,
+# drawn with fixed-function GL, presented with SwapBuffers. The marker carries
+# GL's own renderer/version and only appears after the frame reached the surface.
+G0=$(count_manage)
+rm -f /tmp/w32glok
+w32host /opt/losedoze/apps/gldemo.exe > /tmp/w32gl 2>&1 &
+i=0
+while [ ! -s /tmp/w32glok ] && [ $i -lt 150 ]; do sleep 0.2; i=$((i + 1)); done
+[ -s /tmp/w32glok ] && GLOK=1 || GLOK=0
+i=0
+while [ $i -lt 150 ]; do
+    NOW=$(count_manage)
+    [ "$NOW" -gt "$G0" ] && break
+    sleep 0.2; i=$((i + 1))
+done
+NOW=$(count_manage)
+[ "$NOW" -gt "$G0" ] && GMOK=1 || GMOK=0
+if [ "$GLOK" = 1 ] && [ "$GMOK" = 1 ]; then
+    echo "LOSEDOZE GL DEMO OK" > /dev/console
+else
+    echo "LOSEDOZE GL DEMO FAIL (marker=$GLOK mapped=$GMOK)" > /dev/console
+fi
+
+# graphics + .NET probes (EGL/GLES2 + desktop GL, Vulkan/lavapipe, .NET runtime)
 losegl    > /tmp/losegl.log    2>&1
 losvulkan > /tmp/losvulkan.log 2>&1
 losdotnet > /tmp/losdotnet.log 2>&1
 grep -q "LOSEDOZE GL OK"      /tmp/losegl.log    2>/dev/null && echo "LOSEDOZE GL OK"      > /dev/console || echo "LOSEDOZE GL FAIL"      > /dev/console
+grep -q "LOSEDOZE GL DESKTOP OK" /tmp/losegl.log 2>/dev/null && echo "LOSEDOZE GL DESKTOP OK" > /dev/console || echo "LOSEDOZE GL DESKTOP FAIL" > /dev/console
 grep -q "LOSEDOZE VULKAN OK"  /tmp/losvulkan.log 2>/dev/null && echo "LOSEDOZE VULKAN OK"  > /dev/console || echo "LOSEDOZE VULKAN FAIL"  > /dev/console
 grep -q "LOSEDOZE DOTNET OK"  /tmp/losdotnet.log 2>/dev/null && echo "LOSEDOZE DOTNET OK"  > /dev/console || echo "LOSEDOZE DOTNET FAIL"  > /dev/console
 cat /tmp/losegl.log /tmp/losvulkan.log /tmp/losdotnet.log > /dev/console
+cat /tmp/w32dll /tmp/w32pe32 /tmp/w32gl > /dev/console 2>/dev/null
 EOF
     chmod 755 "$ROOT/etc/losedoze/autostart.sh"
 fi

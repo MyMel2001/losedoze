@@ -30,7 +30,7 @@ wait_marker() {
     while [ "$t" -lt "$timeout" ]; do
         grep -q "$mark" "$SER" 2>/dev/null && { echo "  marker: $mark"; return 0; }
         # fail fast on hard-fail markers instead of waiting out the timeout
-        grep -qE "LOSEDOZE (WIN32|WAYLAND) FAIL|modeset failed|no KMS device" "$SER" 2>/dev/null \
+        grep -qE "LOSEDOZE [A-Z0-9 ]*FAIL|modeset failed|no KMS device" "$SER" 2>/dev/null \
             && { echo "fail marker seen while waiting for '$mark'"; return 1; }
         kill -0 "$QPID" 2>/dev/null || { echo "qemu exited before '$mark'"; return 1; }
         sleep 2
@@ -59,7 +59,11 @@ if wait_marker "LOSEDOZE AUTOSTART BEGIN" 90; then
     wait_marker "LOSEDOZE WAYLAND OK" "$TIMEOUT_SHELL" || fail "wayland-socket"
     wait_marker "LOSEDOZE WIN32 OK" "$TIMEOUT_WIN32"   || fail "win32"
     wait_marker "LOSEDOZE DMABUF" 120                  || fail "dmabuf"
+    wait_marker "LOSEDOZE DLL OK"        120           || fail "pe-dll"
+    wait_marker "LOSEDOZE PE32 PARSE OK" 120           || fail "pe32-dualarch"
+    wait_marker "LOSEDOZE GL DEMO OK"    180           || fail "gl-demo"
     wait_marker "LOSEDOZE GL OK"     120                || fail "opengl"
+    wait_marker "LOSEDOZE GL DESKTOP OK" 120            || fail "desktop-gl"
     wait_marker "LOSEDOZE VULKAN OK" 120                || fail "vulkan"
     wait_marker "LOSEDOZE DOTNET OK" 180                || fail "dotnet"
     WIN32_SEEN=1

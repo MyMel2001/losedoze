@@ -21,6 +21,10 @@
 #define W32API
 #endif
 
+#ifndef NULL
+#define NULL ((void *)0)
+#endif
+
 /* ---------------- scalar types (Windows x64 ABI) ---------------- */
 typedef unsigned char W8;
 typedef unsigned short W16;      /* WCHAR */
@@ -41,7 +45,7 @@ typedef W64S LONG_PTR, LPARAM, LRESULT;
 typedef void *PVOID;
 typedef void *HANDLE;
 typedef HANDLE HMODULE, HINSTANCE, HWND, HDC, HICON, HCURSOR, HBRUSH, HPEN,
-    HFONT, HGDIOBJ, HMENU;
+    HFONT, HGDIOBJ, HMENU, HGLRC;
 typedef W32 COLORREF;
 typedef const char *LPCSTR;
 typedef char *LPSTR;
@@ -201,6 +205,14 @@ typedef struct W32WndClassA {
 #define IDOK 1
 #define IDCANCEL 2
 
+/* opengl32.dll constants (public GL values, the ones the demo needs) */
+#define GL_RENDERER 0x1F01u
+#define GL_VERSION 0x1F02u
+#define GL_COLOR_BUFFER_BIT 0x00004000u
+#define GL_TRIANGLES 0x0004u
+#define GL_PROJECTION 0x1701u
+#define GL_MODELVIEW 0x1700u
+
 /* misc */
 #define CP_UTF8 65001u
 #define CP_ACP 0u
@@ -333,6 +345,54 @@ W32API HGDIOBJ SelectObject(HDC, HGDIOBJ);
 W32API HGDIOBJ GetStockObject(int);
 W32API BOOL MoveToEx(HDC, int, int, POINT *);
 W32API BOOL LineTo(HDC, int, int);
+W32API BOOL SwapBuffers(HDC);   /* presents the opengl32 context */
+
+/* opengl32.dll: desktop OpenGL (compat profile) over EGL, resolved through
+ * eglGetProcAddress. WGL: bind the context to a window DC, then draw. */
+W32API HGLRC wglCreateContext(HDC);
+W32API BOOL wglMakeCurrent(HDC, HGLRC);
+W32API BOOL wglDeleteContext(HGLRC);
+W32API const unsigned char *glGetString(unsigned);
+W32API unsigned glGetError(void);
+W32API void glGetIntegerv(unsigned, int *);
+W32API unsigned glCheckFramebufferStatus(unsigned);
+W32API void glGenTextures(int, unsigned *);
+W32API void glGenFramebuffers(int, unsigned *);
+W32API void glDeleteTextures(int, const unsigned *);
+W32API void glDeleteFramebuffers(int, const unsigned *);
+W32API void glFramebufferTexture2D(unsigned, unsigned, unsigned, unsigned, int);
+W32API void glViewport(int, int, int, int);
+W32API void glClearColor(float, float, float, float);
+W32API void glClear(unsigned);
+W32API void glEnable(unsigned);
+W32API void glDisable(unsigned);
+W32API void glDepthMask(unsigned char);
+W32API void glFrontFace(unsigned);
+W32API void glShadeModel(unsigned);
+W32API void glMatrixMode(unsigned);
+W32API void glLoadIdentity(void);
+W32API void glPushMatrix(void);
+W32API void glPopMatrix(void);
+W32API void glOrtho(double, double, double, double, double, double);
+W32API void glTranslatef(float, float, float);
+W32API void glRotatef(float, float, float, float);
+W32API void glScalef(float, float, float);
+W32API void glBegin(unsigned);
+W32API void glEnd(void);
+W32API void glVertex2f(float, float);
+W32API void glVertex3f(float, float, float);
+W32API void glColor3f(float, float, float);
+W32API void glColor4f(float, float, float, float);
+W32API void glFlush(void);
+W32API void glFinish(void);
+W32API void glPixelStorei(unsigned, int);
+W32API void glBindTexture(unsigned, unsigned);
+W32API void glBindFramebuffer(unsigned, unsigned);
+W32API void glTexImage2D(unsigned, int, int, int, int, int, unsigned,
+                         unsigned, const void *);
+W32API void glTexParameteri(unsigned, unsigned, int);
+W32API void glReadPixels(int, int, int, int, unsigned, unsigned, void *);
+W32API void glDrawArrays(unsigned, int, int);
 
 /* ntdll subset (numbers: windows-syscalls nt.csv) */
 W32API NTSTATUS NtCreateFile(HANDLE *, ULONG, OBJECT_ATTRIBUTES *, IO_STATUS_BLOCK *,

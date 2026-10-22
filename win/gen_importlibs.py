@@ -10,7 +10,8 @@ import subprocess
 import sys
 
 MACROS = {"NT_LIST": "ntdll.dll", "K32_LIST": "kernel32.dll",
-          "U32_LIST": "user32.dll", "G32_LIST": "gdi32.dll"}
+          "U32_LIST": "user32.dll", "G32_LIST": "gdi32.dll",
+          "GL32_LIST": "opengl32.dll"}
 
 
 def main(src_path, outdir):

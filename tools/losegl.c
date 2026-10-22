@@ -1,10 +1,12 @@
 /* losegl.c — guest-side OpenGL/EGL probe.
  *
  * Picks a display (GBM device, then surfaceless, then default), creates a GLES
- * 2.0 context, renders into an FBO and reads the pixel back. Prints a
- * machine-checkable marker:
+ * 2.0 context, renders into an FBO and reads the pixel back. Then repeats the
+ * same on a *desktop* GL context (EGL_OPENGL_API, compatibility profile — the
+ * API opengl32.dll gives Win32 apps). Two machine-checkable markers:
  *
- *   LOSEDOZE GL OK <renderer> | <version> | EGL <maj>.<min>
+ *   LOSEDOZE GL OK <renderer> | <version> | EGL <maj>.<min> | readback r,g,b,a
+ *   LOSEDOZE GL DESKTOP OK <renderer> | <version> | EGL <maj>.<min> | ...
  *
  * Built against Mesa's headers (build-time only; the image ships no headers).
  */
@@ -15,6 +17,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+
+static int desktop_gl(EGLDisplay dpy, int maj, int min);
 
 #ifndef EGL_PLATFORM_SURFACELESS_MESA
 #define EGL_PLATFORM_SURFACELESS_MESA 0x31DD
@@ -167,6 +171,83 @@ int main(void) {
   eglMakeCurrent(dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
   eglDestroyContext(dpy, ctx);
   if (surf != EGL_NO_SURFACE) eglDestroySurface(dpy, surf);
+
+  /* Desktop GL (not GLES): same display, EGL_OPENGL_API + an EGL_OPENGL_BIT
+   * pbuffer, no version attrs -> Mesa hands out a compatibility profile.
+   * Entry points come from eglGetProcAddress, so nothing but libEGL is
+   * needed at link time (no libOpenGL/libGLX: X-free stays intact). */
+  int rc = desktop_gl(dpy, maj, min);
   eglTerminate(dpy);
+  return rc;
+}
+
+static int desktop_gl(EGLDisplay dpy, int maj, int min) {
+  typedef const GLubyte *(*PFN_GS)(GLenum);
+  typedef void (*PFN_GCL)(GLclampf, GLclampf, GLclampf, GLclampf);
+  typedef void (*PFN_GC)(GLbitfield);
+  typedef void (*PFN_RP)(GLint, GLint, GLsizei, GLsizei, GLenum, GLenum, void *);
+  typedef void (*PFN_GD)(GLenum);
+
+  if (!eglBindAPI(EGL_OPENGL_API)) {
+    printf("LOSEDOZE GL DESKTOP FAIL eglBindAPI %s\n", egl_err(eglGetError()));
+    return 1;
+  }
+  EGLint attr[] = {EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
+                   EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+                   EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8,
+                   EGL_NONE};
+  EGLConfig cfg = NULL;
+  EGLint ncfg = 0;
+  if (!eglChooseConfig(dpy, attr, &cfg, 1, &ncfg) || ncfg < 1) {
+    printf("LOSEDOZE GL DESKTOP FAIL eglChooseConfig %s\n",
+           egl_err(eglGetError()));
+    return 1;
+  }
+  EGLContext ctx = eglCreateContext(dpy, cfg, EGL_NO_CONTEXT, NULL);
+  if (ctx == EGL_NO_CONTEXT) {
+    printf("LOSEDOZE GL DESKTOP FAIL eglCreateContext %s\n",
+           egl_err(eglGetError()));
+    return 1;
+  }
+  EGLint pb_attr[] = {EGL_WIDTH, 64, EGL_HEIGHT, 64, EGL_NONE};
+  EGLSurface surf = eglCreatePbufferSurface(dpy, cfg, pb_attr);
+  if (surf == EGL_NO_SURFACE || !eglMakeCurrent(dpy, surf, surf, ctx)) {
+    printf("LOSEDOZE GL DESKTOP FAIL eglMakeCurrent %s\n",
+           egl_err(eglGetError()));
+    return 1;
+  }
+
+  PFN_GS GetString = (PFN_GS)eglGetProcAddress("glGetString");
+  PFN_GCL ClearColor = (PFN_GCL)eglGetProcAddress("glClearColor");
+  PFN_GC Clear = (PFN_GC)eglGetProcAddress("glClear");
+  PFN_RP ReadPixels = (PFN_RP)eglGetProcAddress("glReadPixels");
+  if (!GetString || !ClearColor || !Clear || !ReadPixels) {
+    printf("LOSEDOZE GL DESKTOP FAIL glGetProcAddress\n");
+    return 1;
+  }
+  PFN_GD Disable = (PFN_GD)eglGetProcAddress("glDisable");
+  if (Disable) Disable(GL_DITHER);   /* dithering would shift the readback */
+  const char *ver = (const char *)GetString(GL_VERSION);
+  if (!ver || !strstr(ver, ".")) {
+    printf("LOSEDOZE GL DESKTOP FAIL no desktop GL context\n");
+    return 1;
+  }
+  ClearColor(0.25f, 0.5f, 1.0f, 1.0f);
+  Clear(GL_COLOR_BUFFER_BIT);
+  unsigned char px[4] = {0, 0, 0, 0};
+  ReadPixels(0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, px);
+  if (px[0] != 64 || px[1] != 128 || px[2] != 255 || px[3] != 255) {
+    printf("LOSEDOZE GL DESKTOP FAIL pixel %u,%u,%u,%u\n",
+           px[0], px[1], px[2], px[3]);
+    return 1;
+  }
+  printf("LOSEDOZE GL DESKTOP OK %s | %s | EGL %d.%d | readback %u,%u,%u,%u\n",
+         (const char *)GetString(GL_RENDERER), ver, maj, min,
+         px[0], px[1], px[2], px[3]);
+  fflush(stdout);
+
+  eglMakeCurrent(dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+  eglDestroySurface(dpy, surf);
+  eglDestroyContext(dpy, ctx);
   return 0;
 }

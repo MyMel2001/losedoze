@@ -19,21 +19,30 @@ void SetLastError(DWORD e) { last_error = e; }
 /* ---------------- modules / imports ---------------- */
 HMODULE GetModuleHandleA(LPCSTR n) {
   if (!n) return pe_module_main();
-  return (HMODULE)0; /* PE-side modules: none (builtins via LoadLibrary) */
+  return pe_find_module(n);
 }
 HMODULE GetModuleHandleW(LPCWSTR n) {
   if (!n) return pe_module_main();
-  return (HMODULE)0;
+  char u8[128];
+  w16_to_utf8(n, lstrlenW(n), u8, sizeof u8);
+  return pe_find_module(u8);
 }
 
-/* builtin DLLs are registered by w32host; LoadLibrary hands out their handles */
-HMODULE LoadLibraryA(LPCSTR n) { return w32host_dll(n); }
+/* builtin DLLs are registered by w32host; anything else is a PE DLL on disk */
+HMODULE LoadLibraryA(LPCSTR n) {
+  HMODULE h = w32host_dll(n);
+  if (h) return h;
+  const char *err = NULL;
+  h = pe_load_library(n, &err);
+  if (!h) host_log("LoadLibraryA(%s): %s", n, err ? err : "?");
+  return h;
+}
 HMODULE LoadLibraryW(LPCWSTR n) {
   char u8[128];
   w16_to_utf8(n, lstrlenW(n), u8, sizeof u8);
-  return w32host_dll(u8);
+  return LoadLibraryA(u8);
 }
-BOOL FreeLibrary(HMODULE h) { (void)h; return W32_TRUE; }
+BOOL FreeLibrary(HMODULE h) { return pe_release(h); }
 
 FARPROC GetProcAddress(HMODULE h, LPCSTR n) { return pe_get_export(h, n); }
 
