@@ -198,20 +198,36 @@ depmod -b "$ROOT" "$KVER" > build/depmod.log 2>&1 || \
 
 # ---------------------------------------------------------------- homemade Win32 subsystem
 # PE32+ (x86-64) and PE32 (i386) loader + own ntdll/kernel32/user32/gdi32
-# over Linux syscalls, hosted by w32host (ELF) which runs the PE app as a child
-# of loseshell. Parsing is dual-arch; execution is 64-bit only. No Wine anywhere.
+# over Linux syscalls: w32host (x86-64 ELF) runs PE32+ apps, w32host32 (i386,
+# static musl via zig) runs PE32 apps; each refuses the other architecture.
 say "8/13 win32 subsystem (w32host + PE apps)"
 mkdir -p build build/winapps
 python3 win/gen_ntsyscalls.py build/ntsyscalls.inc
 python3 win/gen_importlibs.py win/w32host.c build/winapps
-# PE32 (i386) fixture: no i386pe linker script on this host, so the test image
-# is generated (see tools/gen_pe32.py) — the loader parses it for real.
-python3 tools/gen_pe32.py build/winapps/hello32.exe
+# PE32 (i386) parse fixture: generated image (no i386pe linker script exists
+# in binutils here) with a low preferred base -> the 64-bit host must rebase
+# it (HIGHLOW) and then refuse to execute it (pe_refuse()).
+python3 tools/gen_pe32.py build/winapps/pe32parse.exe
 # w32host: ELF host process (hand-rolled Wayland client -> /run/losedoze0)
 gcc -O2 -Wall -Wno-unused-function -o build/w32host \
     win/pe.c win/ntdll.c win/kernel32.c win/user32.c win/gdi32.c win/gl32.c \
     win/wsprintf.c win/wlclient.c win/w32host.c shell/input.c \
     -Iwin -Ishell -Ibuild -lm -ldl
+# w32host32 + PE32 apps: zig ships a static musl for i386 (no i386 glibc
+# devel needed) and an LLD that links PE32. -mstackrealign because mingw
+# callers hand the host a 16-byte-aligned stack that plain GCC i386 code
+# mis-models (misaligned SSE stores -> SIGSEGV).
+ZIG=${ZIG:-zig}
+if command -v "$ZIG" > /dev/null 2>&1; then
+    "$ZIG" cc -target x86-linux-musl -static -O2 -Wall -Wno-unused-function \
+        -mstackrealign -o build/w32host32 \
+        win/pe.c win/ntdll.c win/kernel32.c win/user32.c win/gdi32.c win/gl32.c \
+        win/wsprintf.c win/wlclient.c win/w32host.c shell/input.c \
+        -Iwin -Ishell -Ibuild -lm -ldl
+    need build/w32host32
+else
+    say "  zig not found: 32-bit host and PE32 apps skipped"
+fi
 # PE apps: freestanding PE32+ (ms x64 ABI), linked with -mi386pep
 PE_CFLAGS="--target=x86_64-pc-windows-msvc -ffreestanding -fno-builtin -O2 -Iwin"
 PE_LDFLAGS="-mi386pep"
@@ -243,15 +259,54 @@ build_pe_dll dllmath 0x180000000
 build_pe_dll dllstate 0x181000000
 build_pe_app dlltest console "-ldllmath"
 build_pe_app gldemo windows "-lopengl32"
+# --- i386 (PE32): the same app sources, linked by zig's LLD. Win32 imports
+# resolve through zig's stdcall import libs (mingw defs); the own-DLL pairs
+# stay plain cdecl (llvm-lib /machine:x86 import libs).
+if [ -x build/w32host32 ]; then
+    PE32_CFLAGS="--target=x86-windows-gnu -ffreestanding -fno-builtin -O2 -Iwin"
+    build_pe32_app() {  # $1=name  $2=subsystem(console|windows)  [$3=extra libs]
+        local n=$1 sub=$2
+        "$ZIG" cc $PE32_CFLAGS -c "win/apps/$n.c" -o "build/winapps/$n.32.o"
+        "$ZIG" cc -target x86-windows-gnu -nostdlib -Wl,--subsystem,"$sub" \
+            -Wl,-e,"${n}_entry" -o "build/winapps/${n}32.exe" \
+            "build/winapps/$n.32.o" -lntdll -lkernel32 -luser32 -lgdi32 ${3:-}
+        need "build/winapps/${n}32.exe"
+    }
+    build_pe32_dll() {  # $1=name  $2=image base (win/apps/$1.def lists exports)
+        local n=$1 base=$2
+        "$PE_LIB" /def:"win/apps/$n.def" /machine:x86 /out:"build/winapps/lib${n}32.a"
+        "$ZIG" cc $PE32_CFLAGS -c "win/apps/$n.c" -o "build/winapps/$n.32.o"
+        "$ZIG" cc -target x86-windows-gnu -nostdlib -shared -Wl,-e,"${n}_dllmain" \
+            -Wl,--export-all-symbols -Wl,--image-base,"$base" \
+            -o "build/winapps/${n}32.dll" "build/winapps/$n.32.o"
+        need "build/winapps/${n}32.dll"
+    }
+    build_pe32_app hello console
+    build_pe32_app notes windows
+    build_pe32_dll dllmath 0x10000000
+    build_pe32_dll dllstate 0x10100000
+    build_pe32_app dlltest console "build/winapps/libdllmath32.a"
+fi
 put build/w32host "$ROOT/usr/bin/w32host"
 mkdir -p "$ROOT/opt/losedoze/apps"
 put build/winapps/hello.exe    "$ROOT/opt/losedoze/apps/hello.exe"
 put build/winapps/notes.exe    "$ROOT/opt/losedoze/apps/notes.exe"
 put build/winapps/dlltest.exe  "$ROOT/opt/losedoze/apps/dlltest.exe"
 put build/winapps/gldemo.exe   "$ROOT/opt/losedoze/apps/gldemo.exe"
-put build/winapps/hello32.exe  "$ROOT/opt/losedoze/apps/hello32.exe"
+put build/winapps/pe32parse.exe "$ROOT/opt/losedoze/apps/pe32parse.exe"
 put build/winapps/dllmath.dll  "$ROOT/opt/losedoze/apps/dllmath.dll"
 put build/winapps/dllstate.dll "$ROOT/opt/losedoze/apps/dllstate.dll"
+# 32-bit world: its own dir (SysWOW64-style) because DLL names would collide
+# by architecture; the loader's arch check is the second line of defense.
+if [ -x build/w32host32 ]; then
+    mkdir -p "$ROOT/opt/losedoze/apps32"
+    put build/w32host32 "$ROOT/usr/bin/w32host32"
+    put build/winapps/hello32.exe    "$ROOT/opt/losedoze/apps32/hello32.exe"
+    put build/winapps/notes32.exe    "$ROOT/opt/losedoze/apps32/notes32.exe"
+    put build/winapps/dlltest32.exe  "$ROOT/opt/losedoze/apps32/dlltest32.exe"
+    put build/winapps/dllmath32.dll  "$ROOT/opt/losedoze/apps32/dllmath.dll"
+    put build/winapps/dllstate32.dll "$ROOT/opt/losedoze/apps32/dllstate.dll"
+fi
 
 # ---------------------------------------------------------------- .NET runtime
 # A Linux .NET runtime lives in the guest so the OS can run .NET programs.
@@ -353,15 +408,53 @@ fi
 w32host /opt/losedoze/apps/dlltest.exe > /tmp/w32dll 2>&1
 grep -q "LOSEDOZE DLL OK" /tmp/w32dll 2>/dev/null && echo "LOSEDOZE DLL OK" > /dev/console || echo "LOSEDOZE DLL FAIL" > /dev/console
 
-# PE32 (i386): parsed, relocated, imports bound -> then refused, because only
-# 64-bit PE images are executed (see w32host --inspect / pe_refuse()).
-w32host --inspect /opt/losedoze/apps/hello32.exe > /tmp/w32pe32 2>&1
-w32host /opt/losedoze/apps/hello32.exe >> /tmp/w32pe32 2>&1
+# PE32 (i386) in the 64-bit host: parsed and rebased (HIGHLOW), then refused
+# with a pointer to the 32-bit host (see pe_refuse()).
+w32host --inspect /opt/losedoze/apps/pe32parse.exe > /tmp/w32pe32 2>&1
+w32host /opt/losedoze/apps/pe32parse.exe >> /tmp/w32pe32 2>&1
 if grep -q "LOSEDOZE PE32 PARSE OK" /tmp/w32pe32 2>/dev/null && \
-   grep -q "cannot execute in a 64-bit process" /tmp/w32pe32 2>/dev/null; then
+   grep -q "run it with w32host32" /tmp/w32pe32 2>/dev/null; then
     echo "LOSEDOZE PE32 PARSE OK" > /dev/console
 else
     echo "LOSEDOZE PE32 FAIL" > /dev/console
+fi
+
+# 32-bit host w32host32 (static i386 musl): real PE32 EXEs/DLLs execute —
+# hello32 (raw WriteFile marker + a wsprintfA-formatted line), dlltest32
+# (static import + LoadLibrary/GetProcAddress/FreeLibrary with 32-bit DLLs),
+# notes32 (window mapped by the compositor, stdcall wndproc), and a 64-bit
+# image must be refused here. No w32host32 in the image: honest SKIP.
+if [ -x /usr/bin/w32host32 ]; then
+    /usr/bin/w32host32 /opt/losedoze/apps32/hello32.exe > /tmp/w32hello32 2>&1
+    E32=$?
+    /usr/bin/w32host32 /opt/losedoze/apps/hello.exe > /tmp/w32rev32 2>&1
+    R32=$?
+    if [ "$E32" = 0 ] && grep -q "LOSEDOZE WIN32 APP OK" /tmp/w32hello32 2>/dev/null && \
+       grep -q "LOSEDOZE WS32 OK" /tmp/w32hello32 2>/dev/null && [ "$R32" != 0 ] && \
+       grep -q "64-bit host: run it with w32host$" /tmp/w32rev32 2>/dev/null; then
+        echo "LOSEDOZE PE32 EXEC OK" > /dev/console
+    else
+        echo "LOSEDOZE PE32 EXEC FAIL (rc=$E32 rev=$R32)" > /dev/console
+    fi
+    /usr/bin/w32host32 /opt/losedoze/apps32/dlltest32.exe > /tmp/w32dll32 2>&1
+    if grep -q "LOSEDOZE DLL OK" /tmp/w32dll32 2>/dev/null; then
+        echo "LOSEDOZE PE32 DLL OK" > /dev/console
+    else
+        echo "LOSEDOZE PE32 DLL FAIL" > /dev/console
+    fi
+    B32=$(count_manage)
+    /usr/bin/w32host32 /opt/losedoze/apps32/notes32.exe > /tmp/w32notes32 2>&1 &
+    i=0
+    while [ $i -lt 150 ]; do
+        NOW=$(count_manage)
+        [ "$NOW" -gt "$B32" ] && break
+        sleep 0.2; i=$((i + 1))
+    done
+    NOW=$(count_manage)
+    [ "$NOW" -gt "$B32" ] && echo "LOSEDOZE PE32 GUI OK" > /dev/console || \
+        echo "LOSEDOZE PE32 GUI FAIL" > /dev/console
+else
+    echo "LOSEDOZE PE32 EXEC SKIP (no w32host32)" > /dev/console
 fi
 
 # desktop GL demo: opengl32.dll (desktop GL over EGL) bound to the window DC,
@@ -397,6 +490,11 @@ grep -q "LOSEDOZE VULKAN OK"  /tmp/losvulkan.log 2>/dev/null && echo "LOSEDOZE V
 grep -q "LOSEDOZE DOTNET OK"  /tmp/losdotnet.log 2>/dev/null && echo "LOSEDOZE DOTNET OK"  > /dev/console || echo "LOSEDOZE DOTNET FAIL"  > /dev/console
 cat /tmp/losegl.log /tmp/losvulkan.log /tmp/losdotnet.log > /dev/console
 cat /tmp/w32dll /tmp/w32pe32 /tmp/w32gl > /dev/console 2>/dev/null
+cat /tmp/w32hello32 /tmp/w32dll32 /tmp/w32rev32 /tmp/w32notes32 > /dev/console 2>/dev/null
+# crash evidence: kernel fault reports (ip + module offset) and the
+# compositor's own log tail (its last actions before dying)
+dmesg 2>/dev/null | grep -i "segfault\|trap\|Call Trace\|general protection" > /dev/console
+tail -40 /var/log/losedoze.log > /dev/console 2>&1
 EOF
     chmod 755 "$ROOT/etc/losedoze/autostart.sh"
 fi

@@ -638,6 +638,7 @@ static void apps_load(void) {
     if (!apps) { /* builtin fallbacks so the menu is never empty */
         app_add("Notepad", "w32host /opt/losedoze/apps/notes.exe");
         app_add("Hello", "w32host /opt/losedoze/apps/hello.exe");
+        app_add("Hello32", "w32host32 /opt/losedoze/apps32/hello32.exe");
     }
     /* builtins are always available even if .desktop files exist */
     app_add("Files", "__files__");

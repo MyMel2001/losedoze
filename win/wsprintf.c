@@ -19,12 +19,20 @@
  * x86_64-pc-windows-msvc variadic calls.)
  *
  * ponytail: 8 vararg slots; widen if an app ever needs more.
+ *
+ * i386: the exports are plain cdecl variadic (stdcall is ignored on variadic
+ * functions, by both MSVC and GCC), so GCC's va_start works; the varargs are
+ * pulled with their real types into the same positional gp[] slots the core
+ * reads (see args_from_fmt()).
  */
 #define W32_NO_VSPRINTF_DECL
 #include "w32.h"
 
 #include <string.h>
 #include <math.h>
+#if defined(__i386__)
+#include <stdarg.h>
+#endif
 
 #define MAX_GP 8
 
@@ -48,6 +56,49 @@ static double arg_flt(FmtArgs *a) {
   memcpy(&d, &v, sizeof d);
   return d;
 }
+
+#if defined(__i386__)
+/* Pull the varargs into gp[] in format order, each with its real type (i386
+ * cdecl slots are type-sized, not fixed 8-byte like x64). The spec grammar
+ * below must stay in sync with fmt_core()'s (flags, width, precision, length
+ * modifier, conversion). */
+static void args_from_fmt(FmtArgs *a, const char *fmt, va_list ap) {
+  int k = 0;
+  for (const char *p = fmt; *p; p++) {
+    if (*p != '%') continue;
+    p++;
+    if (!*p) break;
+    while (*p == '-' || *p == '+' || *p == ' ' || *p == '#' || *p == '0') p++;
+    if (*p == '*') { if (k < MAX_GP) a->gp[k++] = (W64)(W64S)va_arg(ap, int); p++; }
+    else while (*p >= '0' && *p <= '9') p++;
+    if (*p == '.') {
+      p++;
+      if (*p == '*') { if (k < MAX_GP) a->gp[k++] = (W64)(W64S)va_arg(ap, int); p++; }
+      else while (*p >= '0' && *p <= '9') p++;
+    }
+    int wide64 = 0; /* l ll z t j L -> one 64-bit argument */
+    if (*p == 'h') { p++; if (*p == 'h') p++; }
+    else if (*p == 'l' || *p == 'z' || *p == 't' || *p == 'j' || *p == 'L') {
+      p++; wide64 = 1; if (*p == 'l') p++;
+    }
+    char c = *p;
+    W64 v = 0;
+    if (c == 'd' || c == 'i')
+      v = (W64)(wide64 ? (W64S)va_arg(ap, long long) : (W64S)va_arg(ap, int));
+    else if (c == 'u' || c == 'o' || c == 'x' || c == 'X')
+      v = wide64 ? va_arg(ap, unsigned long long) : (W64)va_arg(ap, unsigned int);
+    else if (c == 'f' || c == 'F' || c == 'e' || c == 'E' || c == 'g' || c == 'G') {
+      double d = va_arg(ap, double);
+      memcpy(&v, &d, sizeof d);
+    } else if (c == 'c' || c == 'C')
+      v = (W64)(W64S)va_arg(ap, int);
+    else if (c == 's' || c == 'S' || c == 'p')
+      v = (W64)(size_t)va_arg(ap, void *);
+    else continue; /* '%%' and unknown specs consume no argument */
+    if (k < MAX_GP) a->gp[k++] = v;
+  }
+}
+#endif /* __i386__ */
 
 /* ---------------- UTF-8 <-> UTF-16 (local: this file stands alone) ------ */
 static int utf8_put(char *o, int n, unsigned cp) {
@@ -399,6 +450,33 @@ static int fmt_core(char *out, const char *fmt, FmtArgs *a, int wide) {
 }
 
 /* ---------------- exported entry points ---------------------------------- */
+#if defined(__i386__)
+/* cdecl variadic (stdcall is ignored on variadic, both sides): the caller
+ * keeps the stack, so plain va_start works and the callee returns with ret */
+int wsprintfA(LPSTR out, LPCSTR fmt, ...) {
+  FmtArgs a = {{0}, 2};
+  va_list ap;
+  va_start(ap, fmt);
+  args_from_fmt(&a, fmt ? fmt : "", ap);
+  va_end(ap);
+  return fmt_core(out, fmt ? fmt : "", &a, 0);
+}
+
+int wsprintfW(LPWSTR out, LPCWSTR fmt, ...) {
+  char fbuf[1024], buf[2048];
+  int fn = 0;
+  if (fmt) fn = utf8_from_w16(fbuf, fmt, (int)sizeof fbuf);
+  fbuf[fn] = 0;
+  FmtArgs a = {{0}, 2};
+  va_list ap;
+  va_start(ap, fmt);
+  args_from_fmt(&a, fbuf, ap);
+  va_end(ap);
+  int n = fmt_core(buf, fbuf, &a, 1);
+  utf16_from_utf8(out, buf, 2048);
+  return n;
+}
+#else
 W32API int wsprintfA(LPSTR out, LPCSTR fmt, W64 a1, W64 a2, W64 a3, W64 a4,
                       W64 a5, W64 a6, W64 a7, W64 a8) {
   FmtArgs a;
@@ -434,3 +512,4 @@ W32API int wsprintfW(LPWSTR out, LPCWSTR fmt, W64 a1, W64 a2, W64 a3, W64 a4,
   (void)wn;
   return n;
 }
+#endif /* !__i386__ */

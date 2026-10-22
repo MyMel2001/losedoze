@@ -10,6 +10,10 @@ static void print(const char *s) {
 
 void hello_entry(void) {
   print("LOSEDOZE WIN32 APP OK\r\n");
+  /* wsprintfA, formatted on the host: "%d" + "%s" through the import table */
+  char wbuf[64];
+  wsprintfA(wbuf, "LOSEDOZE WS32 OK %d %s\r\n", 7, "fmt");
+  print(wbuf);
   HANDLE f = CreateFileA("/tmp/w32hello.txt", GENERIC_WRITE, 0, 0,
                          CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
   if (f && f != INVALID_HANDLE_VALUE) {

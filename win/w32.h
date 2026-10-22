@@ -1,24 +1,34 @@
 /* w32.h — clean-room Win32/NT declarations for the losedoze homemade Win32
  * subsystem (w32host). Original subset written from public ABI facts; no
  * Microsoft code or headers. Used by both the host (implementations) and
- * Win32 PE apps (import surface). x64 only: single ABI, no decoration.
+ * Win32 PE apps (import surface). x64: ms ABI; i386: stdcall (callee pops).
  * Sizes/pointers are W64 so the header works in freestanding PE builds. */
 #ifndef W32_H
 #define W32_H
 
-/* x64: single calling convention; spellings kept for source compatibility */
-#define WINAPI
-#define CALLBACK
-#define APIENTRY
-
-/* API + callback calls cross the PE (Windows x64 ABI) boundary: mark ms_abi
- * on the Linux host so the app and host call each other's functions with the
- * right register convention. On the app side clang's windows target is ms
- * ABI natively. */
-#if defined(__x86_64__) && defined(__linux__)
+/* API + callback calls cross the PE boundary: mark the calling convention so
+ * the Linux host and the PE app agree (ms_abi on x86-64, stdcall on i386 —
+ * where Win32 is callee-cleans on both sides: this host build and clang's
+ * windows-i386 app build, which would otherwise default to cdecl). On the app
+ * side clang's windows target uses both conventions natively. */
+#if defined(__i386__)
+#define W32API __attribute__((stdcall))
+#elif defined(__x86_64__) && defined(__linux__)
 #define W32API __attribute__((ms_abi))
 #else
 #define W32API
+#endif
+
+/* source-compatible spellings (stdcall on i386, nothing on x64 where there is
+ * a single convention) */
+#if defined(__i386__)
+#define WINAPI __attribute__((stdcall))
+#define CALLBACK __attribute__((stdcall))
+#define APIENTRY __attribute__((stdcall))
+#else
+#define WINAPI
+#define CALLBACK
+#define APIENTRY
 #endif
 
 #ifndef NULL
@@ -40,8 +50,13 @@ typedef W32 ULONG;
 typedef W32 BOOL;
 typedef W32 UINT;
 typedef W16 WCHAR;
+#if defined(__i386__)
+typedef W32 UINT_PTR, ULONG_PTR, DWORD_PTR, WPARAM;
+typedef W32S LONG_PTR, LPARAM, LRESULT;
+#else
 typedef W64 UINT_PTR, ULONG_PTR, DWORD_PTR, WPARAM;
 typedef W64S LONG_PTR, LPARAM, LRESULT;
+#endif
 typedef void *PVOID;
 typedef void *HANDLE;
 typedef HANDLE HMODULE, HINSTANCE, HWND, HDC, HICON, HCURSOR, HBRUSH, HPEN,
@@ -324,8 +339,15 @@ W32API int MessageBoxA(HWND, LPCSTR, LPCSTR, UINT);
  * variadic support is broken) — it defines W32_NO_VSPRINTF_DECL and skips
  * the variadic prototypes below. Apps call them the normal Win32 way. */
 #ifndef W32_NO_VSPRINTF_DECL
+#if defined(__i386__)
+/* i386: variadic functions are cdecl (stdcall is ignored on variadic, both
+ * by MSVC and GCC), so no attribute here — the host picks args via stdarg. */
+int wsprintfW(LPWSTR, LPCWSTR, ...);
+int wsprintfA(LPSTR, LPCSTR, ...);
+#else
 W32API int wsprintfW(LPWSTR, LPCWSTR, ...);
 W32API int wsprintfA(LPSTR, LPCSTR, ...);
+#endif
 #endif
 W32API HCURSOR LoadCursorW(HINSTANCE, LPCWSTR);
 W32API HICON LoadIconW(HINSTANCE, LPCWSTR);

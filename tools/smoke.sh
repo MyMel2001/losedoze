@@ -61,6 +61,18 @@ if wait_marker "LOSEDOZE AUTOSTART BEGIN" 90; then
     wait_marker "LOSEDOZE DMABUF" 120                  || fail "dmabuf"
     wait_marker "LOSEDOZE DLL OK"        120           || fail "pe-dll"
     wait_marker "LOSEDOZE PE32 PARSE OK" 120           || fail "pe32-dualarch"
+    # 32-bit host: PE32 EXEs/DLLs execute (SKIP is the honest state when the
+    # image was built without zig and thus has no w32host32)
+    if wait_marker "LOSEDOZE PE32 EXEC" 180; then
+        if grep -q "LOSEDOZE PE32 EXEC SKIP" "$SER" 2>/dev/null; then
+            echo "  (no w32host32 in image: PE32 execution skipped)"
+        else
+            wait_marker "LOSEDOZE PE32 DLL" 120 || fail "pe32-dll-exec"
+            wait_marker "LOSEDOZE PE32 GUI" 180 || fail "pe32-gui"
+        fi
+    else
+        fail "pe32-exec"
+    fi
     wait_marker "LOSEDOZE GL DEMO OK"    180           || fail "gl-demo"
     wait_marker "LOSEDOZE GL OK"     120                || fail "opengl"
     wait_marker "LOSEDOZE GL DESKTOP OK" 120            || fail "desktop-gl"

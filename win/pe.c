@@ -1,10 +1,9 @@
 /* pe.c — PE image loader for the losedoze homemade Win32 subsystem.
  * Parses PE32 (i386) and PE32+ (AMD64) images, maps and relocates them, binds
  * imports to host builtin DLL export tables and to PE DLLs loaded from disk
- * (exports resolved from the PE export directory). Execution is 64-bit only:
- * a 32-bit x86 image is parsed, relocated and its imports resolved, but the
- * loader refuses to run it, because 32-bit code cannot execute in a 64-bit
- * process (see pe_refuse()).
+ * (exports resolved from the PE export directory). An image executes only in
+ * the host of its own architecture (w32host: PE32+, w32host32: PE32); a
+ * cross-arch image is parsed and relocated but its imports are not bound.
  * Original code; PE format facts only. */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -38,6 +37,7 @@
 #define SCN_MEM_WRITE 0x80000000u
 #define DLL_MAGIC 0x4c4c5744u  /* "WDLL" */
 #define PE_MAGIC 0x4d494550u   /* "PEIM" */
+#define PE_HOST_BITS ((int)(8 * sizeof(void *))) /* this host's own width */
 
 typedef struct DllEnt {
   W32 magic;
@@ -167,7 +167,9 @@ const char *pe_image_name(PeImage *m) { return m ? m->name : "?"; }
 
 void *pe_entry(PeImage *m) {
   if (!m) return NULL;
-  return m->bits == 32 ? NULL : m->entry;   /* 32-bit: parsed, not runnable */
+  /* an image runs only in the host of its own architecture: 32-bit code
+   * cannot execute in a 64-bit process (and vice versa) */
+  return m->bits == PE_HOST_BITS ? m->entry : NULL;
 }
 
 /* ---------------- relocs / imports ---------------- */
@@ -282,8 +284,10 @@ static PeImage *pe_load_dll(const char *name, const char **err) {
   PeImage *m = pe_load(path, err);   /* reuse the full loader, mark as DLL */
   if (!m) return NULL;
   m->is_dll = 1;
-  if (m->bits == 32) {                 /* parsed, but code cannot run here */
-    *err = "32-bit x86 DLL: parsed, but its code cannot run in a 64-bit process";
+  if (m->bits != PE_HOST_BITS) {   /* wrong-arch DLL: never run */
+    *err = m->bits == 32
+               ? "32-bit x86 DLL: needs the 32-bit host (w32host32)"
+               : "64-bit DLL: needs the 64-bit host (w32host)";
     m->refcnt = 1;
     return m;
   }
@@ -319,6 +323,9 @@ static HMODULE import_resolve(const char *dllname, const char **err) {
 }
 
 static int bind_imports(PeImage *m) {
+  /* cross-arch: the image parses, but its IAT must not be filled with this
+   * host's (differently-ABI'd) function pointers */
+  if (m->bits != PE_HOST_BITS) return 0;
   W32 sz = 0;
   W32 ddir = pe_ddir(m, DIR_IMPORT, &sz);
   if (!ddir || !sz) return 0;
@@ -368,7 +375,8 @@ static int bind_imports(PeImage *m) {
         fprintf(stderr, "pe: missing import %s!%s\n", dllname, fname);
         return -3;
       }
-      iat[i] = (W64)fn;
+      if (m->bits == 64) iat[i] = (W64)fn;
+      else *(W32 *)((W8 *)iat + i * 4) = (W32)(W64)fn; /* 4-byte IAT slot */
     }
   }
   return 0;
@@ -422,7 +430,9 @@ static PeImage *load_file(const char *path, const char **err, int as_dll) {
   if (!imgsz || imgsz > 256u * 1024 * 1024) { *err = "bad SizeOfImage"; goto fail; }
 
   W8 *base = NULL;
-  if (pref) {
+  /* the preferred base is only tried for the host's own architecture: on a
+   * 32-bit host a PE32+ ImageBase does not even fit a pointer */
+  if (pref && bits == PE_HOST_BITS) {
     base = mmap((void *)pref, imgsz, PROT_READ | PROT_WRITE,
                 MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
     if (base == MAP_FAILED) base = NULL;
@@ -458,12 +468,14 @@ static PeImage *load_file(const char *path, const char **err, int as_dll) {
 
   if ((W64)base != pref) {
     int r = apply_relocs(m, pref ? pref : (W64)base);
-    if (r != 0) {
+    /* a cross-arch image without .reloc is mapped wherever it landed — it is
+     * parsed for report only, never executed */
+    if (r == -2 || (r == -1 && bits == PE_HOST_BITS)) {
       *err = r == -1 ? "no base relocations: image cannot be rebased"
                      : "unsupported base relocation type";
       goto failimg;
     }
-    m->relocated = 1;
+    if (r == 0) m->relocated = 1;
   }
   /* publish the main image before binding imports: the EXE's own directory is
    * where the DLLs it imports live (pe_load_dll searches it). */
@@ -493,9 +505,12 @@ PeImage *pe_load(const char *path, const char **err) {
 
 const char *pe_refuse(PeImage *m) {
   if (!m) return "?";
-  if (m->bits == 32)
-    return "32-bit x86 (PE32) image: parsed, relocated and imports bound, but "
-           "32-bit code cannot execute in a 64-bit process";
+  if (m->bits != PE_HOST_BITS)
+    return m->bits == 32
+               ? "32-bit x86 (PE32) image: parsed, but its code needs a 32-bit "
+                 "host: run it with w32host32"
+               : "64-bit (PE32+) image: parsed, but its code needs a 64-bit "
+                 "host: run it with w32host";
   return "image has no entry point";
 }
 
@@ -525,7 +540,9 @@ void pe_inspect(PeImage *m) {
       if (!name_rva) break;
       printf(" %s", (const char *)(m->base + name_rva));
     }
-    printf("\n");
+    /* cross-arch: parsed, but this host's function pointers never go in */
+    printf("%s\n", m->bits == PE_HOST_BITS ? ""
+                                           : " (not bound: wrong architecture)");
   }
   if (m->nnames) {
     printf("pe: exports:");
@@ -534,12 +551,14 @@ void pe_inspect(PeImage *m) {
     printf("\n");
   }
   printf("pe: %d-bit code: %s\n", m->bits,
-         m->bits == 64 ? "executable by w32host" : "parsed only (cannot execute)");
+         m->bits == PE_HOST_BITS
+             ? "executable by this host"
+             : (m->bits == 32 ? "executable by w32host32" : "executable by w32host"));
   if (m->bits == 32) printf("LOSEDOZE PE32 PARSE OK %s\n", m->name);
 }
 
 static BOOL call_dllmain(PeImage *m, W32 reason) {
   typedef BOOL(W32API * DllMain)(void *hinst, W32 reason, void *reserved);
-  if (m->bits != 64 || !m->entry) return W32_TRUE;
+  if (m->bits != PE_HOST_BITS || !m->entry) return W32_TRUE;
   return ((DllMain)m->entry)(m->base, reason, NULL);
 }
