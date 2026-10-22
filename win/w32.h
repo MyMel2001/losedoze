@@ -11,7 +11,11 @@
  * where Win32 is callee-cleans on both sides: this host build and clang's
  * windows-i386 app build, which would otherwise default to cdecl). On the app
  * side clang's windows target uses both conventions natively. */
-#if defined(__i386__)
+#if defined(W32_ABI_SYSV)
+/* shared-library build for managed callers (libwin32.so): .NET P/Invoke on
+ * Linux uses the SysV ABI, so the exported entry points must use it too */
+#define W32API
+#elif defined(__i386__)
 #define W32API __attribute__((stdcall))
 #elif defined(__x86_64__) && defined(__linux__)
 #define W32API __attribute__((ms_abi))

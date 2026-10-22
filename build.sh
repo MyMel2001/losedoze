@@ -317,12 +317,23 @@ fi
 
 # ---------------------------------------------------------------- .NET runtime
 # A Linux .NET runtime lives in the guest so the OS can run .NET programs.
-# (Running .NET *PE* apps through the Win32 layer needs a real NT layer --
-# see AGENT_NOTES.md "ceilings".)
+# The desktop app drives the Win32 layer (libwin32.so) through P/Invoke:
+# our own Win32 implementation over the compositor, not Microsoft's Windows
+# Desktop runtime (see AGENT_NOTES.md "ceilings").
 say "9/13 .NET runtime"
 DOTNET_ROOT=${DOTNET_ROOT:-/tmp/dotnet}
-DOTNET_APP=${DOTNET_APP:-/tmp/dnapp/out}
-if [ -x "$DOTNET_ROOT/dotnet" ] && [ -f "$DOTNET_APP/dnapp.dll" ]; then
+DNAPP_OUT=${DNAPP_OUT:-/tmp/dnapp/out}
+# build the in-tree apps when the SDK is here (offline: no package refs)
+if [ -x "$DOTNET_ROOT/dotnet" ] && [ -d tools/dotnet ]; then
+    for p in tools/dotnet/*/; do
+        [ -f "$p"/*.csproj ] || continue
+        n=$(basename "$p")
+        "$DOTNET_ROOT/dotnet" publish "$p" -c Release -o "build/dotnet/$n" \
+            --nologo >/dev/null 2>&1 || printf 'skip dotnet app %s (publish failed)\n' "$n"
+    done
+    [ -f build/dotnet/dnapp/dnapp.dll ] && DNAPP_OUT=build/dotnet/dnapp
+fi
+if [ -x "$DOTNET_ROOT/dotnet" ]; then
     mkdir -p "$ROOT/opt/dotnet"
     put "$DOTNET_ROOT/dotnet" "$ROOT/opt/dotnet/dotnet"
     for d in "$DOTNET_ROOT/shared/"*; do
@@ -335,13 +346,15 @@ if [ -x "$DOTNET_ROOT/dotnet" ] && [ -f "$DOTNET_APP/dnapp.dll" ]; then
         mkdir -p "$ROOT/opt/dotnet/host/fxr/$(basename "$d")"
         cp -a "$d/." "$ROOT/opt/dotnet/host/fxr/$(basename "$d")/"
     done
-    mkdir -p "$ROOT/opt/dotnet/apps/dnapp"
-    cp -a "$DOTNET_APP/." "$ROOT/opt/dotnet/apps/dnapp/"
     copy_named /usr/lib64/libstdc++.so.6 /usr/lib64/libgcc_s.so.1 /usr/lib64/libz.so.1 \
                /usr/lib64/libdl.so.2 /usr/lib64/libpthread.so.0 /usr/lib64/librt.so.1
     copy_libs /usr/lib64/libstdc++.so.6 /usr/lib64/libdl.so.2 /usr/lib64/libpthread.so.0 \
               /usr/lib64/librt.so.1
-    cat > "$ROOT/usr/bin/losdotnet" <<'EOF'
+    # apps are optional: the runtime ships regardless so the desktop app works
+    if [ -f "$DNAPP_OUT/dnapp.dll" ]; then
+        mkdir -p "$ROOT/opt/dotnet/apps/dnapp"
+        cp -a "$DNAPP_OUT/." "$ROOT/opt/dotnet/apps/dnapp/"
+        cat > "$ROOT/usr/bin/losdotnet" <<'EOF'
 #!/bin/sh
 # Run the bundled .NET demo app on the guest runtime.
 export DOTNET_ROOT=/opt/dotnet
@@ -350,10 +363,37 @@ export DOTNET_CLI_TELEMETRY_OPTOUT=1
 export DOTNET_NOLOGO=1
 exec /opt/dotnet/dotnet /opt/dotnet/apps/dnapp/dnapp.dll "$@"
 EOF
-    chmod 755 "$ROOT/usr/bin/losdotnet"
+        chmod 755 "$ROOT/usr/bin/losdotnet"
+    fi
+    if [ -f build/dotnet/Losedoze.Desktop/netdesktop.dll ]; then
+        mkdir -p "$ROOT/opt/dotnet/apps/netdesktop"
+        cp -a build/dotnet/Losedoze.Desktop/. "$ROOT/opt/dotnet/apps/netdesktop/"
+        cat > "$ROOT/usr/bin/losnetdesktop" <<'EOF'
+#!/bin/sh
+# .NET desktop app: a managed window drawn through the Win32 layer
+# (libwin32.so -> the losedoze compositor).
+export DOTNET_ROOT=/opt/dotnet
+export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+export DOTNET_NOLOGO=1
+exec /opt/dotnet/dotnet /opt/dotnet/apps/netdesktop/netdesktop.dll "$@"
+EOF
+        chmod 755 "$ROOT/usr/bin/losnetdesktop"
+    fi
 else
-    printf 'skip dotnet: runtime %s or app %s missing\n' "$DOTNET_ROOT" "$DOTNET_APP"
+    printf 'skip dotnet: runtime %s missing\n' "$DOTNET_ROOT"
 fi
+
+# ---------------------------------------------------------------- Win32 as a shared library
+# The same user32/gdi32/wlclient sources the PE host uses, built as a Linux
+# .so with the SysV ABI (that is what .NET P/Invoke uses on Linux). Managed
+# apps and native tools link/P/Invoke it to open windows and paint.
+say "10/13 win32 shared library"
+gcc -shared -fPIC -O2 -Wall -DW32_ABI_SYSV -o build/libwin32.so \
+    win/hostlib.c win/ntdll.c win/kernel32.c win/user32.c win/gdi32.c \
+    win/wlclient.c win/pe.c shell/input.c \
+    -Iwin -Ishell -Ibuild -ldl -lm
+put build/libwin32.so "$ROOT/usr/lib64/libwin32.so"
 
 # ---------------------------------------------------------------- ld cache
 cat > "$ROOT/etc/ld.so.conf" <<'EOF'
@@ -500,6 +540,28 @@ grep -q "LOSEDOZE GPU OK"     /tmp/losgpu.log    2>/dev/null && echo "LOSEDOZE G
 cat /tmp/losegl.log /tmp/losvulkan.log /tmp/losdotnet.log /tmp/losgpu.log > /dev/console
 cat /tmp/w32dll /tmp/w32pe32 /tmp/w32gl > /dev/console 2>/dev/null
 cat /tmp/w32hello32 /tmp/w32dll32 /tmp/w32rev32 /tmp/w32notes32 > /dev/console 2>/dev/null
+# .NET desktop: a managed app (CoreCLR) that opens a window through the Win32
+# layer (libwin32.so) and paints it with GDI. Needs the app's marker AND the
+# compositor to have mapped the window (same evidence as the PE GUI app).
+if [ -x /usr/bin/losnetdesktop ]; then
+    N0=$(count_manage)
+    losnetdesktop > /tmp/netdesktop.log 2>&1 &
+    i=0
+    while ! grep -q "LOSEDOZE .NET DESKTOP" /tmp/netdesktop.log 2>/dev/null && [ $i -lt 250 ]; do sleep 0.2; i=$((i + 1)); done
+    i=0
+    while [ $i -lt 150 ]; do
+        NOW=$(count_manage)
+        [ "$NOW" -gt "$N0" ] && break
+        sleep 0.2; i=$((i + 1))
+    done
+    NOW=$(count_manage)
+    if grep -q "LOSEDOZE .NET DESKTOP OK" /tmp/netdesktop.log 2>/dev/null && [ "$NOW" -gt "$N0" ]; then
+        echo "LOSEDOZE .NET DESKTOP OK" > /dev/console
+    else
+        echo "LOSEDOZE .NET DESKTOP FAIL (mapped=$((NOW - N0)))" > /dev/console
+    fi
+fi
+cat /tmp/netdesktop.log > /dev/console 2>/dev/null
 # crash evidence: kernel fault reports (ip + module offset) and the
 # compositor's own log tail (its last actions before dying)
 dmesg 2>/dev/null | grep -i "segfault\|trap\|Call Trace\|general protection" > /dev/console
