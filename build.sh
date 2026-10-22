@@ -590,6 +590,16 @@ if [ -x /usr/bin/loseset ]; then
     i=0
     while ! grep -q "LOSEDOZE SETTINGS" /tmp/loseset.log 2>/dev/null && [ $i -lt 150 ]; do sleep 0.2; i=$((i + 1)); done
     grep -q "LOSEDOZE SETTINGS OK" /tmp/loseset.log 2>/dev/null && echo "LOSEDOZE SETTINGS OK" > /dev/console || echo "LOSEDOZE SETTINGS FAIL" > /dev/console
+    # live reload: rewrite the shell's config file and wait for the shell to
+    # notice the new mtime and apply it (that is the settings app's contract)
+    H=${HOME:-/root}
+    mkdir -p "$H/.config"
+    echo "bright=90" > "$H/.config/losedoze.conf"
+    i=0
+    while ! grep -q "config reloaded" /var/log/losedoze.log 2>/dev/null && [ $i -lt 75 ]; do sleep 0.2; i=$((i + 1)); done
+    grep -q "config reloaded" /var/log/losedoze.log 2>/dev/null \
+        && echo "LOSEDOZE SETTINGS RELOAD OK" > /dev/console \
+        || echo "LOSEDOZE SETTINGS RELOAD FAIL" > /dev/console
 fi
 cat /tmp/netdesktop.log /tmp/loseset.log > /dev/console 2>/dev/null
 
