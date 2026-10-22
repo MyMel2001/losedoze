@@ -2,6 +2,10 @@
 # Headless QEMU boot check for the Losedoze ISO:
 #  waits for console markers, takes a framebuffer screendump, verifies the
 #  desktop actually drew (color variety + taskbar row).
+#
+# SMOKE_INSTALL=1 adds the disk installer check: the live system installs
+# itself onto a second disk, that disk boots on its own, and a file written
+# during the first installed boot is still there after the next reboot.
 set -u
 cd "$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -9,6 +13,7 @@ ISO=${ISO:-build/losedoze.iso}
 TIMEOUT_INIT=${TIMEOUT_INIT:-300}
 TIMEOUT_SHELL=${TIMEOUT_SHELL:-300}
 TIMEOUT_WIN32=${TIMEOUT_WIN32:-420}
+TIMEOUT_INSTALL=${TIMEOUT_INSTALL:-1200}
 # GPU under test: "std" (QEMU std VGA -> bochs-drm) or "virtio" (virtio-gpu
 # driver). Both are open-source in-tree DRM drivers.
 case "${SMOKE_GPU:-std}" in
@@ -19,18 +24,27 @@ QMP=/tmp/loseterm-qmp.sock
 SER=/tmp/loseterm-serial.log
 SER_SOCK=/tmp/loseterm-ser.sock
 SHOT=${SHOT:-/tmp/loseterm.ppm}
+TARGET=${TARGET:-/tmp/loseterm-target.img}
+SWAP_MB=${SWAP_MB:-512}
+INSTALL=0
+[ "${SMOKE_INSTALL:-0}" = 1 ] && INSTALL=1
 
 [ -f "$ISO" ] || { echo "missing $ISO — run ./build.sh first"; exit 1; }
 KVM_ARG=""
 [ -e /dev/kvm ] && KVM_ARG="-enable-kvm"
-rm -f "$QMP" "$SER" "$SER_SOCK" "$SHOT"
+QPID=""
+SER_PID=""
+trap 'kill $QPID $SER_PID 2>/dev/null; wait $QPID $SER_PID 2>/dev/null' EXIT
+
 # Stream the guest console over a unix socket instead of `-serial file:`: a
 # file chardev is buffered by QEMU in 4 KB chunks, so the smoke would only see
 # the markers once the whole boot had been buffered -- and the framebuffer
 # shot would land long after the Win32 client window was covered by later
 # apps. (A FIFO is not usable here: QEMU opens the pipe read/write and would
 # steal half the console output from the reader.)
-python3 - "$SER_SOCK" "$SER" <<'PY' &
+serial_reader() {   # $1 = log file
+    rm -f "$SER_SOCK"
+    python3 - "$SER_SOCK" "$1" <<'PY' &
 import socket, sys, time
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 while True:
@@ -46,16 +60,33 @@ while True:
         break
     out.write(b)
 PY
-SER_PID=$!
+    SER_PID=$!
+}
 
-qemu-system-x86_64 $KVM_ARG -m 3072 -smp 2 \
-    -cdrom "$ISO" -boot d $VGA_ARG \
-    -netdev user,id=n0 -device e1000,netdev=n0 \
-    -display none -chardev socket,id=ser0,path="$SER_SOCK",server=on,wait=off \
-    -serial chardev:ser0 -no-reboot \
-    -qmp "unix:$QMP,server,nowait" &
-QPID=$!
-trap 'kill $QPID $SER_PID 2>/dev/null; wait $QPID $SER_PID 2>/dev/null' EXIT
+launch() {   # $1 = serial log, rest = extra qemu arguments
+    SER=$1
+    shift
+    # drop the previous run's console: the reader truncates only once it has
+    # connected to QEMU, so a stale log would satisfy the marker greps and the
+    # smoke would "see" a boot that is not this one
+    rm -f "$QMP" "$SER"
+    serial_reader "$SER"
+    qemu-system-x86_64 $KVM_ARG -m 3072 -smp 2 $VGA_ARG \
+        -netdev user,id=n0 -device e1000,netdev=n0 \
+        -display none -chardev socket,id=ser0,path="$SER_SOCK",server=on,wait=off \
+        -serial chardev:ser0 -no-reboot \
+        -qmp "unix:$QMP,server,nowait" "$@" &
+    QPID=$!
+}
+
+stop_qemu() {
+    kill "$QPID" 2>/dev/null
+    wait "$QPID" 2>/dev/null
+    kill "$SER_PID" 2>/dev/null
+    wait "$SER_PID" 2>/dev/null
+    QPID=""
+    SER_PID=""
+}
 
 wait_marker() {
     local mark=$1 timeout=$2 t=0
@@ -78,7 +109,18 @@ fail() {
     exit 1
 }
 
+# the disk the installer targets (IDE -> /dev/sda in the guest)
+if [ "$INSTALL" = 1 ]; then
+    rm -f "$TARGET"
+    qemu-img create -f raw "$TARGET" 2G > /dev/null || fail "creating $TARGET"
+fi
+
 echo "booting $ISO (kvm: ${KVM_ARG:-no})"
+if [ "$INSTALL" = 1 ]; then
+    launch "$SER" -cdrom "$ISO" -boot d -hda "$TARGET"
+else
+    launch "$SER" -cdrom "$ISO" -boot d
+fi
 wait_marker "LOSEDOZE INIT OK" "$TIMEOUT_INIT"   || fail "init"
 # NIC driver + DHCP (rcS runs losenet in the background): real address needed
 wait_marker "LOSEDOZE NET OK" 120                || fail "network"
@@ -120,6 +162,9 @@ PY
     [ $? -eq 0 ] || fail "screendump"
 }
 
+# The desktop self-test suite belongs to the plain smoke run; the install
+# smoke only needs the boot path (the installer runs in the autostart).
+if [ "$INSTALL" = 0 ]; then
 WIN32_SEEN=0
 # dev images print AUTOSTART BEGIN right after login; release images never do.
 # Wait for it (a one-shot grep races the login prompt and silently skips all
@@ -239,6 +284,85 @@ else:
     sys.exit(1)
 PY
 [ $? -eq 0 ] || fail "framebuffer check (shot: $SHOT)"
+fi
 
-kill "$QPID" 2>/dev/null; wait "$QPID" 2>/dev/null
+# ---------------------------------------------------------------- installer
+# The live system installed itself onto $TARGET: check the disk layout, then
+# boot that disk on its own (no ISO) and prove that a file written in the
+# first installed boot survives the next reboot.
+if [ "$INSTALL" = 1 ]; then
+    echo "== installer check =="
+    wait_marker "LOSEDOZE INSTALL OK" "$TIMEOUT_INSTALL" || fail "installer"
+    stop_qemu
+
+    echo "-- installed disk layout --"
+    python3 - "$TARGET" <<'PY' || fail "installed disk layout"
+import struct, sys
+img = sys.argv[1]
+d = open(img, "rb")
+mbr = d.read(512)
+if mbr[510:512] != b"\x55\xaa":
+    sys.exit("no MBR signature")
+parts = []
+for i in range(4):
+    e = mbr[446 + 16 * i:446 + 16 * (i + 1)]
+    if e[4] == 0:
+        continue
+    start, cnt = struct.unpack("<II", e[8:16])
+    parts.append((e[4], start, cnt))
+if len(parts) != 2:
+    sys.exit("expected 2 partitions, got %r" % (parts,))
+if parts[0][0] != 0x83:
+    sys.exit("partition 1 is not a Linux filesystem")
+if parts[1][0] != 0x82:
+    sys.exit("partition 2 is not swap")
+if b"GRUB" not in mbr[:446]:
+    sys.exit("no GRUB boot sector in front of the partition table")
+# the boot sector and the core image must be exactly what the build made:
+# the installer wrote them, so a byte compare is the honest check
+boot = open("build/grub-boot.img", "rb").read(446)
+core = open("build/grub-core.img", "rb").read()
+if mbr[:446] != boot:
+    sys.exit("boot sector differs from build/grub-boot.img")
+d.seek(512)
+if d.read(len(core)) != core:
+    sys.exit("core image differs from build/grub-core.img")
+print("boot sector + core image (%d bytes) match the build" % len(core))
+d.seek(parts[0][1] * 512 + 1024)
+sb = d.read(512)
+if struct.unpack("<H", sb[56:58])[0] != 0xEF53:
+    sys.exit("partition 1 is not ext2/3/4")
+label = sb[120:136].split(b"\0")[0].decode("ascii", "replace")
+if label != "LOSEDOZE":
+    sys.exit("root label is %r" % label)
+# s_feature_incompat bit 0x40 = EXTENTS: that is what makes it ext4
+if not (struct.unpack("<I", sb[96:100])[0] & 0x40):
+    sys.exit("partition 1 has no ext4 feature flag")
+# mkswap (v1 with a UUID) puts the "SWAPSPACE2" signature at the end of the
+# first page; the kernel accepts it there and at offset 0
+d.seek(parts[1][1] * 512)
+sw = d.read(4096)
+if b"SWAPSPACE2" not in sw and b"SWAP-SPACE" not in sw:
+    sys.exit("partition 2 has no swap header")
+print("disk ok: p1 ext4 label=%s lba=%d sectors=%d, p2 swap sectors=%d" %
+      (label, parts[0][1], parts[0][2], parts[1][2]))
+PY
+
+    echo "-- booting the installed disk (no ISO) --"
+    launch "/tmp/loseterm-installed1.log" -hda "$TARGET"
+    wait_marker "LOSEDOZE INIT: installed root on" 120 || fail "installed root not found"
+    wait_marker "LOSEDOZE INIT OK" 120           || fail "installed init"
+    wait_marker "LOSEDOZE SWAP: SwapTotal: *[1-9]" 120 || fail "swap not active"
+    wait_marker "LOSEDOZE BOOT COUNT 1" 300      || fail "installed boot count"
+    wait_marker "LOSEDOZE READY" "$TIMEOUT_SHELL" || fail "installed desktop"
+    stop_qemu
+
+    echo "-- rebooting the installed disk (files must survive) --"
+    launch "/tmp/loseterm-installed2.log" -hda "$TARGET"
+    wait_marker "LOSEDOZE BOOT COUNT 2" 300 || fail "file did not survive the reboot"
+    stop_qemu
+    echo "INSTALL SMOKE PASS"
+fi
+
+echo "SMOKE PASS"
 exit 0
