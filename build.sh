@@ -210,7 +210,7 @@ depmod -b "$ROOT" "$KVER" > build/depmod.log 2>&1 || \
     printf 'depmod warnings (see build/depmod.log)\n'
 
 # GPU probe: which DRM devices exist and which kernel driver bound them
-gcc -O2 -Wall -o build/losgpu tools/losgpu.c
+gcc -O2 -Wall -o build/losgpu tools/losgpu.c -Ishell
 put build/losgpu "$ROOT/usr/bin/losgpu"
 
 # ---------------------------------------------------------------- homemade Win32 subsystem

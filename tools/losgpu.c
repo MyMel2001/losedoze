@@ -9,19 +9,40 @@
  *
  * SKIP is honest: no DRM device means no display at all.
  */
+#ifndef __user
+#define __user
+#endif
+#include "uapi/drm.h"
+
 #include <dirent.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
+/* The DRM driver bound to the card (DRM_IOCTL_VERSION). The sysfs
+ * /device/driver link only names the bus driver ("virtio-pci" for a
+ * virtio-gpu card), not the DRM driver that actually drives it. */
 static const char *driver_of(const char *card, char *buf, size_t n) {
   char p[600];
-  snprintf(p, sizeof p, "/sys/class/drm/%s/device/driver", card);
-  ssize_t r = readlink(p, buf, n - 1);
-  if (r <= 0) return "none";
-  buf[r] = 0;
-  char *s = strrchr(buf, '/');
-  return s ? s + 1 : buf;
+  snprintf(p, sizeof p, "/dev/dri/%s", card);
+  int fd = open(p, O_RDWR | O_CLOEXEC);
+  if (fd < 0) { snprintf(buf, n, "none"); return buf; }
+  struct drm_version dv;
+  memset(&dv, 0, sizeof dv);
+  char name[64];
+  dv.name = name;
+  dv.name_len = sizeof name;
+  if (ioctl(fd, DRM_IOCTL_VERSION, &dv) != 0 || !dv.name_len) {
+    snprintf(buf, n, "unknown");
+  } else {
+    size_t l = dv.name_len < n - 1 ? dv.name_len : n - 1;
+    memcpy(buf, name, l);
+    buf[l] = 0;
+  }
+  close(fd);
+  return buf;
 }
 
 int main(void) {
@@ -35,7 +56,7 @@ int main(void) {
     char dev[600];
     snprintf(dev, sizeof dev, "/sys/class/drm/%s/device", e->d_name);
     if (access(dev, F_OK)) continue;            /* render node, not a card */
-    char one[300], dbuf[256];
+    char one[600], dbuf[64];
     snprintf(one, sizeof one, "%s=%s", e->d_name,
              driver_of(e->d_name, dbuf, sizeof dbuf));
     if (nc) strncat(cards, " ", sizeof cards - strlen(cards) - 1);
