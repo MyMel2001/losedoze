@@ -30,8 +30,9 @@ GRUB → Linux kernel (7.2.8) → Busybox init → loseshell (DRM/KMS compositor
 | .NET desktop | Managed apps use the Win32 layer directly: the same user32/gdi32/wlclient sources are built as **`libwin32.so`** (`win/hostlib.c`, SysV ABI so .NET P/Invoke can call it) and `tools/dotnet/Losedoze.Desktop` P/Invokes `RegisterClassExW`/`CreateWindowExW` + GDI painting and runs the message loop — a real window in the compositor, painted by the managed app (`losnetdesktop` → `LOSEDOZE .NET DESKTOP OK`). Microsoft's WinForms/WPF are not supported (Windows-only binaries — see Ceilings) |
 | Network | Kernel NIC drivers as modules (e1000, e1000e, virtio-net, r8169) plus wireless (cfg80211 + mac80211, iwlwifi, ath10k) with firmware in `/lib/firmware`; userspace is busybox only: `/usr/local/bin/losenet up\|down\|status\|wifi` brings the interface up and runs DHCP (udhcpc) → `LOSEDOZE NET OK eth0=…`; PCI coldplug loads the driver each device's modalias names (no udev) |
 | Settings | `loseset` (native, linked against `libwin32.so`) edits the shell's config: network/wifi on-off, wallpaper preset, dark/light theme, brightness → `~/.config/losedoze.conf`; the shell reloads the file when it changes (mtime poll) so changes apply live; menu entry `/usr/share/applications/loseset.desktop` |
+| Disk install | `losinstall` (native GUI over `libwin32.so`, start-menu entry "Install to disk") installs the live system onto another block device (HDD, SSD, USB stick, NVMe): it writes an MBR partition table (ext4 root labelled `LOSEDOZE` + swap), formats both with `mke2fs`/`mkswap`, copies the rootfs from the live medium, puts the kernel and initramfs on the root partition and writes a GRUB boot sector plus core image into the gap behind the MBR. The installed system boots on its own: the initramfs looks for the ext4 partition labelled `LOSEDOZE` on any disk (no `root=` kernel parameter, no udev), `/var` and `/root` stay on the disk so files survive a reboot, and the swap partition is activated from `/etc/fstab` |
 | Client DMA-BUF | The Win32 client allocates its window buffer as a GBM bo, exports it as a dma-buf fd (`DRM_IOCTL_PRIME_HANDLE_TO_FD`) and hands it over with `zwp_linux_dmabuf_v1` **on every commit**; the compositor imports it (`mmap` + PRIME proof) and composites the client's GPU memory directly; shm fallback on any failure |
-| Verification | `loseshell --selftest`, `kms` host selftest, `tools/wltest.c` protocol test against real libwayland-client, `tools/dmabuf_test.sh` (host end-to-end dma-buf: two frames with different content — both pixel checksums the client wrote are compared against the ones the compositor computed from its own `mmap` of the buffer), `tools/test_wsprintf.c` (29/29), host runs of `build/w32host` (PE DLL test app, desktop-GL demo, `--inspect` of a 32-bit PE32 image) and `build/w32host32` (32-bit hello/dlltest PE32 apps + i386 DLLs, refusal of a PE32+ image), QEMU smoke test (`tools/smoke.sh`): console markers `LOSEDOZE INIT OK` / `READY` / `EGL:` / `WAYLAND OK` / `WIN32 OK` / `DMABUF GPU OK` or `DMABUF SHM OK` / `DLL OK` / `PE32 PARSE OK` / `PE32 EXEC OK` / `PE32 DLL OK` / `PE32 GUI OK` / `GL DEMO OK` / `GL OK` / `GL DESKTOP OK` / `VULKAN OK` / `DOTNET OK` / `GPU OK` / `NET OK` / `.NET DESKTOP OK` / `SETTINGS OK`, framebuffer screendump (taskbar band, color variety, client-drawn pixels: the white canvas of the Win32 client window + the orange row of the settings app — counted over the whole desktop, so the check does not depend on which client window is on top) → `SMOKE PASS`; `SMOKE_GPU=virtio` boots the same image with QEMU's `-device virtio-vga` (default: bochs). Dev-image self-test also drives `losenet up` against QEMU's user-mode network and dumps the `.NET`/settings app logs to the console |
+| Verification | `loseshell --selftest`, `kms` host selftest, `tools/wltest.c` protocol test against real libwayland-client, `tools/dmabuf_test.sh` (host end-to-end dma-buf: two frames with different content — both pixel checksums the client wrote are compared against the ones the compositor computed from its own `mmap` of the buffer), `tools/test_wsprintf.c` (29/29), host runs of `build/w32host` (PE DLL test app, desktop-GL demo, `--inspect` of a 32-bit PE32 image) and `build/w32host32` (32-bit hello/dlltest PE32 apps + i386 DLLs, refusal of a PE32+ image), QEMU smoke test (`tools/smoke.sh`): console markers `LOSEDOZE INIT OK` / `READY` / `EGL:` / `WAYLAND OK` / `WIN32 OK` / `DMABUF GPU OK` or `DMABUF SHM OK` / `DLL OK` / `PE32 PARSE OK` / `PE32 EXEC OK` / `PE32 DLL OK` / `PE32 GUI OK` / `GL DEMO OK` / `GL OK` / `GL DESKTOP OK` / `VULKAN OK` / `DOTNET OK` / `GPU OK` / `NET OK` / `.NET DESKTOP OK` / `SETTINGS OK`, framebuffer screendump (taskbar band, color variety, client-drawn pixels: the white canvas of the Win32 client window + the orange row of the settings app — counted over the whole desktop, so the check does not depend on which client window is on top) → `SMOKE PASS`; `SMOKE_GPU=virtio` boots the same image with QEMU's `-device virtio-vga` (default: bochs). Dev-image self-test also drives `losenet up` against QEMU's user-mode network and dumps the `.NET`/settings app logs to the console. `SMOKE_INSTALL=1` adds the installer check → `INSTALL SMOKE PASS`: the live system installs itself onto a second disk, the host checks the disk layout (MBR partition table, ext4 magic + label, swap header, GRUB boot sector and core image), that disk then boots **without the ISO** (the initramfs finds the root by its label), the swap shows up in `/proc/meminfo`, and a file written in the first installed boot is still there after the next reboot |
 
 ## What is NOT here (by design)
 
@@ -58,7 +59,8 @@ busybox static binary, clang + `ld` with `-mi386pep` + `llvm-lib` (PE32+
 toolchain) and `zig` (bundles a static i386 musl for `w32host32` and an LLD
 that links PE32 — binutils here ships no `i386pe` linker script; without zig
 the build skips the 32-bit host/apps and the smoke test reports an honest
-`PE32 EXEC SKIP`), `grub2-mkrescue`, `mke2fs`, `cpio`, `xkbcomp` (build-time
+`PE32 EXEC SKIP`), `grub2-mkrescue` + `grub2-mkimage` (the ISO menu and the
+installer's boot sector/core image), `mke2fs`, `cpio`, `xkbcomp` (build-time
 only, for the embedded keyboard map), no root required.
 
 ```sh
@@ -78,6 +80,10 @@ export PE_LIB=llvm-lib
 SMOKE_AUTOSTART=1 ./build.sh  # dev image: Win32 self-test on login
 ./tools/smoke.sh              # headless QEMU boot + screendump check
                               # (SMOKE_GPU=virtio → QEMU -device virtio-vga)
+# disk installer: the live system installs itself onto a second disk, that
+# disk boots on its own and keeps its files across a reboot
+SMOKE_AUTOSTART=1 SMOKE_INSTALL=1 ./build.sh
+SMOKE_INSTALL=1 ./tools/smoke.sh
 ```
 
 Host-side checks that need no ISO build:
@@ -125,6 +131,8 @@ tools/losegl.c           guest EGL probe: GLES2 + desktop GL (→ LOSEDOZE GL OK
 tools/losvulkan.c        guest Vulkan/lavapipe probe (→ LOSEDOZE VULKAN OK)
 tools/losgpu.c           guest DRM probe: card + bound driver per /dev/dri
 tools/loseset.c          settings app (native GUI over libwin32.so)
+tools/losinstall.c       disk installer (native GUI over libwin32.so; headless
+                         --yes --device=DEV --swap=MB, --list, --selftest)
 tools/dotnet/            .NET apps (Losedoze.Desktop: managed window via
                          P/Invoke into libwin32.so)
 tools/dmabuf_client.c    host test client for the client DMA-BUF path
@@ -201,6 +209,22 @@ AGENT_NOTES.md           working spec / design notes
   with `va_arg` by walking the format, so the same 8-slot ceiling applies there.
 * Clipboard: basic offer/transfer; drag-and-drop is a no-op.
 * Keymap: US QWERTY only.
+* **The installer installs from the live medium.** The ISO has to be in the
+  drive: the pristine `rootfs.ext4` on it is the install source (the running
+  root is a loop mount of read-only media and cannot be written). Reinstalling
+  from an already installed system is not supported yet.
+* **MBR, no GPT.** The installer writes a DOS partition table, so the target is
+  limited to 2 TB and there is no partition GUID. Upgrade path: write a GPT
+  header instead of the MBR and let GRUB's `part_gpt` module read it.
+* **`/etc/fstab` uses device paths** (`/dev/sda1`), because the image has no
+  udev: `UUID=`/`LABEL=` cannot be resolved without `/dev/disk/by-*`. The root
+  is found by its ext4 label at boot, so a changed disk order still boots; the
+  swap entry in `fstab` is the part that can go stale.
+* **The installed root is found by the ext4 label `LOSEDOZE`.** With two
+  installed disks the first one the initramfs finds wins.
+* **One install target at a time, no resize, no bootloader for other systems.**
+  The installer wipes the chosen disk; it does not add a partition to a disk
+  that already has one, and it does not chain-load another OS.
 
 ## Legal
 

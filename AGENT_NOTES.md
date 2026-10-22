@@ -298,6 +298,54 @@ win/
   arrays for ALL three (libdrm pattern) or kernel copy_to_user(NULL) → EFAULT
   ("Bad address"). Same for GETRESOURCES (4 ptrs) and OBJ_GETPROPERTIES.
 
+## Disk installer (losinstall)
+
+- `tools/losinstall.c` — native GUI over `libwin32.so` (same pattern as
+  `tools/loseset.c`), plus a headless mode `--yes --device=DEV --swap=MB`
+  (used by the smoke), `--list` (block devices) and `--selftest` (host-side
+  MBR/boot-sector check on a file — the build runs it, so a broken layout
+  fails the build).
+- Layout it writes: MBR (DOS) table, p1 = ext4 (0x83) at LBA 2048 labelled
+  `LOSEDOZE`, p2 = swap (0x82). The MBR is written by the installer itself
+  (512 bytes, C) + `BLKRRPART`; the kernel then creates /dev/sdN1/2.
+- Bootloader: **GRUB i386-pc** — `boot.img` = first 446 bytes of GRUB's
+  boot sector (the partition table behind it stays intact), `core.img` in the
+  gap after the MBR. Both are built at build time with
+  `grub2-mkimage -O i386-pc -c embedded.cfg -p /boot/grub ext2 part_msdos
+  biosdisk configfile search search_label linux serial terminal normal boot`
+  and shipped in `/usr/lib/losedoze/installer/`. The embedded config is
+  `search --label LOSEDOZE --set=root` + `configfile ($root)/boot/grub/grub.cfg`
+  → the installed system finds its own root without a `root=` parameter.
+- Installed root discovery (initramfs): scan `/sys/block/*` (skip loop/sr/dm/…),
+  for each partition read the ext4 superblock magic `0xEF53` at file offset 1080
+  and the label at 1144; the partition labelled `LOSEDOZE` is the root.
+  No udev, no `root=`, no UUID symlinks.
+- The live root is a **read-only** loop mount of `rootfs.ext4` on the ISO:
+  the installer must not write there. All work dirs are tmpfs
+  (`/tmp/losinstall-{target,src,root}`); `/mnt` does not exist on the live
+  root and cannot be created → the first attempt failed with ENOENT at mount.
+- Pitfall: the image has **busybox symlinks** for `mke2fs`, `mount`, `tar`,
+  `cp` in /bin and /usr/bin. busybox's `mke2fs` is ext2 only (no `-t ext4`)
+  and busybox ash's default PATH is `:/bin:/usr/bin`, so a bare `mke2fs` can
+  hit the wrong binary. The installer calls absolute paths
+  (`/usr/sbin/mke2fs` = e2fsprogs, `/bin/mkswap`, `/bin/mount`, `/bin/tar`) and
+  sets PATH itself. e2fsprogs' `mke2fs` + its libs + `/etc/mke2fs.conf` are
+  shipped (busybox's mke2fs cannot create ext4).
+- The install source is the pristine `rootfs.ext4` on the ISO (loop-mounted
+  read-only) → the ISO must be in the drive to install. The target gets a
+  tar copy of that rootfs, the kernel and initramfs under /boot, a grub.cfg
+  and `/etc/losedoze/installed` (the marker that turns the live-media
+  behaviour into installed behaviour: /var and /root stay on the disk,
+  `swapon -a` runs).
+- `/etc/fstab` on the installed system uses **device paths** (`/dev/sda1`):
+  no udev means no `UUID=`/`LABEL=` resolution.
+- Smoke: `SMOKE_INSTALL=1` adds a second disk (`-hda`, 2 GB sparse), the live
+  system installs itself onto it, the host checks the disk layout (MBR, ext4
+  magic + label, swap header, GRUB boot sector + core image), the installed
+  disk then boots **without the ISO** (initramfs finds the root by label,
+  swap shows in /proc/meminfo, a file written in the first installed boot
+  survives the next reboot).
+
 ## Ceilings (ponytail) to document in README
 
 - Compositor EGL-GBM screen creation still uses the CPU path for the QEMU GPUs
@@ -405,4 +453,10 @@ win/
       `losenet` (busybox ip/udhcpc) → `LOSEDOZE NET OK eth0=…`; QEMU e1000 NIC
 - [x] Settings: `loseset` (native GUI over libwin32.so) writes
       `~/.config/losedoze.conf`; loseshell reloads it on mtime change (live)
+- [x] Disk installer: `losinstall` (native GUI over libwin32.so) → MBR + ext4
+      (`LOSEDOZE` label) + swap on the target, tar copy of the live rootfs,
+      GRUB i386-pc boot sector + core image; the initramfs finds the installed
+      root by its ext4 label, /var stays on the disk, swap comes up from
+      /etc/fstab. Evidence: `SMOKE_INSTALL=1` → host-side disk layout check +
+      two boots of the installed disk (no ISO) + a file that survives a reboot
 - [x] Final report
