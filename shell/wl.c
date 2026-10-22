@@ -68,7 +68,8 @@ struct Cl {
 
 struct Pool { uint8_t *map; size_t len; int fd; int refs; };
 struct Buf { Pool *pool; int off, w, h, stride, format; uint32_t *px; uint32_t obj_id; int released;
-              void *dmap; size_t dlen; };   /* dmap: dma-buf mapping (not pool memory) */
+              void *dmap; size_t dlen;   /* dmap: dma-buf mapping (not pool memory) */
+              struct Surf *sf; };        /* surface that last attached it */
 typedef struct Fc { uint32_t id; struct Fc *next; } Fc;
 
 struct Surf {
@@ -457,6 +458,7 @@ static void req_surface(Cl *cl, Obj *o, uint32_t op, Cur *cur) {
         Obj *bo = a_o(cur, &vt_buffer);
         sf->pend_buf = bo ? (Buf *)bo->d : NULL;
         sf->pend_set = 1;
+        if (sf->pend_buf) sf->pend_buf->sf = sf;
         break;
     }
     case 2: case 9: case 10:                        /* damage / damage_buffer / offset */
@@ -622,14 +624,24 @@ static void req_dmabuf_params(Cl *cl, Obj *o, uint32_t op, Cur *cur) {
     }
 }
 
-static void req_buffer(Cl *cl, Obj *o, uint32_t op, Cur *cur) {
-    (void)cur;
-    if (op != 0) return;
+static void buf_destroy(Cl *cl, Obj *o) {
     Buf *b = (Buf *)o->d;
     obj_free(cl, o);
+    /* the client may destroy a buffer a surface still has attached: drop the
+     * surface's pointer first (its px copy is read live by wlwin_pixels) */
+    if (b->sf) {
+        if (b->sf->cur_buf == b) b->sf->cur_buf = NULL;
+        if (b->sf->pend_buf == b) { b->sf->pend_buf = NULL; b->sf->pend_set = 0; }
+    }
     pool_unref(b->pool);
     if (b->dmap) munmap(b->dmap, b->dlen);
     free(b);
+}
+
+static void req_buffer(Cl *cl, Obj *o, uint32_t op, Cur *cur) {
+    (void)cur;
+    if (op != 0) return;
+    buf_destroy(cl, o);
 }
 
 static void bind_seat(Cl *cl, Obj *o) {
@@ -921,6 +933,11 @@ static void cl_flush(Cl *cl) {
 
 static void cl_free(wlserver *s, Cl *cl) {
     wlog("wl: client gone (fd %d)", cl->fd);
+    /* buffers first: each detaches itself from the surface that holds it */
+    for (int i = 0; i < cl->objs_cap; i++) {
+        Obj *o = cl->objs[i];
+        if (o && o->vt == &vt_buffer) buf_destroy(cl, o);
+    }
     for (int i = 0; i < cl->objs_cap; i++) {
         Obj *o = cl->objs[i];
         if (!o) continue;
@@ -930,8 +947,17 @@ static void cl_free(wlserver *s, Cl *cl) {
                 if (s->cb.unmapped && sf->win->pub.mapped)
                     s->cb.unmapped(s->cb.ud, &sf->win->pub);
                 sf->win->pub.mapped = 0;
-                sf->win = NULL;
+                sf->win = NULL;                            /* Wi kept; freed below */
             }
+            while (sf->pend_fc) { Fc *f = sf->pend_fc; sf->pend_fc = f->next; free(f); }
+            while (sf->cur_fc) { Fc *f = sf->cur_fc; sf->cur_fc = f->next; free(f); }
+            free(sf);
+        } else if (o->vt == &vt_pool) {
+            pool_unref((Pool *)o->d);
+        } else if (o->vt == &vt_dmabuf_params) {
+            DmabufParams *p = (DmabufParams *)o->d;
+            if (p->fd >= 0) close(p->fd);
+            free(p);
         }
         free(o);
         cl->objs[i] = NULL;
@@ -1073,10 +1099,14 @@ void wlwin_size(WlWin *w, int *bw, int *bh) { if (bw) *bw = w->bw; if (bh) *bh =
 const char *wlwin_title(WlWin *w) { return w->title; }
 const char *wlwin_appid(WlWin *w) { return w->appid; }
 const u32 *wlwin_pixels(WlWin *w, int *stride4, int *bw, int *bh) {
-    if (stride4) *stride4 = w->stride4;
-    if (bw) *bw = w->bw;
-    if (bh) *bh = w->bh;
-    return w->mapped ? w->px : NULL;
+    /* read the *current* buffer, not the cached copy: the client re-creates its
+     * dma-buf buffer id every frame and the compositor unmaps the old mapping at
+     * that point, so a cached px would point at unmapped memory */
+    Buf *b = ((Wi *)w)->s ? ((Wi *)w)->s->cur_buf : NULL;
+    if (stride4) *stride4 = b ? b->stride / 4 : w->stride4;
+    if (bw) *bw = b ? b->w : w->bw;
+    if (bh) *bh = b ? b->h : w->bh;
+    return (w->mapped && b) ? (const u32 *)b->px : NULL;
 }
 
 void wlwin_configure(WlWin *w, int cw, int ch) {
