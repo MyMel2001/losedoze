@@ -10,11 +10,22 @@ mount -t sysfs sysfs /sys 2>/dev/null
 mkdir -p /dev/pts /dev/shm
 mount -t devpts devpts /dev/pts 2>/dev/null
 
-# writable live areas
-mount -t tmpfs -o size=1024m tmpfs /root 2>/dev/null
-mount -t tmpfs -o size=256m tmpfs /var 2>/dev/null
-mount -t tmpfs tmpfs /tmp 2>/dev/null
-mount -t tmpfs tmpfs /run 2>/dev/null
+# Writable areas. The live medium is read-only, so /root and /var are tmpfs
+# overlays. An installed system (/etc/losedoze/installed is written by
+# losinstall) runs from the disk: there /root and /var stay on the disk so
+# files survive a reboot. /tmp and /run are runtime state either way.
+if [ -f /etc/losedoze/installed ]; then
+    mount -t tmpfs tmpfs /tmp 2>/dev/null
+    mount -t tmpfs tmpfs /run 2>/dev/null
+    # the swap partition from /etc/fstab (busybox swapon -a reads it)
+    swapon -a 2>/dev/null
+    echo "LOSEDOZE SWAP: $(grep SwapTotal /proc/meminfo 2>/dev/null)" > /dev/console
+else
+    mount -t tmpfs -o size=1024m tmpfs /root 2>/dev/null
+    mount -t tmpfs -o size=256m tmpfs /var 2>/dev/null
+    mount -t tmpfs tmpfs /tmp 2>/dev/null
+    mount -t tmpfs tmpfs /run 2>/dev/null
+fi
 mkdir -p /run/losedoze /var/log /var/cache /var/tmp /root/.config
 
 hostname -F /etc/hostname 2>/dev/null
