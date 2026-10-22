@@ -19,7 +19,7 @@ mkdir -p /run/losedoze /var/log /var/cache /var/tmp /root/.config
 
 hostname -F /etc/hostname 2>/dev/null
 
-# GPU: devtmpfs nodes first, then in-tree DRM/KMS drivers (modules.dep
+# GPU: devtmpfs nodes first, then the in-tree DRM/KMS drivers (modules.dep
 # built at image build). Every candidate is loaded so each attached GPU gets
 # its driver (the first one to bind a card wins); failures are OK (no device).
 # The open-source stack: bochs (QEMU std VGA), virtio-gpu, i915/xe, amdgpu,
@@ -29,6 +29,23 @@ if [ -n "$KVER" ]; then
     for d in bochs_drm virtio_gpu i915 xe amdgpu nouveau radeon; do
         modprobe "$d" 2>/dev/null
     done
+fi
+
+# PCI coldplug: no udev in this image, so load the driver each device's
+# modalias names (NICs, wifi, USB, audio, extra GPUs, ...).
+if [ -d /sys/bus/pci/devices ]; then
+    for a in /sys/bus/pci/devices/*/modalias; do
+        [ -r "$a" ] || continue
+        m=$(cat "$a" 2>/dev/null)
+        [ -n "$m" ] && modprobe "$m" 2>/dev/null
+    done
+fi
+
+# Network: the NIC drivers above provide the interface; bring the first one up
+# with DHCP (busybox udhcpc) in the background so boot does not wait on it.
+: > /run/resolv.conf 2>/dev/null
+if [ -x /usr/local/bin/losenet ]; then
+    ( /usr/local/bin/losenet up > /dev/console 2>&1 ) &
 fi
 
 echo "LOSEDOZE INIT OK" > /dev/console

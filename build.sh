@@ -27,9 +27,13 @@ INITRD=build/initrd
 ISO=build/losedoze.iso
 # loop/isofs/e1000 stay explicit (initrd + net); GPU tree gives KMS drivers
 MODULES_REL="kernel/drivers/block/loop.ko kernel/fs/isofs/isofs.ko kernel/drivers/net/ethernet/intel/e1000/e1000.ko"
+# net: virtio-net + common NIC drivers; wireless: mac80211/cfg80211 + iwlwifi
+# and ath10k (firmware for both ships in /usr/lib/firmware)
+MODULES_REL="$MODULES_REL kernel/drivers/net/virtio_net.ko kernel/drivers/net/ethernet/intel/e1000e/e1000e.ko kernel/drivers/net/ethernet/realtek/r8169.ko kernel/net/wireless/cfg80211.ko kernel/net/mac80211/mac80211.ko"
 # gpu: bochs-drm/virtio-gpu/i915/xe/amdgpu/nouveau/radeon; virtio: the bus
 # (virtio_pci) that carries virtio-gpu + virtio-net
 MODULES_TREE="kernel/drivers/gpu kernel/drivers/video kernel/drivers/cec kernel/lib kernel/drivers/virtio"
+MODULES_TREE="$MODULES_TREE kernel/drivers/net/wireless/intel/iwlwifi kernel/drivers/net/wireless/ath/ath10k"
 
 say()  { printf '\n=== %s\n' "$*"; }
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
@@ -122,10 +126,16 @@ copy_named /usr/lib64/libwayland-client.so.0 /usr/lib64/libwayland-egl.so.1 \
 copy_libs /usr/lib64/libwayland-client.so.0 /usr/lib64/libwayland-egl.so.1 \
           /usr/lib64/libwayland-cursor.so.0 /usr/lib64/libxkbcommon.so.0 \
           /usr/lib64/libxkbregistry.so.0
-# GPU microcode for Intel/AMD KMS drivers
-for fw in i915 amdgpu radeon; do
+# GPU microcode for Intel/AMD KMS drivers + wifi firmware (the drivers load
+# it from /lib/firmware at probe time; the image has no initramfs firmware)
+for fw in i915 amdgpu radeon ath10k; do
     [ -d "/usr/lib/firmware/$fw" ] && cp -a "/usr/lib/firmware/$fw" "$ROOT/lib/firmware/"
 done
+for f in /usr/lib/firmware/iwlwifi-*; do
+    [ -e "$f" ] && cp -a "$f" "$ROOT/lib/firmware/"
+done
+# DHCP writes /etc/resolv.conf; the image root is read-only -> /run (tmpfs)
+ln -sf /run/resolv.conf "$ROOT/etc/resolv.conf"
 # interpreter
 mkdir -p "$ROOT/lib64"
 put /lib64/ld-linux-x86-64.so.2 "$ROOT/lib64/ld-linux-x86-64.so.2"
@@ -388,12 +398,23 @@ fi
 # The same user32/gdi32/wlclient sources the PE host uses, built as a Linux
 # .so with the SysV ABI (that is what .NET P/Invoke uses on Linux). Managed
 # apps and native tools link/P/Invoke it to open windows and paint.
-say "10/13 win32 shared library"
+say "10/13 win32 shared library + settings app"
 gcc -shared -fPIC -O2 -Wall -DW32_ABI_SYSV -o build/libwin32.so \
     win/hostlib.c win/ntdll.c win/kernel32.c win/user32.c win/gdi32.c \
     win/wlclient.c win/pe.c shell/input.c \
     -Iwin -Ishell -Ibuild -ldl -lm
 put build/libwin32.so "$ROOT/usr/lib64/libwin32.so"
+gcc -O2 -Wall -DW32_ABI_SYSV -Iwin -o build/loseset tools/loseset.c \
+    -Lbuild -lwin32 -Wl,-rpath,/usr/lib64
+put build/loseset "$ROOT/usr/bin/loseset"
+
+# wireless tools: scan/join (iw) and WPA/WPA2 supplicant (wpa_supplicant)
+for t in /usr/sbin/iw /usr/sbin/wpa_supplicant; do
+    [ -x "$t" ] || continue
+    put "$t" "$ROOT/usr/sbin/$(basename "$t")"
+    copy_libs "$t"
+done
+chmod 755 "$ROOT/usr/local/bin/losenet" "$ROOT/usr/share/udhcpc/default.script" 2>/dev/null || true
 
 # ---------------------------------------------------------------- ld cache
 cat > "$ROOT/etc/ld.so.conf" <<'EOF'
@@ -561,7 +582,17 @@ if [ -x /usr/bin/losnetdesktop ]; then
         echo "LOSEDOZE .NET DESKTOP FAIL (mapped=$((NOW - N0)))" > /dev/console
     fi
 fi
-cat /tmp/netdesktop.log > /dev/console 2>/dev/null
+
+# settings app: the same Win32 layer used by a native tool (network on/off,
+# wifi, wallpaper, theme, brightness -> ~/.config/losedoze.conf)
+if [ -x /usr/bin/loseset ]; then
+    loseset > /tmp/loseset.log 2>&1 &
+    i=0
+    while ! grep -q "LOSEDOZE SETTINGS" /tmp/loseset.log 2>/dev/null && [ $i -lt 150 ]; do sleep 0.2; i=$((i + 1)); done
+    grep -q "LOSEDOZE SETTINGS OK" /tmp/loseset.log 2>/dev/null && echo "LOSEDOZE SETTINGS OK" > /dev/console || echo "LOSEDOZE SETTINGS FAIL" > /dev/console
+fi
+cat /tmp/netdesktop.log /tmp/loseset.log > /dev/console 2>/dev/null
+
 # crash evidence: kernel fault reports (ip + module offset) and the
 # compositor's own log tail (its last actions before dying)
 dmesg 2>/dev/null | grep -i "segfault\|trap\|Call Trace\|general protection" > /dev/console

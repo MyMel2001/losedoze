@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Settings
+Comment=Network, wallpaper, theme and brightness
+Exec=loseset
+Icon=preferences-system
+Terminal=false
+Categories=Settings;System;

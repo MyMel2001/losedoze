@@ -549,6 +549,7 @@ static char cfg_path[512];
 static int cfg_vol = 60, cfg_bright = 80;
 static int cfg_wifi = 1, cfg_bt = 0, cfg_air = 0, cfg_night = 0;
 static int cfg_wallpaper = 0;
+static time_t cfg_mtime, last_cfg_poll;   /* settings-app reload watch */
 #define MAX_PINNED 8
 static char cfg_pinned[MAX_PINNED][128];
 static int cfg_npinned;
@@ -2929,6 +2930,7 @@ int main(int argc, char **argv) {
     if (!load_fonts())
         logmsg("WARNING: Liberation Sans missing; text rendering disabled");
     cfg_load();
+    { struct stat cst; if (stat(cfg_path, &cst) == 0) cfg_mtime = (time_t)cst.st_mtime; }
     set_theme();
     make_cursors();
     set_root_cursor();
@@ -3065,6 +3067,21 @@ int main(int argc, char **argv) {
             last_minute = t / 60;
             taskbar_dirty();
             if (popup && popup->type == SW_CAL) sw_draw(popup);
+        }
+        /* settings app: pick up a rewritten config file (theme, wallpaper, ...) */
+        if (t - last_cfg_poll >= 2) {
+            last_cfg_poll = t;
+            struct stat cst;
+            if (stat(cfg_path, &cst) == 0 && (time_t)cst.st_mtime != cfg_mtime) {
+                cfg_mtime = (time_t)cst.st_mtime;
+                cfg_load();
+                set_theme();
+                wallpaper_set();
+                taskbar_dirty();
+                needs_composite = 1;
+                logmsg("config reloaded: dark=%d wallpaper=%d bright=%d",
+                       dark_mode, cfg_wallpaper, cfg_bright);
+            }
         }
         wlserver_pump(wl);   /* flush pending every iteration (no POLLOUT wiring) */
         if (needs_composite) present();

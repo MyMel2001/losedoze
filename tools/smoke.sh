@@ -26,6 +26,7 @@ rm -f "$QMP" "$SER" "$SHOT"
 
 qemu-system-x86_64 $KVM_ARG -m 3072 -smp 2 \
     -cdrom "$ISO" -boot d $VGA_ARG \
+    -netdev user,id=n0 -device e1000,netdev=n0 \
     -display none -serial "file:$SER" -no-reboot \
     -qmp "unix:$QMP,server,nowait" &
 QPID=$!
@@ -54,6 +55,8 @@ fail() {
 
 echo "booting $ISO (kvm: ${KVM_ARG:-no})"
 wait_marker "LOSEDOZE INIT OK" "$TIMEOUT_INIT"   || fail "init"
+# NIC driver + DHCP (rcS runs losenet in the background): real address needed
+wait_marker "LOSEDOZE NET OK" 120                || fail "network"
 wait_marker "LOSEDOZE READY"   "$TIMEOUT_SHELL"  || fail "loseshell"
 wait_marker "EGL: "            30                || fail "egl marker"
 
@@ -86,6 +89,7 @@ if wait_marker "LOSEDOZE AUTOSTART BEGIN" 90; then
     wait_marker "LOSEDOZE DOTNET OK" 180                || fail "dotnet"
     wait_marker "LOSEDOZE GPU OK" 120                   || fail "gpu-probe"
     wait_marker "LOSEDOZE .NET DESKTOP OK" 250          || fail "dotnet-desktop"
+    wait_marker "LOSEDOZE SETTINGS OK" 180              || fail "settings-app"
     WIN32_SEEN=1
     sleep 4   # let the compositor draw the mapped Win32 client
 else

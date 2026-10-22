@@ -1,0 +1,19 @@
+#!/bin/sh
+# busybox udhcpc default script: apply the lease with ifconfig/route.
+[ -n "$1" ] || exit 1
+case "$1" in
+    deconfig)
+        ifconfig "$interface" 0.0.0.0
+        ;;
+    renew|bound)
+        ifconfig "$interface" "$ip" netmask "$mask" up
+        if [ -n "$router" ]; then
+            while route del default gw 0.0.0.0 dev "$interface" 2>/dev/null; do :; done
+            route add default gw "$router" dev "$interface"
+        fi
+        if [ -n "$dns" ]; then
+            echo "nameserver $dns" > /etc/resolv.conf
+        fi
+        ;;
+esac
+exit 0

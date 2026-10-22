@@ -1,0 +1,131 @@
+#!/bin/sh
+# losenet — guest network control. Busybox only: no NetworkManager, no
+# systemd. The kernel driver provides the interface (e1000, virtio-net,
+# r8169, iwlwifi, ath10k, ...); this script brings it up and runs DHCP.
+#
+#   losenet up [iface]           bring the interface up + DHCP
+#   losenet down [iface]         take it down
+#   losenet status [iface]       print state (marker on stdout)
+#   losenet wifi <ssid> [psk]    join a WPA/WPA2 network (wpa_supplicant)
+
+CMD=${1:-status}
+IFACE=${2:-}
+
+pick_iface() {
+    for d in /sys/class/net/*; do
+        n=$(basename "$d")
+        [ "$n" = "lo" ] && continue
+        [ -e "$d/device" ] || continue        # a real NIC, not a virtual one
+        echo "$n"
+        return 0
+    done
+    echo ""
+}
+
+pick_wlan() {
+    for d in /sys/class/net/wlan*; do
+        [ -e "$d" ] || continue
+        basename "$d"
+        return 0
+    done
+    echo ""
+}
+
+iface_ip() {
+    ip -4 addr show "$1" 2>/dev/null | sed -n 's/.*inet \([0-9.]*\).*/\1/p' | head -1
+}
+
+iface_state() {
+    cat "/sys/class/net/$1/operstate" 2>/dev/null
+}
+
+dhcp() {
+    ip link set "$1" up 2>/dev/null
+    if [ -z "$(iface_ip "$1")" ]; then
+        udhcpc -b -q -t 5 -T 2 -i "$1" -s /usr/share/udhcpc/default.script \
+               -p "/run/udhcpc.$1.pid" >/var/log/udhcpc.log 2>&1
+        i=0
+        while [ -z "$(iface_ip "$1")" ] && [ $i -lt 24 ]; do
+            sleep 0.5
+            i=$((i + 1))
+        done
+    fi
+}
+
+case "$CMD" in
+up)
+    [ -z "$IFACE" ] && IFACE=$(pick_iface)
+    if [ -z "$IFACE" ]; then
+        echo "LOSEDOZE NET FAIL (no network interface)"
+        exit 1
+    fi
+    dhcp "$IFACE"
+    IP=$(iface_ip "$IFACE")
+    if [ -n "$IP" ]; then
+        echo "LOSEDOZE NET OK $IFACE=$IP"
+        exit 0
+    fi
+    echo "LOSEDOZE NET FAIL ($IFACE up, no address)"
+    exit 1
+    ;;
+down)
+    [ -z "$IFACE" ] && IFACE=$(pick_iface)
+    [ -z "$IFACE" ] && { echo "LOSEDOZE NET FAIL (no interface)"; exit 1; }
+    [ -f "/run/udhcpc.$IFACE.pid" ] && kill "$(cat "/run/udhcpc.$IFACE.pid")" 2>/dev/null
+    ip link set "$IFACE" down 2>/dev/null
+    echo "LOSEDOZE NET DOWN $IFACE"
+    ;;
+status)
+    [ -z "$IFACE" ] && IFACE=$(pick_iface)
+    if [ -z "$IFACE" ]; then
+        echo "LOSEDOZE NET FAIL (no network interface)"
+        exit 1
+    fi
+    IP=$(iface_ip "$IFACE")
+    ST=$(iface_state "$IFACE")
+    if [ -n "$IP" ]; then
+        echo "LOSEDOZE NET OK $IFACE=$IP state=$ST"
+        exit 0
+    fi
+    echo "LOSEDOZE NET FAIL ($IFACE state=$ST, no address)"
+    exit 1
+    ;;
+wifi)
+    SSID=$2
+    PASS=$3
+    IF=$(pick_wlan)
+    if [ -z "$IF" ]; then
+        echo "LOSEDOZE WIFI SKIP (no wireless interface)"
+        exit 0
+    fi
+    if [ -z "$SSID" ]; then
+        echo "LOSEDOZE WIFI SKIP (no ssid given)"
+        exit 0
+    fi
+    cat > /run/wpa.conf <<EOF
+network={
+    ssid="$SSID"
+    psk="$PASS"
+}
+EOF
+    wpa_supplicant -B -i "$IF" -c /run/wpa.conf >/var/log/wpa_supplicant.log 2>&1
+    i=0
+    while [ $i -lt 20 ]; do
+        ip link show "$IF" 2>/dev/null | grep -q "state UP" && break
+        sleep 0.5
+        i=$((i + 1))
+    done
+    dhcp "$IF"
+    IP=$(iface_ip "$IF")
+    if [ -n "$IP" ]; then
+        echo "LOSEDOZE WIFI OK $IF=$IP ssid=$SSID"
+        exit 0
+    fi
+    echo "LOSEDOZE WIFI FAIL ($IF up, no address)"
+    exit 1
+    ;;
+*)
+    echo "usage: losenet up|down|status|wifi [iface|ssid [psk]]"
+    exit 2
+    ;;
+esac
