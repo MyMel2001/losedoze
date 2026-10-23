@@ -414,6 +414,13 @@ BOOL IsWindow(HWND h) {
   return w && w->magic == WND_MAGIC;
 }
 
+BOOL DestroyWindow(HWND h) {
+  W32Wnd *w = (W32Wnd *)h;
+  if (!w || w->magic != WND_MAGIC) return W32_FALSE;
+  win_destroy(w);
+  return W32_TRUE;
+}
+
 /* ---------------- def window proc ---------------- */
 LRESULT DefWindowProcW(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
   W32Wnd *w = (W32Wnd *)h;

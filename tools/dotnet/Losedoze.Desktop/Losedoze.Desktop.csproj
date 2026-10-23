@@ -11,4 +11,8 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../System.Windows.Forms/System.Windows.Forms.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -396,6 +396,21 @@ exec /opt/dotnet/dotnet /opt/dotnet/apps/netdesktop/netdesktop.dll "$@"
 EOF
         chmod 755 "$ROOT/usr/bin/losnetdesktop"
     fi
+    if [ -f build/dotnet/Losedoze.WinForms/loswinforms.dll ]; then
+        mkdir -p "$ROOT/opt/dotnet/apps/winforms"
+        cp -a build/dotnet/Losedoze.WinForms/. "$ROOT/opt/dotnet/apps/winforms/"
+        cat > "$ROOT/usr/bin/loswinforms" <<'EOF'
+#!/bin/sh
+# Managed WinForms app: a real window in the compositor, painted by managed
+# controls over GDI, run through the losedoze WinForms framework (over libwin32.so).
+export DOTNET_ROOT=/opt/dotnet
+export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+export DOTNET_NOLOGO=1
+exec /opt/dotnet/dotnet /opt/dotnet/apps/winforms/loswinforms.dll "$@"
+EOF
+        chmod 755 "$ROOT/usr/bin/loswinforms"
+    fi
 else
     printf 'skip dotnet: runtime %s missing\n' "$DOTNET_ROOT"
 fi
@@ -638,7 +653,29 @@ if [ -x /usr/bin/loseset ]; then
         && echo "LOSEDOZE SETTINGS RELOAD OK" > /dev/console \
         || echo "LOSEDOZE SETTINGS RELOAD FAIL" > /dev/console
 fi
-cat /tmp/netdesktop.log /tmp/loseset.log > /dev/console 2>/dev/null
+# .NET WinForms: a managed app that runs a window through the losedoze WinForms
+# framework (our System.Windows.Forms on libwin32.so) and paints it with GDI.
+if [ -x /usr/bin/loswinforms ]; then
+    F0=$(count_manage)
+    loswinforms > /tmp/winforms.log 2>&1 &
+    i=0
+    while ! grep -q "LOSEDOZE WINFORMS" /tmp/winforms.log 2>/dev/null && [ $i -lt 250 ]; do sleep 0.2; i=$((i + 1)); done
+    i=0
+    while [ $i -lt 150 ]; do
+        NOW=$(count_manage)
+        [ "$NOW" -gt "$F0" ] && break
+        sleep 0.2; i=$((i + 1))
+    done
+    NOW=$(count_manage)
+    if grep -q "LOSEDOZE WINFORMS OK" /tmp/winforms.log 2>/dev/null && [ "$NOW" -gt "$F0" ]; then
+        echo "LOSEDOZE WINFORMS OK" > /dev/console
+    else
+        echo "LOSEDOZE WINFORMS FAIL (mapped=$((NOW - F0)))" > /dev/console
+    fi
+fi
+
+cat /tmp/netdesktop.log /tmp/loseset.log /tmp/winforms.log > /dev/console 2>/dev/null
+cat /tmp/winforms.log > /dev/console 2>/dev/null
 
 # crash evidence: kernel fault reports (ip + module offset) and the
 # compositor's own log tail (its last actions before dying)

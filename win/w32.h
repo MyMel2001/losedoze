@@ -79,6 +79,7 @@ typedef void (W32API *FARPROC)(void);
 
 typedef struct W32Point { LONG x, y; } POINT;
 typedef struct W32Rect { LONG left, top, right, bottom; } RECT;
+typedef struct W32Size { LONG cx, cy; } SIZE;
 typedef struct W32Msg {
   HWND hwnd; UINT message; WPARAM wParam; LPARAM lParam; DWORD time; POINT pt;
 } MSG;
@@ -371,6 +372,8 @@ W32API HGDIOBJ SelectObject(HDC, HGDIOBJ);
 W32API HGDIOBJ GetStockObject(int);
 W32API BOOL MoveToEx(HDC, int, int, POINT *);
 W32API BOOL LineTo(HDC, int, int);
+W32API BOOL GetTextExtentPoint32W(HDC, LPCWSTR, int, SIZE *);   /* gdi32 */
+W32API BOOL DestroyWindow(HWND);                                    /* user32 */
 W32API BOOL SwapBuffers(HDC);   /* presents the opengl32 context */
 
 /* opengl32.dll: desktop OpenGL (compat profile) over EGL, resolved through

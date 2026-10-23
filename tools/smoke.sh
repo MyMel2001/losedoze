@@ -194,6 +194,7 @@ if wait_marker "LOSEDOZE AUTOSTART BEGIN" 90; then
     wait_marker "LOSEDOZE DOTNET OK" 180                || fail "dotnet"
     wait_marker "LOSEDOZE GPU OK" 120                   || fail "gpu-probe"
     wait_marker "LOSEDOZE .NET DESKTOP OK" 250          || fail "dotnet-desktop"
+    wait_marker "LOSEDOZE WINFORMS OK" 250             || fail "winforms"
     wait_marker "LOSEDOZE SETTINGS OK" 180              || fail "settings-app"
     wait_marker "LOSEDOZE SETTINGS RELOAD OK" 60        || fail "settings-reload"
     WIN32_SEEN=1

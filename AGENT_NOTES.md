@@ -233,6 +233,19 @@ win/
   not ms_abi); `tools/dotnet/Losedoze.Desktop` is a managed app that P/Invokes
   RegisterClassExW/CreateWindowExW + GDI and runs the message loop → a real
   window in the compositor (`losnetdesktop` → `LOSEDOZE .NET DESKTOP OK`).
+- **.NET WinForms**: the managed framework lives in `tools/dotnet/System.Windows.Forms`
+  (assembly `Losedoze.Windows.Forms`, namespaces `System.Windows.Forms` +
+  `System.Drawing`). It is *our own* WinForms on top of `libwin32.so`: `Form`
+  creates a native top-level window via `CreateWindowExW`, an owner-drawn
+  `Control`/`ControlCollection` hierarchy (Button/Label/TextBox/CheckBox/RadioButton/
+  ListBox/Panel), keyboard via WM_KEYDOWN/WM_CHAR routing to the focused control,
+  mouse via WM_* hit-test through `Control.HitTest` recursion, GDI painting
+  (`FillRect`/`Rectangle`/`DrawString`/`GetTextExtentPoint32W` + black-brush fix).
+  The demo `tools/dotnet/Losedoze.WinForms` (`loswinforms`) paints a form and
+  prints `LOSEDOZE WINFORMS OK <version>` after the first WM_PAINT
+  (`LOSEDOZE WINFORMS FAIL (no paint)`); smoke waits on that marker
+  (`tools/smoke.sh`). No Wine, no Microsoft Windows Desktop runtime — the
+  managed types are ours; only the runtime is Microsoft's CoreCLR.
 - **Network**: NIC/wifi modules (e1000, e1000e, virtio-net, r8169, cfg80211,
   mac80211, iwlwifi, ath10k) + firmware in `/lib/firmware`; no udev → rcS
   coldplugs by PCI modalias; `rootfs-overlay/usr/local/bin/losenet`
@@ -376,7 +389,16 @@ win/
   server re-imports into the same buffer id (both frames checked by dmabuf_test.sh).
 - .NET PE apps via the Win32 layer need a real NT layer (CoreCLR) → deferred.
 - .NET *desktop* = our own Win32 layer as `libwin32.so` (SysV ABI for P/Invoke),
-  not Microsoft's: WinForms/WPF are Windows-only binaries → out of reach.
+  not Microsoft's: WinForms/WPF are Windows-only binaries → out of reach, so
+  losedoze ships a **managed WinForms framework** instead
+  (`tools/dotnet/System.Windows.Forms`, assembly `Losedoze.Windows.Forms`,
+  `System.Windows.Forms` + `System.Drawing` namespaces: Form/Control/Application/
+  MessageBox/SystemColors/Button/Label/TextBox/CheckBox/RadioButton/ListBox/Panel).
+  What it gives up vs. real WinForms: no Designer/generated code-behind, no
+  DataGrid/WebBrowser/Dialogs, no child-window subclasses (controls are
+  owner-drawn by the Form over GDI → no clipping, no child hwnd), fonts are
+  fixed 16 px (GDI rasterizes one size; `Font.Size` is stored but unused),
+  form size is fixed at creation (WM_SIZE is not routed back), and
   `gl32_swap` is a stub in the shared library → managed callers get GDI only.
 - No `iris` (Intel gallium): its SPIR-V shaders are built by `mesa_clc`, which
   aborts ("double free or corruption") in a static-LLVM build. Intel keeps KMS
@@ -449,6 +471,14 @@ win/
 - [x] .NET desktop: the Win32 layer as `libwin32.so` (SysV ABI for P/Invoke) +
       `tools/dotnet/Losedoze.Desktop` (managed window, GDI painting) →
       `LOSEDOZE .NET DESKTOP OK`
+- [x] .NET WinForms: `tools/dotnet/System.Windows.Forms` (`Losedoze.Windows.Forms`
+      assembly) — Form over `CreateWindowExW`, Control tree owner-drawn by the
+      Form over GDI, WM_KEYDOWN/WM_CHAR → focused control, WM_* hit-test through
+      `Control.HitTest`, `System.Drawing` Graphics/Brush/Pen/Font +
+      `GetTextExtentPoint32W` (black-brush FillRect/Rectangle fix). Demo
+      `tools/dotnet/Losedoze.WinForms` (`loswinforms`) → `LOSEDOZE WINFORMS OK`;
+      smoke waits on it; losnetdesktop switched to the library (no duplicate
+      Form/Button)
 - [x] Network: NIC + wireless modules and firmware, modalias coldplug,
       `losenet` (busybox ip/udhcpc) → `LOSEDOZE NET OK eth0=…`; QEMU e1000 NIC
 - [x] Settings: `loseset` (native GUI over libwin32.so) writes

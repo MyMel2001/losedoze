@@ -50,6 +50,7 @@ static void put(W32Canvas *c, int x, int y, W32 px) {
 static stbtt_fontinfo font;
 static unsigned char *font_buf;
 static int font_ok, font_tried;
+static float font_scale(void) { return stbtt_ScaleForPixelHeight(&font, 16.0f); }
 
 static int font_load(void) {
   if (font_tried) return font_ok;
@@ -83,7 +84,7 @@ static int font_load(void) {
 void gdi_textout(W32Canvas *c, int x, int y, const W16 *s, int n) {
   if (!c || !c->px || n <= 0) return;
   if (!font_load()) return;
-  float scale = stbtt_ScaleForPixelHeight(&font, 16.0f);
+  float scale = font_scale();
   int asc, desc, gap;
   stbtt_GetFontVMetrics(&font, &asc, &desc, &gap);
   int base = y + (int)(asc * scale);
@@ -130,6 +131,35 @@ void gdi_textout(W32Canvas *c, int x, int y, const W16 *s, int n) {
   }
 }
 
+/* text metrics: advance width + line height via stb_truetype (same font,
+ * same 16 px scale the rasterizer uses) */
+BOOL GetTextExtentPoint32W(HDC dc, LPCWSTR s, int n, SIZE *out) {
+  (void)dc;
+  if (!out) return W32_FALSE;
+  if (!s) return W32_FALSE;
+  if (n < 0) n = lstrlenW(s);
+  if (n <= 0) { out->cx = 0; out->cy = 0; return W32_TRUE; }
+  if (!font_load()) { out->cx = 8 * n; out->cy = 16; return W32_TRUE; }
+  float scale = font_scale();
+  int asc, desc, gap;
+  stbtt_GetFontVMetrics(&font, &asc, &desc, &gap);
+  int cx = 0;
+  for (int i = 0; i < n; i++) {
+    unsigned cp = s[i];
+    if (cp >= 0xd800 && cp <= 0xdbff && i + 1 < n && s[i + 1] >= 0xdc00 &&
+        s[i + 1] <= 0xdfff) {
+      cp = 0x10000 + ((cp - 0xd800) << 10) + (s[i + 1] - 0xdc00);
+      i++;
+    }
+    int adv, lsb;
+    stbtt_GetCodepointHMetrics(&font, (int)cp, &adv, &lsb);
+    cx += (int)(adv * scale);
+  }
+  out->cx = cx;
+  out->cy = (int)((asc - desc) * scale);
+  return W32_TRUE;
+}
+
 /* ---------------- text out ---------------- */
 BOOL TextOutW(HDC dc, int x, int y, LPCWSTR s, int n) {
   W32Canvas *c = cv(dc);
@@ -161,7 +191,8 @@ static void fill_rect(W32Canvas *c, int x, int y, int w, int h, W32 pxcol) {
 int FillRect(HDC dc, const RECT *r, HBRUSH br) {
   W32Canvas *c = cv(dc);
   W32GdiObj *b = obj_of(br);
-  if (!c || !r || !b || !b->color) return 0;
+  if (!c || !r || !b) return 0;
+  if (b == gdi_stock(NULL_BRUSH)) return 1;   /* NULL brush = no fill */
   fill_rect(c, r->left, r->top, r->right - r->left, r->bottom - r->top,
             cr_px(b->color));
   return 1;
@@ -170,7 +201,7 @@ int FillRect(HDC dc, const RECT *r, HBRUSH br) {
 BOOL Rectangle(HDC dc, int l, int t, int r, int b) {
   W32Canvas *c = cv(dc);
   if (!c) return W32_FALSE;
-  if (c->brush && c->brush->color)
+  if (c->brush && c->brush != gdi_stock(NULL_BRUSH))
     fill_rect(c, l + 1, t + 1, r - l - 1, b - t - 1, cr_px(c->brush->color));
   W32 pen = c->pen ? cr_px(c->pen->color) : cr_px(W32RGB(0, 0, 0));
   fill_rect(c, l, t, r - l, 1, pen);
