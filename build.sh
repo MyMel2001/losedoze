@@ -118,8 +118,14 @@ gcc -O2 -Wall -o build/loseshell shell/loseshell.c shell/kms.c shell/input.c she
 gcc -O2 -Wall -o build/losyscall tools/losyscall.c -Ibuild
 ./build/losyscall --selftest >/dev/null
 ./build/loseshell --selftest >/dev/null
+gcc -O2 -Wall -o build/loscmd tools/loscmd.c
+./build/loscmd --selftest >/dev/null
+gcc -O2 -Wall -o build/losrun tools/losrun.c
+./build/losrun --selftest >/dev/null
 put build/loseshell "$ROOT/usr/bin/loseshell"
 put build/losyscall "$ROOT/usr/bin/losyscall"
+put build/loscmd "$ROOT/usr/bin/loscmd"
+put build/losrun "$ROOT/usr/bin/losrun"
 # e2fsprogs mke2fs: busybox's mke2fs is ext2 only, the installer needs ext4
 MK2FS=$(command -v mke2fs || true)
 [ -n "$MK2FS" ] || die "mke2fs not found (e2fsprogs; the installer needs ext4)"
