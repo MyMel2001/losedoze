@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Browser
+Comment=Surf the web (clean-room engine, http://)
+Exec=losweb
+Icon=web-browser
+Terminal=false
+Categories=Internet;

@@ -677,6 +677,7 @@ static void apps_load(void) {
     /* builtins are always available even if .desktop files exist */
     app_add("Files", "__files__");
     app_add("Run dialog...", "__run__");
+    app_add("Browser", "/usr/bin/losweb");
 }
 static App *app_find(const char *name) {
     for (App *a = apps; a; a = a->next)
