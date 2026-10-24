@@ -795,6 +795,10 @@ static LRESULT wndproc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
       return 0;
     case WM_LBUTTONDOWN: {
       int y = (int)((lp >> 16) & 0xffff);
+      if (stage == ST_CONFIRM) {
+        if (y >= 306 && y < 340) start_install();
+        break;
+      }
       if (stage != ST_DISKS) break;
       for (int i = 0; i < ndisks; i++) {
         int ry = 104 + i * 26;
