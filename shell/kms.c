@@ -349,9 +349,9 @@ static int modeset(struct card *c, uint32_t *conn_out, uint32_t *crtc_out,
     }
     uint32_t enc64[64] = {0}, prop64[64] = {0};
     uint64_t pval64[64] = {0};
-    struct drm_mode_modeinfo modes[32];
+    struct drm_mode_modeinfo modes[64];
     memset(modes, 0, sizeof(modes));
-    uint32_t want = conn.count_modes > 32 ? 32 : conn.count_modes;
+    uint32_t want = conn.count_modes > 64 ? 64 : conn.count_modes;
     conn.count_modes = want;
     conn.modes_ptr = (uintptr_t)modes;
     if (conn.count_encoders > 64) conn.count_encoders = 64;
@@ -365,10 +365,10 @@ static int modeset(struct card *c, uint32_t *conn_out, uint32_t *crtc_out,
     }
     LOG("conn 0x%x: enc=0x%x status=%u modes=%u", conns[i], conn.connector_id,
         conn.count_modes ? 1u : 0u, conn.count_modes);
-    if (!conn.count_modes) continue;
+    if (!want) continue;
     *conn_out = conns[i];
     *mode_out = modes[0]; /* preferred/first */
-    for (uint32_t m = 0; m < conn.count_modes; m++) {
+    for (uint32_t m = 0; m < want; m++) {
       if (modes[m].type & DRM_MODE_TYPE_PREFERRED) {
         *mode_out = modes[m];
         break;
@@ -383,7 +383,8 @@ static int modeset(struct card *c, uint32_t *conn_out, uint32_t *crtc_out,
       if (drm_ioctl(c->fd, DRM_IOCTL_MODE_GETENCODER, &enc) == 0 && enc.crtc_id) crtc = enc.crtc_id;
     }
     if (!crtc) {
-      for (uint32_t e = 0; e < conn.count_encoders && !crtc; e++) {
+      uint32_t enc_n = conn.count_encoders > 64 ? 64 : conn.count_encoders;
+      for (uint32_t e = 0; e < enc_n && !crtc; e++) {
         struct drm_mode_get_encoder e2;
         memset(&e2, 0, sizeof(e2));
         e2.encoder_id = conn.encoders_ptr ? ((uint32_t *)conn.encoders_ptr)[e] : 0;
