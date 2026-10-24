@@ -678,6 +678,7 @@ static void apps_load(void) {
     app_add("Files", "__files__");
     app_add("Run dialog...", "__run__");
     app_add("Browser", "/usr/bin/losweb");
+    app_add("Terminal", "/usr/bin/losterm");
 }
 static App *app_find(const char *name) {
     for (App *a = apps; a; a = a->next)

@@ -452,6 +452,12 @@ gcc -O2 -Wall -DW32_ABI_SYSV -Iwin -Iweb -o build/losweb tools/losweb.c \
 ./build/losweb --selftest > /dev/null
 put build/losweb "$ROOT/usr/bin/losweb"
 
+# terminal: /bin/sh command runner over the same Win32 layer
+gcc -O2 -Wall -DW32_ABI_SYSV -Iwin -o build/losterm tools/losterm.c \
+    -Lbuild -lwin32 -Wl,-rpath,/usr/lib64 -lm -ldl
+./build/losterm --selftest > /dev/null
+put build/losterm "$ROOT/usr/bin/losterm"
+
 # wireless tools: scan/join (iw) and WPA/WPA2 supplicant (wpa_supplicant)
 for t in /usr/sbin/iw /usr/sbin/wpa_supplicant; do
     [ -x "$t" ] || continue

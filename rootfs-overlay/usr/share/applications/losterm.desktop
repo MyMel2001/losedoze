@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Terminal
+Comment=Shell session over /bin/sh
+Exec=losterm
+Icon=utilities-terminal
+Terminal=false
+Categories=System;

@@ -364,6 +364,8 @@ int main(int argc, char **argv) {
     if (!RegisterClassExW(&wc)) { fprintf(stderr, "losweb: RegisterClassEx failed\n"); return 1; }
     hwnd = CreateWindowExW(0, wa("LosedozeWeb"), wa("Losedoze Web"), WS_OVERLAPPEDWINDOW | WS_VISIBLE, 0, 0, WIN_W, WIN_H, NULL, NULL, NULL, NULL);
     if (!hwnd) { fprintf(stderr, "losweb: CreateWindowEx failed\n"); return 1; }
+    printf("LOSEDOZE BROWSER OK\n");
+    fflush(stdout);
     MSG m;
     while (GetMessageW(&m, NULL, 0, 0)) {
         if (m.message == WM_QUIT) break;

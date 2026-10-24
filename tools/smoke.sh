@@ -14,6 +14,8 @@ TIMEOUT_INIT=${TIMEOUT_INIT:-300}
 TIMEOUT_SHELL=${TIMEOUT_SHELL:-300}
 TIMEOUT_WIN32=${TIMEOUT_WIN32:-420}
 TIMEOUT_INSTALL=${TIMEOUT_INSTALL:-1200}
+TIMEOUT_TERM=${TIMEOUT_TERM:-120}
+TIMEOUT_BROWSER=${TIMEOUT_BROWSER:-120}
 # GPU under test: "std" (QEMU std VGA -> bochs-drm) or "virtio" (virtio-gpu
 # driver). Both are open-source in-tree DRM drivers.
 case "${SMOKE_GPU:-std}" in
@@ -197,6 +199,8 @@ if wait_marker "LOSEDOZE AUTOSTART BEGIN" 90; then
     wait_marker "LOSEDOZE WINFORMS OK" 250             || fail "winforms"
     wait_marker "LOSEDOZE SETTINGS OK" 180              || fail "settings-app"
     wait_marker "LOSEDOZE SETTINGS RELOAD OK" 60        || fail "settings-reload"
+    wait_marker "LOSEDOZE TERMINAL OK" "$TIMEOUT_TERM"  || fail "terminal-app"
+    wait_marker "LOSEDOZE BROWSER OK" "$TIMEOUT_BROWSER"  || fail "browser-app"
     WIN32_SEEN=1
     sleep 4   # let the compositor draw the last client windows
     shot
