@@ -30,10 +30,15 @@ MODULES_REL="kernel/drivers/block/loop.ko kernel/fs/isofs/isofs.ko kernel/driver
 # net: virtio-net + common NIC drivers; wireless: mac80211/cfg80211 + iwlwifi
 # and ath10k (firmware for both ships in /usr/lib/firmware)
 MODULES_REL="$MODULES_REL kernel/drivers/net/virtio_net.ko kernel/drivers/net/ethernet/intel/e1000e/e1000e.ko kernel/drivers/net/ethernet/realtek/r8169.ko kernel/net/wireless/cfg80211.ko kernel/net/mac80211/mac80211.ko"
+# QEMU/Boxes default NIC is rtl8139 -> 8139too (needs mii)
+MODULES_REL="$MODULES_REL kernel/drivers/net/ethernet/realtek/8139too.ko kernel/drivers/net/mii.ko"
 # gpu: bochs-drm/virtio-gpu/i915/xe/amdgpu/nouveau/radeon; virtio: the bus
 # (virtio_pci) that carries virtio-gpu + virtio-net
 MODULES_TREE="kernel/drivers/gpu kernel/drivers/video kernel/drivers/cec kernel/lib kernel/drivers/virtio"
 MODULES_TREE="$MODULES_TREE kernel/drivers/net/wireless/intel/iwlwifi kernel/drivers/net/wireless/ath/ath10k"
+# drm module deps that live outside the gpu tree: without these, modprobe of
+# radeon/i915/xe/amdgpu/nouveau dies on unresolved symbols ("unknown symbol")
+MODULES_REL="$MODULES_REL kernel/drivers/acpi/video.ko kernel/drivers/media/cec/core/cec.ko kernel/drivers/i2c/algos/i2c-algo-bit.ko kernel/drivers/platform/x86/intel/intel-vsec.ko kernel/drivers/platform/x86/mxm-wmi.ko kernel/drivers/platform/wmi/wmi.ko"
 
 say()  { printf '\n=== %s\n' "$*"; }
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
