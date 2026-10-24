@@ -26,8 +26,9 @@
 extern int los_init(void);
 
 static int selftest(void);
-static void nav_to_impl(const char *url);
+static void nav_to_impl(const char *url, int push);
 static void nav_to(const char *url);
+static void nav_reload(void);
 static void push_hist(void);
 static void hist_back(void);
 static void hist_fwd(void);
@@ -68,17 +69,17 @@ static void push_hist(void) {
     hist_c = hist_n - 1;
 }
 static void hist_back(void) {
-    if (hist_c > 0) { hist_c--; nav_to_impl(hist[hist_c]); }
+    if (hist_c > 0) { hist_c--; nav_to_impl(hist[hist_c], 1); }
 }
 static void hist_fwd(void) {
-    if (hist_c + 1 < hist_n) { hist_c++; nav_to_impl(hist[hist_c]); }
+    if (hist_c + 1 < hist_n) { hist_c++; nav_to_impl(hist[hist_c], 1); }
 }
 
 /* ---------------- navigation ---------------- */
-static void nav_to_impl(const char *url) {
+static void nav_to_impl(const char *url, int push) {
     if (!url || !url[0]) return;
     snprintf(cur_url, sizeof cur_url, "%s", url);
-    push_hist();
+    if (push) push_hist();
     loading = 1;
     page_valid = 0;
     InvalidateRect(hwnd, NULL, 1);
@@ -86,6 +87,19 @@ static void nav_to_impl(const char *url) {
     char err[256];
     if (loshttp_get(cur_url, &r, err, sizeof err) != 0) {
         snprintf(status_msg, sizeof status_msg, "%s", err);
+        if (!strncmp(cur_url, "http://losedoze.local", 19)) {
+            doc = k93html_parse(
+                "<html><head><title>Losedoze</title></head><body>"
+                "<h1>Losedoze Browser</h1>"
+                "<p>Welcome to the Losedoze clean-room web browser.</p>"
+                "<p>Type a URL in the omnibox and press Enter to surf.</p>"
+                "<ul><li>Back/forward: history buttons or arrow keys</li>"
+                "<li>Scroll: mouse wheel or down/up arrow keys</li></ul>"
+                "</body></html>");
+            k93node *t = k93html_query(doc, "title");
+            k93html_text_content(t, doc_title, sizeof doc_title);
+            page_valid = 1;
+        }
         loading = 0;
         return;
     }
@@ -99,7 +113,8 @@ static void nav_to_impl(const char *url) {
     loading = 0;
     InvalidateRect(hwnd, NULL, 1);
 }
-static void nav_to(const char *url) { nav_to_impl(url); }
+static void nav_to(const char *url) { nav_to_impl(url, 1); }
+static void nav_reload(void) { nav_to_impl(cur_url, 0); }
 static void nav_home(void) { nav_to(HOME_URL); }
 
 static void omni_norm(void) {
@@ -329,7 +344,7 @@ static LRESULT wndproc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
         if (y < TOOLBAR_H) {
             if (x >= 8 && x < 42) hist_back();
             else if (x >= 46 && x < 80) hist_fwd();
-            else if (x >= 84 && x < 118) nav_to(cur_url);
+            else if (x >= 84 && x < 118) nav_reload();
             else if (x >= 122 && x < 156) nav_home();
         } else {
             content_y = y - TOOLBAR_H - 8;

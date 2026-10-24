@@ -161,15 +161,13 @@ static LRESULT wndproc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_KEYDOWN:
         switch ((int)(W32)(WPARAM)wp) {
         case VK_UP: {
-            if (hist_n) { hist_c = hist_c > 0 ? hist_c - 1 : 0; snprintf(input, sizeof input, "%s", hist_cmds[hist_c]); InvalidateRect(h, NULL, 1); }
+            if (hist_n) { hist_c = hist_c > 0 ? hist_c - 1 : 0; snprintf(input, sizeof input, "%s", hist_cmds[hist_c]); ilen = (int)strlen(input); InvalidateRect(h, NULL, 1); }
             return 0;
         }
         case VK_DOWN: {
             if (hist_n) { hist_c = hist_c + 1 < hist_n - 1 ? hist_c + 1 : hist_n - 1; snprintf(input, sizeof input, "%s", hist_cmds[hist_c]); InvalidateRect(h, NULL, 1); }
             return 0;
         }
-        case VK_BACK: if (ilen > 0) { ilen--; input[ilen] = 0; InvalidateRect(h, NULL, 1); } return 0;
-        case VK_RETURN: submit_cmd(); InvalidateRect(h, NULL, 1); return 0;
         case VK_ESCAPE: PostQuitMessage(0); return 0;
         }
         break;
