@@ -498,6 +498,9 @@ static int snap_open;   /* snap layout picker visible */
 static void key_run_open(void);
 static void taskbar_dirty(void);
 static void desk_switch(int d);
+typedef struct App App;
+static App *app_find(const char *name);
+static void app_toggle_pin(const char *name);
 static int frame_hover_btn;   /* tentative; set in part4 */
 static int qdrag;             /* popup_close clears slider drag */
 static void key_start_toggle(void);
@@ -509,6 +512,8 @@ static void key_taskview_open(void);
 static void key_lock(void);
 static void menu_open_power(int x, int y);
 static void files_open(const char *path);
+static void fm_menu_open(int x, int y);
+static void menu_open_app(int x, int y, const char *appname);
 static void redraw_frames(void);
 static void toast_show(const char *fmt, ...);
 static void sw_show(ShellWin *s, int x, int y) {
@@ -520,7 +525,8 @@ static void sw_show(ShellWin *s, int x, int y) {
     if (is_popup) {
         if (popup && popup != s) popup_close();
         popup = s;                     /* input router: outside click closes */
-        if (s->type == SW_START || s->type == SW_RUN || s->type == SW_ALT || s->type == SW_LOCK)
+        if (s->type == SW_START || s->type == SW_RUN || s->type == SW_ALT || s->type == SW_LOCK ||
+            s->type == SW_FILES)
             popup_kbd = 1;             /* keys routed to popup handler */
     }
     needs_composite = 1;
@@ -598,8 +604,35 @@ static void cfg_save(void) {
     fclose(f);
 }
 
+/* ---- app pinning (taskbar + start menu share the same list) ---- */
+static int app_pin(const char *name) {
+    if (!name || !app_find(name)) return -1;
+    for (int i = 0; i < cfg_npinned; i++)
+        if (!strcasecmp(cfg_pinned[i], name)) return 0;   /* already pinned */
+    if (cfg_npinned < MAX_PINNED) strlcpy_(cfg_pinned[cfg_npinned++], name, 128);
+    cfg_save();
+    taskbar_dirty();
+    return 1;
+}
+static void app_unpin(const char *name) {
+    if (!name) return;
+    for (int i = 0; i < cfg_npinned; i++)
+        if (!strcasecmp(cfg_pinned[i], name)) {
+            for (int j = i; j + 1 < cfg_npinned; j++) strlcpy_(cfg_pinned[j], cfg_pinned[j + 1], 128);
+            cfg_npinned--;
+            break;
+        }
+    cfg_save();
+    taskbar_dirty();
+}
+static void app_toggle_pin(const char *name) {
+    int was = 0;
+    for (int i = 0; i < cfg_npinned; i++) if (!strcasecmp(cfg_pinned[i], name)) was = 1;
+    if (app_pin(name) > 0) toast_show("Pinned %s", name);
+    else if (!was) toast_show("Cannot pin %s (not found)", name);
+}
+
 /* ---------------- app index ---------------- */
-typedef struct App App;
 struct App { char name[128], exec[512]; App *next; };
 static App *apps;
 static void app_add(const char *name, const char *exec) {
@@ -652,10 +685,46 @@ static App *app_find(const char *name) {
 }
 
 /* ---------------- launcher ---------------- */
+/* exec a host binary directly with one arg (bypasses the shell string) */
+static void launch_exec(const char *exe, const char *arg) {
+    pid_t p = fork();
+    if (p == 0) {
+        setsid();
+        int fd = open(LOGPATH, O_WRONLY | O_CREAT | O_APPEND, 0644);
+        if (fd >= 0) { dup2(fd, 1); dup2(fd, 2); if (fd > 2) close(fd); }
+        execl(exe, exe, arg, (char *)NULL);
+        _exit(127);
+    }
+}
 static void launch(const char *cmd) {
     if (!strcmp(cmd, "__run__")) { key_run_open(); return; }
     if (!strcmp(cmd, "__files__")) { files_open("/"); return; }
     logmsg("launch: %s", cmd);
+    /* file-aware dispatch: an argument that names a file picks the runner:
+     *   .bat -> batch runner (tools/loscmd)    .lnk -> shortcut runner (tools/losrun)
+     *   w32host/w32host32 -> straight into the Win32 layer (full path) */
+    char prog[256], arg[1024];
+    strncpy(prog, cmd, sizeof prog - 1);
+    prog[sizeof prog - 1] = 0;
+    const char *sp = strchr(cmd, ' ');
+    if (sp) {
+        strncpy(arg, sp + 1, sizeof arg - 1);
+        arg[sizeof arg - 1] = 0;
+    } else arg[0] = 0;
+    const char *ext = strrchr(arg, '.');
+    size_t el = ext ? strlen(ext) : 0;
+    if (arg[0] && el >= 4) {
+        if (!strcasecmp(ext, ".bat")) { launch_exec("/usr/bin/loscmd", arg); return; }
+        if (!strcasecmp(ext, ".lnk")) { launch_exec("/usr/bin/losrun", arg); return; }
+    }
+    if ((!strcmp(prog, "w32host") || !strcmp(prog, "w32host32")) && arg[0]) {
+        const char *host = prog;
+        /* 32-bit PE images live in the SysWOW64-style dir -> the i386 host */
+        if (!strcmp(host, "w32host") && strstr(arg, "/opt/losedoze/apps32/"))
+            host = "w32host32";
+        launch_exec(host, arg);
+        return;
+    }
     pid_t p = fork();
     if (p == 0) {
         setsid();
@@ -1068,51 +1137,163 @@ static void app_icon(Canvas *c, int x, int y, int s, const App *a) {
 static char fm_path[512];
 static char fm_ent[FM_MAX][64];
 static int  fm_isdir[FM_MAX];
+static int  fm_isexe[FM_MAX];
+static int  fm_isbat[FM_MAX];
+static int  fm_islnk[FM_MAX];
 static int  fm_n, fm_sel;
 static char fm_last[64];
 static unsigned long fm_last_t;
+#define FM_HIST 24
+static char fm_hist[FM_HIST][512];
+static int fm_hn, fm_hc;            /* back/forward history: stack + cursor */
+static int fm_ctx_row;               /* row picked in context menu */
 
-static void files_open(const char *path) {
-    char dir[512];
-    if (!path || !path[0]) path = "/";
-    if (!strcmp(path, "C:")) path = "/";
-    strlcpy_(dir, path, sizeof dir);
-    size_t l = strlen(dir);
-    while (l > 1 && dir[l - 1] == '/') dir[--l] = 0;
-    DIR *d = opendir(dir);
-    if (!d) { toast_show("Cannot open %s", dir); return; }
+static void fm_load(const char *dir) {
+    char d[512];
+    if (!dir || !dir[0]) strcpy(d, "/");
+    else {
+        strncpy(d, dir, sizeof d - 1);
+        d[sizeof d - 1] = 0;
+        size_t l = strlen(d);
+        while (l > 1 && d[l - 1] == '/') d[--l] = 0;
+    }
+    DIR *op = opendir(d);
+    if (!op) { toast_show("Cannot open %s", d); return; }
     fm_n = 0;
-    if (strcmp(dir, "/")) {                       /* parent entry */
+    if (strcmp(d, "/")) {
         strlcpy_(fm_ent[0], "..", 64);
         fm_isdir[0] = 1;
+        fm_isexe[0] = fm_isbat[0] = fm_islnk[0] = 0;
         fm_n = 1;
     }
     struct dirent *e;
-    while ((e = readdir(d)) && fm_n < FM_MAX) {
+    while ((e = readdir(op)) && fm_n < FM_MAX) {
         if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
         strlcpy_(fm_ent[fm_n], e->d_name, 64);
         fm_isdir[fm_n] = 0;
+        fm_isexe[fm_n] = fm_isbat[fm_n] = fm_islnk[fm_n] = 0;
         char full[1024];
-        snprintf(full, sizeof full, "%s/%s", dir, e->d_name);
+        snprintf(full, sizeof full, "%s/%s", d, e->d_name);
         struct stat st;
-        if (!stat(full, &st) && S_ISDIR(st.st_mode)) fm_isdir[fm_n] = 1;
+        if (!stat(full, &st)) {
+            if (S_ISDIR(st.st_mode)) fm_isdir[fm_n] = 1;
+            else {
+                size_t el = strlen(e->d_name);
+                if (el > 4) {
+                    if (!strcasecmp(e->d_name + el - 4, ".exe")) fm_isexe[fm_n] = 1;
+                    else if (!strcasecmp(e->d_name + el - 4, ".bat")) fm_isbat[fm_n] = 1;
+                    else if (!strcasecmp(e->d_name + el - 4, ".lnk")) fm_islnk[fm_n] = 1;
+                }
+            }
+        }
         fm_n++;
     }
-    closedir(d);
-    strlcpy_(fm_path, dir, sizeof fm_path);
+    closedir(op);
+    strncpy(fm_path, d, sizeof fm_path - 1);
+    fm_path[sizeof fm_path - 1] = 0;
     fm_sel = 0;
     fm_last[0] = 0;
-    ShellWin *s = sw_get(SW_FILES, 0);
-    sw_resize(s, 440, 380);
-    sw_show(s, (sw - 440) / 2, (sh - 380) / 2 - 40);
+}
+static void fm_goto(const char *dir) {
+    char norm[512];
+    if (!dir || !dir[0]) strcpy(norm, "/");
+    else {
+        strncpy(norm, dir, sizeof norm - 1);
+        norm[sizeof norm - 1] = 0;
+        size_t l = strlen(norm);
+        while (l > 1 && norm[l - 1] == '/') norm[--l] = 0;
+    }
+    if (!strcmp(norm, fm_path)) return;
+    if (fm_hc >= 0) {                    /* truncate forward history */
+        for (int i = fm_hc; i < fm_hn - 1 && i >= 0; i++) strcpy(fm_hist[i], fm_hist[i + 1]);
+        fm_hn = fm_hc + 1;
+    }
+    if (fm_hn < FM_HIST) fm_hn++;
+    strncpy(fm_hist[fm_hn - 1], norm, sizeof fm_hist[0] - 1);
+    fm_hc = fm_hn - 1;
+    fm_load(fm_hist[fm_hc]);
+}
+static void fm_back(void) {
+    if (fm_hc > 0) {
+        fm_hc--;
+        fm_load(fm_hist[fm_hc]);
+        sw_draw(sw_get(SW_FILES, 0));
+    }
+}
+static void fm_fwd(void) {
+    if (fm_hc + 1 < fm_hn) {
+        fm_hc++;
+        fm_load(fm_hist[fm_hc]);
+        sw_draw(sw_get(SW_FILES, 0));
+    }
+}
+static void fm_up(void) {
+    char p[512];
+    strncpy(p, fm_path, sizeof p - 1);
+    p[sizeof p - 1] = 0;
+    size_t l = strlen(p);
+    while (l > 1 && p[l - 1] == '/') p[--l] = 0;
+    char *sl = strrchr(p, '/');
+    if (sl) { if (sl == p) p[1] = 0; else *sl = 0; }
+    if (!*p) strcpy(p, "/");
+    fm_goto(p);
+}
+static void fm_row_full(char *out, size_t outn, int row) {
+    if (row < 0 || row >= fm_n) { out[0] = 0; return; }
+    if (!strcmp(fm_ent[row], "..")) {
+        strncpy(out, fm_path, outn - 1);
+        out[outn - 1] = 0;
+        char *sl = strrchr(out, '/');
+        if (sl) { if (sl == out) out[1] = 0; else *sl = 0; }
+        return;
+    }
+    snprintf(out, outn, "%s/%s", fm_path, fm_ent[row]);
+}
+static void fm_launch_entry(int row) {
+    char full[1024];
+    fm_row_full(full, sizeof full, row);
+    if (!full[0]) return;
+    if (fm_isdir[row]) { fm_goto(full); return; }
+    if (fm_isbat[row]) { launch_exec("/usr/bin/loscmd", full); return; }
+    if (fm_islnk[row]) { launch_exec("/usr/bin/losrun", full); return; }
+    if (fm_isexe[row]) {
+        const char *host = strstr(full, "/opt/losedoze/apps32/") ? "w32host32" : "w32host";
+        launch_exec(host, full);
+    }
+}
+static void fm_delete_entry(int row) {
+    char full[1024];
+    fm_row_full(full, sizeof full, row);
+    if (!full[0]) return;
+    char cmd[1200];
+    if (fm_isdir[row]) snprintf(cmd, sizeof cmd, "rm -rf \"%s\"", full);
+    else snprintf(cmd, sizeof cmd, "rm -f \"%s\"", full);
+    launch(cmd);
+    toast_show("Deleted %s", fm_ent[row]);
+}
+
+static void files_open(const char *path) {
+    if (!path || !path[0]) path = "/";
+    if (!strcmp(path, "C:")) path = "/";
+    fm_goto(path);
+    fm_hn = 1; fm_hc = 0;
+    strncpy(fm_hist[0], fm_path, sizeof fm_hist[0] - 1);
+    fm_hist[0][sizeof fm_hist[0] - 1] = 0;
+    fm_load(fm_path);
 }
 static void draw_files(ShellWin *s) {
     Canvas *c = &s->cv;
     cv_fill(c, 0, 0, s->w, s->h, th.panel);
     cv_round_border(c, 0, 0, s->w, s->h, POP_R, 1, th.border);
     text_draw(c, 16, 12, fm_path, 12, 0, th.text);
-    cv_round(c, 12, 34, s->w - 24, s->h - 82, 6, th.field);
-    int y = 42;
+    /* nav strip: up / back / forward */
+    cv_round(c, 12, 34, s->w - 24, 22, 6, th.field);
+    cv_round_border(c, 12, 34, s->w - 24, 22, 6, 1, mix(th.field, th.accent, 60));
+    if (fm_hc > 0) { cv_round(c, 60, 35, 76, 18, 9, mix(th.panel, th.accent, 60)); text_draw(c, 64, 38, "Back", 10, 0, th.text); }
+    if (fm_hc + 1 < fm_hn) { cv_round(c, 140, 35, 76, 18, 9, mix(th.panel, th.accent, 60)); text_draw(c, 144, 38, "Fwd", 10, 0, th.text); }
+    cv_round(c, 12, 35, 40, 18, 9, mix(th.panel, th.accent, 60)); text_draw(c, 16, 38, "Up", 10, 0, th.text);
+    cv_round(c, 12, 56, s->w - 24, s->h - 56, 6, th.field);
+    int y = 60;
     for (int i = 0; i < fm_n && i < FM_ROWS; i++) {
         if (i == fm_sel) cv_round(c, 18, y - 3, s->w - 36, 22, 4, mix(th.panel, th.accent, 60));
         icon_draw(c, 22, y, 16, fm_isdir[i] ? IC_FOLDER : IC_DOC,
@@ -1125,30 +1306,33 @@ static void draw_files(ShellWin *s) {
         snprintf(m, sizeof m, "... %d more", fm_n - FM_ROWS);
         text_draw(c, 22, y + 2, m, 11, 0, th.text2);
     }
-    text_draw(c, 16, s->h - 34, "double-click a folder to open it", 11, 0, th.text2);
-    cv_round(c, s->w - 84, s->h - 40, 64, 26, 5, mix(th.panel, th.text, 12));
-    text_draw(c, s->w - 74, s->h - 34, "Close", 11, 0, th.text);
+    text_draw(c, 16, s->h - 30, "double-click to open, right-click for menu", 11, 0, th.text2);
+    cv_round(c, s->w - 84, s->h - 36, 64, 26, 5, mix(th.panel, th.text, 12));
+    text_draw(c, s->w - 74, s->h - 31, "Close", 11, 0, th.text);
 }
 static int click_files(ShellWin *s, int btn, int x, int y) {
-    (void)btn;
-    if (in_r(x, y, s->w - 84, s->h - 40, 64, 26)) { popup_close(); return 1; }
-    if (y < 40 || y >= 40 + 24 * FM_ROWS) return 1;
-    int row = (y - 40) / 24;
+    (void)s;
+    if (in_r(x, y, s->w - 84, s->h - 36, 64, 26)) { popup_close(); return 1; }
+    if (in_r(x, y, 12, 34, s->w - 24, 22)) {
+        if (in_r(x, y, 12, 35, 40, 18)) { fm_up(); sw_draw(sw_get(SW_FILES, 0)); return 1; }
+        if (in_r(x, y, 60, 35, 76, 18)) { fm_back(); sw_draw(sw_get(SW_FILES, 0)); return 1; }
+        if (in_r(x, y, 140, 35, 76, 18)) { fm_fwd(); sw_draw(sw_get(SW_FILES, 0)); return 1; }
+        return 1;
+    }
+    if (y < 60 || y >= 60 + 24 * FM_ROWS) return 1;
+    int row = (y - 60) / 24;
     if (row < 0 || row >= fm_n || row >= FM_ROWS) return 1;
+    if (btn == 3) {
+        fm_ctx_row = row;
+        fm_menu_open(mouse_x, mouse_y);
+        return 1;
+    }
     fm_sel = row;
     unsigned long now = now_ms();
     if (fm_isdir[row] && !strcmp(fm_last, fm_ent[row]) && now - fm_last_t < 500) {
         char full[1024];
-        if (!strcmp(fm_ent[row], "..")) {
-            char p[512];
-            strlcpy_(p, fm_path, sizeof p);
-            char *sl = strrchr(p, '/');
-            if (sl) { if (sl == p) p[1] = 0; else *sl = 0; }
-            files_open(p);
-        } else {
-            snprintf(full, sizeof full, "%s/%s", fm_path, fm_ent[row]);
-            files_open(full);
-        }
+        fm_row_full(full, sizeof full, row);
+        fm_goto(full); /* dir: navigate */
         return 1;
     }
     strlcpy_(fm_last, fm_ent[row], 64);
@@ -1185,6 +1369,7 @@ static Client *snap_client;
 static int tb_hover_key = -1;
 static int frame_hover_btn;
 static Client *menu_client;
+static const char *menu_app;
 #define MENU_MAX 20
 static struct { char label[64]; int act; int data; } menu_items[MENU_MAX];
 static int menu_n;
@@ -1197,7 +1382,8 @@ static int deskicon_hover = -1, deskicon_sel = -1;
 enum { MI_NONE, MI_LOCK, MI_RESTART, MI_POWEROFF, MI_SLEEP, MI_ABOUT,
        MI_WIN_CLOSE, MI_WIN_MIN, MI_WIN_MAX, MI_WIN_RESTORE,
        MI_DESK_NEW, MI_DESK_CLOSE, MI_DESK_GOTO, MI_WALLPAPER, MI_THEME,
-       MI_EXIT, MI_EMPTY_TRASH, MI_RUN };
+       MI_EXIT, MI_EMPTY_TRASH, MI_RUN,
+       MI_APP_OPEN, MI_APP_PIN, MI_APP_UNPIN, MI_FM_OPEN, MI_FM_DEL, MI_FM_PROP };
 
 /* ---------------- tray queries ---------------- */
 static int net_ok(void) {
@@ -1347,7 +1533,22 @@ static void draw_taskbar(ShellWin *s) {
     }
 }
 static int click_taskbar(ShellWin *s, int btn, int x, int y) {
-    (void)s; (void)btn;
+    (void)s;
+    if (btn == 3) {
+        TBItem it[TB_MAXI];
+        int n = tb_build(it);
+        for (int i = 0; i < n; i++) {
+            TBItem *t = &it[i];
+            if (!in_r(x, y, t->x, 0, t->w, TB_H)) continue;
+            if (t->kind == TBI_PIN) {
+                App *a = app_find(cfg_pinned[t->id]);
+                if (a) { menu_open_app(mouse_x, mouse_y, a->name); return 1; }
+            }
+            return 1;
+        }
+        return 1;
+    }
+    (void)btn;
     TBItem it[TB_MAXI];
     int n = tb_build(it);
     for (int i = 0; i < n; i++) {
@@ -1490,6 +1691,33 @@ static void draw_start(ShellWin *s) {
 }
 static int click_start(ShellWin *s, int btn, int x, int y) {
     (void)btn;
+    if (btn == 3) {
+        App *list[64]; int n; App *hit = NULL;
+        if (start_q[0]) {
+            n = start_filtered(list, 8);
+            for (int i = 0; i < n; i++)
+                if (in_r(x, y, 24, 104 + i * 48 - 4, s->w - 48, 44)) { hit = list[i]; break; }
+        } else if (start_allapps) {
+            n = start_all_list(list, 64);
+            for (int i = 0; i < n && 104 + i * 44 < s->h - 80; i++)
+                if (in_r(x, y, 24, 104 + i * 44 - 2, s->w - 48, 40)) { hit = list[i]; break; }
+        } else {
+            n = start_filtered(list, 18);
+            for (int i = 0; i < n; i++) {
+                int col = i % 6, row = i / 6;
+                int gx = 28 + col * 92, gy = 104 + row * 92;
+                if (in_r(x, y, gx - 4, gy - 4, 88, 88)) { hit = list[i]; break; }
+            }
+            int yrec = 104 + 3 * 92 + 4;
+            for (int i = 0; i < nrec && i < 6; i++) {
+                int col = i % 2, row = i / 2;
+                int gx = 28 + col * 272, gy = yrec + 26 + row * 52;
+                if (in_r(x, y, gx, gy, 260, 44)) { App *a = app_find(recent[i]); if (a) hit = a; break; }
+            }
+        }
+        if (hit) menu_open_app(mouse_x, mouse_y, hit->name);
+        return 1;
+    }
     if (in_r(x, y, s->w - 130, 70, 130, 26) && start_allapps) { start_allapps = 0; start_sel = -1; sw_draw(s); return 1; }
     if (in_r(x, y, s->w - 130, 70, 130, 26) && !start_allapps && !start_q[0]) { start_allapps = 1; start_sel = -1; sw_draw(s); return 1; }
     if (in_r(x, y, s->w - 64, s->h - 52, 40, 40)) {
@@ -1603,7 +1831,7 @@ static int click_quick(ShellWin *s, int btn, int x, int y) {
     }
     if (in_r(x, y, 50, 252, s->w - 100, 24)) { qdrag = 1; cfg_vol = (x - 56) * 100 / (s->w - 110); if (cfg_vol < 0) cfg_vol = 0; if (cfg_vol > 100) cfg_vol = 100; sw_draw(s); return 1; }
     if (in_r(x, y, 50, 302, s->w - 100, 24)) { qdrag = 2; cfg_bright = (x - 56) * 100 / (s->w - 110); if (cfg_bright < 0) cfg_bright = 0; if (cfg_bright > 100) cfg_bright = 100; brightness_set(cfg_bright); sw_draw(s); return 1; }
-    if (in_r(x, y, s->w - 140, 380, 140, 24)) { toast_show("Settings app not bundled yet"); return 1; }
+    if (in_r(x, y, s->w - 140, 380, 160, 24)) { launch("loseset"); return 1; }
     return 1;
 }
 
@@ -1871,6 +2099,22 @@ static void menu_open_win(int x, int y, Client *cl) {
     menu_add("Close", MI_WIN_CLOSE, 0);
     menu_open(x, y);
 }
+static void menu_open_app(int x, int y, const char *appname) {
+    menu_n = 0;
+    menu_add("Open", MI_APP_OPEN, 0);
+    menu_add("Pin to taskbar", MI_APP_PIN, 0);
+    menu_add("Unpin from taskbar", MI_APP_UNPIN, 0);
+    menu_app = appname;
+    menu_open(x, y);
+}
+static void fm_menu_open(int x, int y) {
+    if (fm_n <= 0) { menu_n = 0; return; }
+    menu_n = 0;
+    menu_add("Open", MI_FM_OPEN, 0);
+    menu_add("Delete", MI_FM_DEL, 0);
+    menu_add("Properties", MI_FM_PROP, 0);
+    menu_open(x, y);
+}
 static void draw_menu(ShellWin *s) {
     Canvas *c = &s->cv;
     cv_fill(c, 0, 0, s->w, s->h, th.panel);
@@ -2085,6 +2329,27 @@ static void menu_do(int act, int data) {
             } else files_browse(home);
         } else key_run_open();
         break;
+    case MI_APP_OPEN:
+        { App *a = app_find(menu_app); if (a) launch_app(a); break; }
+    case MI_APP_PIN:
+        app_toggle_pin(menu_app);
+        break;
+    case MI_APP_UNPIN:
+        app_unpin(menu_app);
+        toast_show("Unpinned %s", menu_app);
+        break;
+    case MI_FM_OPEN:
+        fm_launch_entry(fm_ctx_row);
+        popup_close();
+        break;
+    case MI_FM_DEL:
+        popup_close();
+        fm_delete_entry(fm_ctx_row);
+        break;
+    case MI_FM_PROP:
+        popup_close();
+        toast_show("Properties not available in this build");
+        break;
     }
 }
 
@@ -2279,6 +2544,23 @@ static void popup_key(KeyEvent *e) {
     }
     if (s->type == SW_LOCK) { popup_close(); return; }
     if (s->type == SW_ALT) { alt_key(e); return; }
+    if (s->type == SW_FILES) {
+        if (e->code == KEY_ESC) { popup_close(); return; }
+        if (e->code == KEY_UP || e->code == KEY_DOWN) {
+            int n = fm_n ? fm_n : 1;
+            int step = (e->code == KEY_DOWN) ? 1 : -1;
+            fm_sel = (fm_sel + step + n) % n;
+            sw_draw(s);
+            return;
+        }
+        if (e->code == KEY_ENTER || e->code == KEY_KPENTER) {
+            fm_launch_entry(fm_sel);
+            popup_close();
+            return;
+        }
+        if (e->code == KEY_BACKSPACE) { fm_up(); sw_draw(s); return; }
+        return;
+    }
     if (s->type == SW_START || s->type == SW_RUN) {
         char *buf = s->type == SW_START ? start_q : run_q;
         size_t cap = s->type == SW_START ? sizeof start_q : sizeof run_q;
@@ -2668,7 +2950,7 @@ static void on_release(int btn, int sx, int sy) {
 }
 
 static void on_key(KeyEvent *e) {
-    if (popup && popup_kbd) { popup_key(e); return; }
+    if (popup && (popup_kbd || popup->type == SW_FILES)) { popup_key(e); return; }
     if (root_key(e)) return;
     if (!popup && focused && focused->mapped && !focused->min)
         wlserver_key(wl, e->code, e->down, wl_mods(e->mods));
