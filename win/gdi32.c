@@ -42,7 +42,9 @@ static W32 cr_px(W32 c) {
 }
 
 static void put(W32Canvas *c, int x, int y, W32 px) {
-  if ((unsigned)x < (unsigned)c->w && (unsigned)y < (unsigned)c->h)
+  if ((unsigned)x < (unsigned)c->w && (unsigned)y < (unsigned)c->h &&
+      (unsigned)x >= (unsigned)c->clip.left && (unsigned)y >= (unsigned)c->clip.top &&
+      (unsigned)x < (unsigned)c->clip.right && (unsigned)y < (unsigned)c->clip.bottom)
     c->px[(size_t)y * c->stride + x] = px;
 }
 
@@ -50,7 +52,15 @@ static void put(W32Canvas *c, int x, int y, W32 px) {
 static stbtt_fontinfo font;
 static unsigned char *font_buf;
 static int font_ok, font_tried;
-static float font_scale(void) { return stbtt_ScaleForPixelHeight(&font, 16.0f); }
+static float font_scale(W32Canvas *c) { return stbtt_ScaleForPixelHeight(&font, c && c->font_px > 0 ? c->font_px : 16.0f); }
+
+/* SetFontSize: managed Font.Size -> GDI text rasterization height (px). */
+BOOL SetFontSize(HDC dc, float px) {
+  W32Canvas *c = cv(dc);
+  if (!c) return W32_FALSE;
+  c->font_px = px > 0 ? px : 16.0f;
+  return W32_TRUE;
+}
 
 static int font_load(void) {
   if (font_tried) return font_ok;
@@ -84,7 +94,7 @@ static int font_load(void) {
 void gdi_textout(W32Canvas *c, int x, int y, const W16 *s, int n) {
   if (!c || !c->px || n <= 0) return;
   if (!font_load()) return;
-  float scale = font_scale();
+  float scale = font_scale(c);
   int asc, desc, gap;
   stbtt_GetFontVMetrics(&font, &asc, &desc, &gap);
   int base = y + (int)(asc * scale);
@@ -114,7 +124,9 @@ void gdi_textout(W32Canvas *c, int x, int y, const W16 *s, int n) {
           unsigned a = bm[(size_t)yy * w + xx];
           if (!a) continue;
           int X = gx + xx, Y = gy + yy;
-          if ((unsigned)X >= (unsigned)c->w || (unsigned)Y >= (unsigned)c->h)
+          if ((unsigned)X >= (unsigned)c->w || (unsigned)Y >= (unsigned)c->h) continue;
+          if ((unsigned)X < (unsigned)c->clip.left || (unsigned)Y < (unsigned)c->clip.top ||
+              (unsigned)X >= (unsigned)c->clip.right || (unsigned)Y >= (unsigned)c->clip.bottom)
             continue;
           W32 dst = c->px[(size_t)Y * c->stride + X];
           if (a == 255) { c->px[(size_t)Y * c->stride + X] = fgpx; continue; }
@@ -134,13 +146,13 @@ void gdi_textout(W32Canvas *c, int x, int y, const W16 *s, int n) {
 /* text metrics: advance width + line height via stb_truetype (same font,
  * same 16 px scale the rasterizer uses) */
 BOOL GetTextExtentPoint32W(HDC dc, LPCWSTR s, int n, SIZE *out) {
-  (void)dc;
+  W32Canvas *c = cv(dc);
   if (!out) return W32_FALSE;
   if (!s) return W32_FALSE;
   if (n < 0) n = lstrlenW(s);
   if (n <= 0) { out->cx = 0; out->cy = 0; return W32_TRUE; }
   if (!font_load()) { out->cx = 8 * n; out->cy = 16; return W32_TRUE; }
-  float scale = font_scale();
+  float scale = font_scale(c);
   int asc, desc, gap;
   stbtt_GetFontVMetrics(&font, &asc, &desc, &gap);
   int cx = 0;
@@ -178,13 +190,20 @@ BOOL TextOutA(HDC dc, int x, int y, LPCSTR s, int n) {
 
 /* ---------------- fills / shapes ---------------- */
 static void fill_rect(W32Canvas *c, int x, int y, int w, int h, W32 pxcol) {
-  if (x < 0) { w += x; x = 0; }
-  if (y < 0) { h += y; y = 0; }
-  if (x + w > c->w) w = c->w - x;
-  if (y + h > c->h) h = c->h - y;
-  for (int j = 0; j < h; j++) {
+  int x2 = x + w, y2 = y + h;
+  if (x < c->clip.left) x = c->clip.left;
+  if (y < c->clip.top) y = c->clip.top;
+  if (x2 > c->clip.right) x2 = c->clip.right;
+  if (y2 > c->clip.bottom) y2 = c->clip.bottom;
+  if (x < 0) { x2 += -x; x = 0; }
+  if (y < 0) { y2 += -y; y = 0; }
+  if (x2 > c->w) x2 = c->w;
+  if (y2 > c->h) y2 = c->h;
+  int w2 = x2 - x, h2 = y2 - y;
+  if (w2 <= 0 || h2 <= 0) return;
+  for (int j = 0; j < h2; j++) {
     W32 *row = c->px + (size_t)(y + j) * c->stride + x;
-    for (int i = 0; i < w; i++) row[i] = pxcol;
+    for (int i = 0; i < w2; i++) row[i] = pxcol;
   }
 }
 
@@ -307,6 +326,59 @@ HGDIOBJ SelectObject(HDC dc, HGDIOBJ h) {
   return old;
 }
 HGDIOBJ GetStockObject(int idx) { return (HGDIOBJ)gdi_stock(idx); }
+
+/* ---------------- clip region (DC state) ----------------
+ * Owner-drawn children must not bleed outside their bounds, so the DC keeps a
+ * clip rect that every primitive honours. SaveDC/RestoreDC stack it (8 deep). */
+/* clip rect that every primitive honours. SaveDC/RestoreDC stack it (8 deep).
+ * clip_stack holds the states 0..clip_sp, the current clip IS clip_stack[clip_sp]. */
+int SaveDC(HDC dc) {
+  W32Canvas *c = cv(dc);
+  if (!c || c->clip_sp >= 8) return -1;
+  c->clip_stack[c->clip_sp + 1] = c->clip;
+  c->clip_sp++;
+  return c->clip_sp;
+}
+BOOL RestoreDC(HDC dc, int saved) {
+  W32Canvas *c = cv(dc);
+  if (!c || saved < 0 || saved > c->clip_sp) return W32_FALSE;
+  c->clip_sp = saved;
+  c->clip = c->clip_stack[saved];
+  return W32_TRUE;
+}
+BOOL SelectClipRect(HDC dc, const RECT *r) {
+  W32Canvas *c = cv(dc);
+  if (!c || !r) return W32_FALSE;
+  c->clip.left = r->left; c->clip.top = r->top;
+  c->clip.right = r->right; c->clip.bottom = r->bottom;
+  if (c->clip.left < 0) c->clip.left = 0;
+  if (c->clip.top < 0) c->clip.top = 0;
+  if (c->clip.right > c->w) c->clip.right = c->w;
+  if (c->clip.bottom > c->h) c->clip.bottom = c->h;
+  return W32_TRUE;
+}
+int IntersectClipRect(HDC dc, int l, int t, int r, int b) {
+  W32Canvas *c = cv(dc);
+  if (!c) return 0;
+  if (l > c->clip.left) c->clip.left = l;
+  if (t > c->clip.top) c->clip.top = t;
+  if (r < c->clip.right) c->clip.right = r;
+  if (b < c->clip.bottom) c->clip.bottom = b;
+  if (c->clip.left < 0) c->clip.left = 0;
+  if (c->clip.top < 0) c->clip.top = 0;
+  if (c->clip.right > c->w) c->clip.right = c->w;
+  if (c->clip.bottom > c->h) c->clip.bottom = c->h;
+  if (c->clip.right < c->clip.left) c->clip.right = c->clip.left;
+  if (c->clip.bottom < c->clip.top) c->clip.bottom = c->clip.top;
+  return 0;
+}
+int GetClipBox(HDC dc, RECT *rc) {
+  W32Canvas *c = cv(dc);
+  if (!c || !rc) return 0;
+  rc->left = c->clip.left; rc->top = c->clip.top;
+  rc->right = c->clip.right; rc->bottom = c->clip.bottom;
+  return 1;
+}
 
 /* SwapBuffers: present the current opengl32 context into the DC's canvas. */
 BOOL SwapBuffers(HDC dc) { return gl32_swap(cv(dc)) ? W32_TRUE : W32_FALSE; }

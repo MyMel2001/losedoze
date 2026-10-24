@@ -15,6 +15,13 @@ public enum MouseButtons { None = 0, Left = 1, Right = 2, Middle = 4 }
 public enum ContentAlignment { TopLeft, TopCenter, TopRight, MiddleLeft, MiddleCenter, MiddleRight, BottomLeft, BottomCenter, BottomRight }
 public enum DialogResult { None = 0, OK = 1, Cancel = 2, Abort = 3, Retry = 4, Ignore = 5, Yes = 6, No = 7 }
 public enum MessageBoxButtons { OK = 0, OKCancel = 1, YesNo = 2, YesNoCancel = 3 }
+public enum AutoScaleMode { None = 0, Font = 1, Dpi = 2, Inherit = -1 }
+
+public class LayoutEventArgs : System.EventArgs
+{
+    public LayoutEventArgs(Rectangle affectedBounds) { AffectedBounds = affectedBounds; }
+    public Rectangle AffectedBounds { get; }
+}
 
 public class PaintEventArgs : System.EventArgs
 {
@@ -89,9 +96,28 @@ public class Control
     public ControlCollection Controls => _children;
 
     public Rectangle Bounds => new Rectangle(Left, Top, Width, Height);
-    public Size ClientSize => new Size(Width, Height);
-    public System.Drawing.Size Size => new Size(Width, Height);
+    public Size ClientSize { get => new Size(Width, Height); set { Width = value.Width; Height = value.Height; } }
+    public System.Drawing.Size Size { get => new Size(Width, Height); set { Width = value.Width; Height = value.Height; } }
     public System.Drawing.Point Location => new Point(Left, Top);
+    public int TabIndex { get; set; }
+    public bool TabStop { get; set; } = true;
+
+    /* Designer / generated-code-behind lifecycle (InitializeComponent calls
+     * SuspendLayout, sets properties, then ResumeLayout/PerformLayout). */
+    private bool _layoutSuspended;
+    public AutoScaleMode AutoScaleMode { get; set; } = AutoScaleMode.None;
+    public SizeF AutoScaleDimensions { get; set; }
+    public SizeF AutoScaleFactor => new SizeF(1f, 1f);
+    public event EventHandler<LayoutEventArgs>? Layout;
+    public void SuspendLayout() { _layoutSuspended = true; }
+    public void ResumeLayout(bool performLayout = true)
+    {
+        bool was = _layoutSuspended;
+        _layoutSuspended = false;
+        if (performLayout && was) PerformLayout();
+    }
+    public void PerformLayout() { if (_layoutSuspended) return; OnLayout(new LayoutEventArgs(Bounds)); }
+    protected virtual void OnLayout(LayoutEventArgs e) { Layout?.Invoke(this, e); }
 
     public void Add(Control c) { _children.Add(c); }
     public void AddRange(params Control[] controls) { foreach (var c in controls) Add(c); }
@@ -158,9 +184,19 @@ public class Control
         PaintSelf(g);
         foreach (var c in _children)
         {
+            if (!c.Visible) continue;
+            /* owner-drawn children must not bleed outside their bounds */
+            int saved = System.Windows.Forms.Native.SaveDC(g.Hdc);
+            var clip = new System.Windows.Forms.Native.RECT
+            {
+                left = g.Ox + c.Left, top = g.Oy + c.Top,
+                right = g.Ox + c.Left + c.Width, bottom = g.Oy + c.Top + c.Height,
+            };
+            System.Windows.Forms.Native.IntersectClipRect(g.Hdc, clip.left, clip.top, clip.right, clip.bottom);
             g.Ox += c.Left; g.Oy += c.Top;
             c.PaintTree(g);
             g.Ox -= c.Left; g.Oy -= c.Top;
+            System.Windows.Forms.Native.RestoreDC(g.Hdc, saved);
         }
     }
 }
@@ -189,6 +225,8 @@ public class Form : Control
     private Control? _focused;
     private Control? _mouseDown;
     private bool _loaded;
+    private bool _modal, _loopExit;
+    private DialogResult _result;
 
     public Form()
     {
@@ -202,6 +240,8 @@ public class Form : Control
     private volatile int _paints;
     public int Paints => _paints;
     public string Title { get; set; } = "";
+    /// <summary>WinForms designer code sets Text; the Win32 layer wants a Title.</summary>
+    public override string Text { get => Title; set => Title = value ?? ""; }
 
     internal Control? FocusedControl => _focused;
 
@@ -231,7 +271,20 @@ public class Form : Control
 
     public void Show() { CreateHandle(); }
     public void Close() { if (_hwnd != IntPtr.Zero) Native.PostMessageW(_hwnd, Native.WM_CLOSE, 0, 0); }
-    public DialogResult ShowDialog() { CreateHandle(); return DialogResult.OK; }
+    public DialogResult DialogResult { get; set; } = DialogResult.None;
+
+    /// <summary>Show modally: runs a nested message loop until Close()/the
+    /// dialog sets DialogResult. Returns DialogResult.</summary>
+    public DialogResult ShowDialog()
+    {
+        CreateHandle();
+        _modal = true;
+        _loopExit = false;
+        _result = DialogResult.None;
+        RunLoop();
+        _modal = false;
+        return _result;
+    }
 
     internal void RunLoop()
     {
@@ -240,9 +293,10 @@ public class Form : Control
         var m = new Native.MSG();
         while (Native.GetMessageW(ref m, IntPtr.Zero, 0, 0) > 0)
         {
-            if (m.message == Native.WM_QUIT) break;
+            if (m.message == Native.WM_QUIT || _loopExit) break;
             Native.TranslateMessage(ref m);
             Native.DispatchMessageW(ref m);
+            if (_loopExit) break;
         }
         Closed?.Invoke(this, System.EventArgs.Empty);
         OnClosed(System.EventArgs.Empty);
@@ -299,6 +353,16 @@ public class Form : Control
                 else t.RaiseMouseMove(lx, ly, MouseButtons.None);
                 break;
             }
+            case Native.WM_SIZE:
+            {
+                /* compositor resized the toplevel: adopt the new client size */
+                int cx = (int)((wp >> 16) & 0xffff);
+                int cy = (int)(wp & 0xffff);
+                Width = cx;
+                Height = cy;
+                Invalidate();
+                break;
+            }
             case Native.WM_CHAR:
             {
                 char ch = (char)(wp & 0xff);
@@ -316,7 +380,8 @@ public class Form : Control
             case Native.WM_CLOSE:
                 Closing?.Invoke(this, System.EventArgs.Empty);
                 Native.DestroyWindow(hwnd);
-                Native.PostQuitMessage(0);
+                if (_modal) { _result = DialogResult; _loopExit = true; }
+                else Native.PostQuitMessage(0);
                 return IntPtr.Zero;
         }
         return Native.DefWindowProcW(hwnd, msg, wp, lp);

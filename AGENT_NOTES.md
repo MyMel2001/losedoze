@@ -238,9 +238,16 @@ win/
   `System.Drawing`). It is *our own* WinForms on top of `libwin32.so`: `Form`
   creates a native top-level window via `CreateWindowExW`, an owner-drawn
   `Control`/`ControlCollection` hierarchy (Button/Label/TextBox/CheckBox/RadioButton/
-  ListBox/Panel), keyboard via WM_KEYDOWN/WM_CHAR routing to the focused control,
+  ListBox/Panel, DataGridView, WebBrowser), modal file dialogs, the designer
+  lifecycle API (SuspendLayout/ResumeLayout/PerformLayout/AutoScaleMode for
+  partial-class `InitializeComponent`), DC clipping (SaveDC/RestoreDC/
+  IntersectClipRect/GetClipBox applied per child in `Control.PaintTree`),
+  scalable fonts (`Font.Size` → `SetFontSize` → stb_truetype), `WM_SIZE`
+  resize routing, keyboard via WM_KEYDOWN/WM_CHAR routing to the focused control,
   mouse via WM_* hit-test through `Control.HitTest` recursion, GDI painting
-  (`FillRect`/`Rectangle`/`DrawString`/`GetTextExtentPoint32W` + black-brush fix).
+  (`FillRect`/`Rectangle`/`DrawString`/`GetTextExtentPoint32W` + black-brush fix),
+  and desktop GL (`GlContext` + `wglGetProcAddress`, EGL-backed via `win/gl32.c`
+  linked into the shared library).
   The demo `tools/dotnet/Losedoze.WinForms` (`loswinforms`) paints a form and
   prints `LOSEDOZE WINFORMS OK <version>` after the first WM_PAINT
   (`LOSEDOZE WINFORMS FAIL (no paint)`); smoke waits on that marker
@@ -393,13 +400,23 @@ win/
   losedoze ships a **managed WinForms framework** instead
   (`tools/dotnet/System.Windows.Forms`, assembly `Losedoze.Windows.Forms`,
   `System.Windows.Forms` + `System.Drawing` namespaces: Form/Control/Application/
-  MessageBox/SystemColors/Button/Label/TextBox/CheckBox/RadioButton/ListBox/Panel).
-  What it gives up vs. real WinForms: no Designer/generated code-behind, no
-  DataGrid/WebBrowser/Dialogs, no child-window subclasses (controls are
-  owner-drawn by the Form over GDI → no clipping, no child hwnd), fonts are
-  fixed 16 px (GDI rasterizes one size; `Font.Size` is stored but unused),
-  form size is fixed at creation (WM_SIZE is not routed back), and
-  `gl32_swap` is a stub in the shared library → managed callers get GDI only.
+  MessageBox/SystemColors/Button/Label/TextBox/CheckBox/RadioButton/ListBox/Panel,
+  plus DataGridView, WebBrowser, modal OpenFileDialog/SaveFileDialog/
+  FolderBrowserDialog, GlContext, and the designer lifecycle API
+  SuspendLayout/ResumeLayout/PerformLayout/AutoScaleMode for partial-class
+  `InitializeComponent`). The six former ceilings are fixed: generated
+  code-behind works against the layout API (partial classes are plain C#; a
+  `.resx` ComponentResourceManager is still not read), DataGrid/WebBrowser/
+  dialogs exist, children are clipped to their bounds (DC clip +
+  SaveDC/RestoreDC/IntersectClipRect/GetClipBox, applied by Control.PaintTree),
+  fonts scale (`Font.Size` -> `SetFontSize` -> stb_truetype pixel height),
+  `WM_SIZE` is posted by `user32_configure_event` and adopted by `Form`
+  (resize works), and the shared library links `win/gl32.c` so managed callers
+  get the same EGL-backed WGL/GL entry points + `wglGetProcAddress` (presented
+  by `SwapBuffers`). Still architectural, not a ceiling: controls are
+  owner-drawn by the Form (no child HWNDs), one font family (Liberation Sans),
+  `Form.GetWindowRect` reports the content origin (decorations are
+  compositor-side).
 - No `iris` (Intel gallium): its SPIR-V shaders are built by `mesa_clc`, which
   aborts ("double free or corruption") in a static-LLVM build. Intel keeps KMS
   modesetting through i915/xe; add `iris` back when mesa_clc is fixed.
@@ -475,7 +492,10 @@ win/
       assembly) — Form over `CreateWindowExW`, Control tree owner-drawn by the
       Form over GDI, WM_KEYDOWN/WM_CHAR → focused control, WM_* hit-test through
       `Control.HitTest`, `System.Drawing` Graphics/Brush/Pen/Font +
-      `GetTextExtentPoint32W` (black-brush FillRect/Rectangle fix). Demo
+      `GetTextExtentPoint32W` (black-brush FillRect/Rectangle fix), plus the
+      fixed ceilings: DataGridView/WebBrowser/dialogs, designer lifecycle API,
+      DC clipping, scalable fonts, WM_SIZE resize, EGL desktop GL via
+      `GlContext`/`SwapBuffers` (win/gl32.c in libwin32.so); demo
       `tools/dotnet/Losedoze.WinForms` (`loswinforms`) → `LOSEDOZE WINFORMS OK`;
       smoke waits on it; losnetdesktop switched to the library (no duplicate
       Form/Button)

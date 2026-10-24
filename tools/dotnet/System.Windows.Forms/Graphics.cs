@@ -9,7 +9,7 @@ namespace System.Drawing {
 
 public class Font
 {
-    public Font() { Name = "Liberation Sans"; Size = 10f; Style = FontStyle.Regular; }
+    public Font() { Name = "Liberation Sans"; Size = 12f; Style = FontStyle.Regular; }
     public Font(string name, float size, FontStyle style = FontStyle.Regular)
     { Name = name; Size = size; Style = style; }
     public string Name { get; }
@@ -92,6 +92,7 @@ public sealed class Graphics
     public void DrawString(string s, Font f, System.Drawing.Color c, float x, float y)
     {
         var col = (int)((c.B << 16) | (c.G << 8) | c.R);
+        System.Windows.Forms.Native.SetFontSize(_dc, f?.Size ?? 12f);
         System.Windows.Forms.Native.SetTextColor(_dc, col);
         System.Windows.Forms.Native.SetBkMode(_dc, System.Windows.Forms.Native.TRANSPARENT);
         System.Windows.Forms.Native.TextOutW(_dc, (int)(x + Ox), (int)(y + Oy), s, -1);
@@ -101,9 +102,10 @@ public sealed class Graphics
 
     public SizeF MeasureString(string s, Font f, Size proposed)
     {
+        System.Windows.Forms.Native.SetFontSize(_dc, f?.Size ?? 12f);
         var size = new System.Windows.Forms.Native.SIZE();
         bool ok = System.Windows.Forms.Native.GetTextExtentPoint32W(_dc, s, -1, ref size);
-        if (!ok) return new SizeF(8f * (s?.Length ?? 0), f.Size);
+        if (!ok) return new SizeF(8f * (s?.Length ?? 0), f?.Size ?? 12f);
         return new SizeF(size.cx, size.cy);
     }
 }

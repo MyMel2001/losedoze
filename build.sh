@@ -422,7 +422,7 @@ fi
 say "10/14 win32 shared library + settings app + installer"
 gcc -shared -fPIC -O2 -Wall -DW32_ABI_SYSV -o build/libwin32.so \
     win/hostlib.c win/ntdll.c win/kernel32.c win/user32.c win/gdi32.c \
-    win/wlclient.c win/pe.c shell/input.c \
+    win/gl32.c win/wlclient.c win/pe.c shell/input.c \
     -Iwin -Ishell -Ibuild -ldl -lm
 put build/libwin32.so "$ROOT/usr/lib64/libwin32.so"
 gcc -O2 -Wall -DW32_ABI_SYSV -Iwin -o build/loseset tools/loseset.c \

@@ -176,7 +176,7 @@ public class ListBox : Control
     internal override void RaiseMouseDown(int x, int y, MouseButtons b)
     {
         int i = (y - 2) / 18;
-        if (i >= 0 && i < Items.Count && i != SelectedIndex) { SelectedIndex = i; Invalidate(); }
+        if (i >= 0 && i < Items.Count && i != SelectedIndex) { SelectedIndex = i; Invalidate(); RaiseClick(); }
         base.RaiseMouseDown(x, y, b);
     }
 }

@@ -373,6 +373,12 @@ W32API HGDIOBJ GetStockObject(int);
 W32API BOOL MoveToEx(HDC, int, int, POINT *);
 W32API BOOL LineTo(HDC, int, int);
 W32API BOOL GetTextExtentPoint32W(HDC, LPCWSTR, int, SIZE *);   /* gdi32 */
+W32API BOOL SetFontSize(HDC, float);   /* text rasterization height in px */
+W32API BOOL SelectClipRect(HDC, const RECT *);
+W32API int IntersectClipRect(HDC, int, int, int, int);
+W32API int GetClipBox(HDC, RECT *);
+W32API int SaveDC(HDC);
+W32API BOOL RestoreDC(HDC, int);
 W32API BOOL DestroyWindow(HWND);                                    /* user32 */
 W32API BOOL SwapBuffers(HDC);   /* presents the opengl32 context */
 
@@ -381,6 +387,7 @@ W32API BOOL SwapBuffers(HDC);   /* presents the opengl32 context */
 W32API HGLRC wglCreateContext(HDC);
 W32API BOOL wglMakeCurrent(HDC, HGLRC);
 W32API BOOL wglDeleteContext(HGLRC);
+W32API void *wglGetProcAddress(const char *);   /* any GL entry point by name */
 W32API const unsigned char *glGetString(unsigned);
 W32API unsigned glGetError(void);
 W32API void glGetIntegerv(unsigned, int *);

@@ -25,6 +25,8 @@ internal static class Program
         panel.Paint += (s, e) => { var g = e.Graphics; g.FillRectangle(SystemColors.ControlLight, new Rectangle(0, 0, panel.Width, panel.Height)); g.DrawRectangle(new Pen(SystemColors.ControlDark), new Rectangle(0, 0, panel.Width, panel.Height)); g.DrawString(panel.Text, panel.Font, SystemColors.WindowText, 10, 10); };
         var btn = new Button { Left = 24, Top = 200, Width = 120, Height = 30, Text = "Click me" };
         var lblClicks = new Label { Text = "clicks: 0", Left = 152, Top = 208, Width = 120, Height = 20 };
+        var grid = new DataGridView { Left = 260, Top = 88, Width = 260, Height = 56 };
+        grid.AddRow("cell", "grid"); grid.AddRow("managed", "C#"); grid.AddRow("owner", "drawn");
 
         form.Controls.Add(lblTitle);
         form.Controls.Add(lblSub);
@@ -34,6 +36,15 @@ internal static class Program
         form.Controls.Add(panel);
         form.Controls.Add(btn);
         form.Controls.Add(lblClicks);
+        form.Controls.Add(grid);
+
+        // desktop GL for managed callers: context on the window DC (EGL-backed)
+        form.Load += (s, e) =>
+        {
+            using var gl = new GlContext(form);
+            Console.WriteLine("los: GL " + (gl.IsCurrent ? gl.Renderer : "none"));
+            Console.Out.Flush();
+        };
 
         int clicks = 0;
         btn.Click += (s, e) => { clicks++; btn.Text = "Clicks: " + clicks; lblClicks.Text = "clicks: " + clicks; btn.Invalidate(); };

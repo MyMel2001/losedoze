@@ -131,6 +131,12 @@ void user32_configure_event(WlcWin *wl, int cw, int ch) {
         w->canvas.w = cw;
         w->canvas.h = ch;
         w->canvas.stride = cw;
+        w->canvas.font_px = 16.0f;
+        w->canvas.clip.left = 0; w->canvas.clip.top = 0;
+        w->canvas.clip.right = cw; w->canvas.clip.bottom = ch;
+        w->canvas.clip_stack[0] = w->canvas.clip;
+        w->canvas.clip_sp = 0;
+        post_simple(w, WM_SIZE, (WPARAM)(((W32)cw) << 16 | (W32)ch), 0);
       }
       win_ensure_buffer(w);   /* create shm pool now that configure arrived */
       w->need_paint = 1;
@@ -362,6 +368,11 @@ HWND CreateWindowExW(DWORD ex, LPCWSTR classn, LPCWSTR title, DWORD style,
   wn->canvas.textcol = W32RGB(0, 0, 0);
   wn->canvas.bkcol = W32RGB(255, 255, 255);
   wn->canvas.bkmode = OPAQUE;
+  wn->canvas.font_px = 16.0f;
+  wn->canvas.clip.left = 0; wn->canvas.clip.top = 0;
+  wn->canvas.clip.right = wn->cw; wn->canvas.clip.bottom = wn->ch;
+  wn->canvas.clip_stack[0] = wn->canvas.clip;
+  wn->canvas.clip_sp = 0;
   wn->next = wins;
   wins = wn;
   if (wlc_have_display()) {

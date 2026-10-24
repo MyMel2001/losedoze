@@ -72,6 +72,10 @@ typedef struct W32Canvas {
   W32 textcol, bkcol;
   int bkmode;             /* 1 transparent, 2 opaque */
   W32GdiObj *pen, *brush, *font;
+  float font_px;          /* text rasterization height (Font.Size) */
+  RECT clip;              /* current clip rect (exclusive right/bottom) */
+  RECT clip_stack[8];     /* SaveDC/RestoreDC saves */
+  int clip_sp;
 } W32Canvas;
 
 W32GdiObj *gdi_stock(int idx);

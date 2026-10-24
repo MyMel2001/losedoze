@@ -87,8 +87,30 @@ public static class MessageBox
     public static DialogResult Show(string text, string caption, MessageBoxButtons buttons)
     {
         Application.Init();
-        int r = Native.MessageBoxW(IntPtr.Zero, text ?? "", caption ?? "", 0);
-        return r == Native.IDOK ? DialogResult.OK : DialogResult.Cancel;
+        if (!Application.CompositorConnected)
+            return Native.MessageBoxW(IntPtr.Zero, text ?? "", caption ?? "", 0) == Native.IDOK
+                ? DialogResult.OK : DialogResult.Cancel;   /* console-only: logged, auto-OK */
+
+        var form = new Form { Title = caption ?? "", Width = 380, Height = 170 };
+        form.Controls.Add(new Label { Text = text ?? "", Left = 16, Top = 16, Width = 340, Height = 56 });
+        var result = DialogResult.OK;
+        int x = 16;
+        void AddButton(string label, DialogResult r)
+        {
+            var b = new Button { Left = x, Top = 88, Width = 96, Height = 30, Text = label };
+            b.Click += (s, e) => { result = r; form.DialogResult = r; form.Close(); };
+            form.Controls.Add(b);
+            x += 102;
+        }
+        switch (buttons)
+        {
+            case MessageBoxButtons.OKCancel: AddButton("OK", DialogResult.OK); AddButton("Cancel", DialogResult.Cancel); break;
+            case MessageBoxButtons.YesNo: AddButton("Yes", DialogResult.Yes); AddButton("No", DialogResult.No); break;
+            case MessageBoxButtons.YesNoCancel: AddButton("Yes", DialogResult.Yes); AddButton("No", DialogResult.No); AddButton("Cancel", DialogResult.Cancel); break;
+            default: AddButton("OK", DialogResult.OK); break;
+        }
+        form.ShowDialog();
+        return result;
     }
 }
 }

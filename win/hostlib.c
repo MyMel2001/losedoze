@@ -27,9 +27,8 @@ void host_log(const char *fmt, ...) {
 HMODULE pe_module_main(void) { return NULL; }
 HMODULE w32host_dll(LPCSTR n) { (void)n; return NULL; }
 
-/* desktop GL is not wired into the shared library (ceiling: the PE host has
- * opengl32.dll over EGL; managed callers get CPU rendering only) */
-int gl32_swap(W32Canvas *c) { (void)c; return 0; }
+/* desktop GL: win/gl32.c (opengl32.dll over EGL) is linked into the shared
+ * library too, so managed callers get the same WGL + GL entry points. */
 
 /* ---------------- compositor glue (same wiring as w32host.c) ------------- */
 static void cb_configure(void *ud, WlcWin *w, int cw, int ch) {

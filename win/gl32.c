@@ -151,6 +151,13 @@ BOOL wglDeleteContext(HGLRC rc) {
   return W32_TRUE;
 }
 
+/* wglGetProcAddress: managed callers load any GL entry point themselves
+ * (the shared library exposes the same EGL-resolved symbol table). */
+void *wglGetProcAddress(const char *name) {
+  if (!gl_init() || !name) return NULL;
+  return E.GetProcAddress(name);
+}
+
 /* Present the current GL context into a canvas: glReadPixels (bottom-up,
  * RGBA) -> canvas px (top-down, ARGB). One pass, flip folded in. */
 int gl32_swap(W32Canvas *c) {

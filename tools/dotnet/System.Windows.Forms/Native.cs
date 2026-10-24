@@ -10,7 +10,8 @@ internal static class Native
     public const string Lib = "win32";
 
     /* messages (win/w32.h) */
-    public const uint WM_DESTROY = 0x0002, WM_PAINT = 0x000F, WM_CLOSE = 0x0010,
+    public const uint WM_DESTROY = 0x0002, WM_MOVE = 0x0003, WM_SIZE = 0x0005,
+        WM_PAINT = 0x000F, WM_CLOSE = 0x0010,
         WM_QUIT = 0x0012, WM_CHAR = 0x0102, WM_KEYDOWN = 0x0100, WM_KEYUP = 0x0101,
         WM_MOUSEMOVE = 0x0200, WM_LBUTTONDOWN = 0x0201, WM_LBUTTONUP = 0x0202,
         WM_RBUTTONDOWN = 0x0204, WM_RBUTTONUP = 0x0205;
@@ -147,6 +148,30 @@ internal static class Native
         [MarshalAs(UnmanagedType.LPWStr)] string s, int n);
     [DllImport(Lib, CallingConvention = CallingConvention.Winapi)]
     public static extern int GetTextExtentPoint32W(IntPtr dc, [MarshalAs(UnmanagedType.LPWStr)] string s, int n, ref SIZE size);
+    [DllImport(Lib, CallingConvention = CallingConvention.Winapi)]
+    public static extern int SetFontSize(IntPtr dc, float px);
+    [DllImport(Lib, CallingConvention = CallingConvention.Winapi)]
+    public static extern int SelectClipRect(IntPtr dc, ref RECT r);
+    [DllImport(Lib, CallingConvention = CallingConvention.Winapi)]
+    public static extern int IntersectClipRect(IntPtr dc, int l, int t, int r, int b);
+    [DllImport(Lib, CallingConvention = CallingConvention.Winapi)]
+    public static extern int GetClipBox(IntPtr dc, ref RECT r);
+    [DllImport(Lib, CallingConvention = CallingConvention.Winapi)]
+    public static extern int SaveDC(IntPtr dc);
+    [DllImport(Lib, CallingConvention = CallingConvention.Winapi)]
+    public static extern int RestoreDC(IntPtr dc, int saved);
+    [DllImport(Lib, CallingConvention = CallingConvention.Winapi)]
+    public static extern int SwapBuffers(IntPtr dc);
+    [DllImport(Lib, CallingConvention = CallingConvention.Winapi)]
+    public static extern IntPtr wglCreateContext(IntPtr dc);
+    [DllImport(Lib, CallingConvention = CallingConvention.Winapi)]
+    public static extern int wglMakeCurrent(IntPtr dc, IntPtr rc);
+    [DllImport(Lib, CallingConvention = CallingConvention.Winapi)]
+    public static extern int wglDeleteContext(IntPtr rc);
+    [DllImport(Lib, CharSet = CharSet.Ansi)]
+    public static extern IntPtr wglGetProcAddress(string name);
+    [DllImport(Lib, CallingConvention = CallingConvention.Winapi)]
+    public static extern IntPtr glGetString(uint name);
     [DllImport(Lib, CharSet = CharSet.Unicode)]
     public static extern IntPtr GetDC(IntPtr h);
     [DllImport(Lib, CallingConvention = CallingConvention.Winapi)]
