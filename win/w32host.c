@@ -77,14 +77,21 @@ HMODULE pe_module_main(void) { return main_img ? pe_module(main_img) : NULL; }
   X(glDrawArrays)
 
 #define XN(n) #n,
-static const char *const nt_names_[] = { NT_LIST(XN) NULL };
+/* ntdll builtin surface: implemented handlers + generated Nt and Zw* handlers
+ * (win/gen_ntstubs.py -> build/ntstubs.inc). Real EXE/DLL/BAT import targets
+ * resolve through this list; implemented names dispatch, the rest get a real
+ * NT status handler. */
+#include "ntstub_names.inc"
+#define NTSTUB_XN(n) #n,
+static const char *const nt_names_[] = { NTSTUB_LIST(NTSTUB_XN) NULL };
 static const char *const k32_names_[] = { K32_LIST(XN) NULL };
 static const char *const u32_names_[] = { U32_LIST(XN) NULL };
 static const char *const g32_names_[] = { G32_LIST(XN) NULL };
 static const char *const gl32_names_[] = { GL32_LIST(XN) NULL };
 #undef XN
 #define XF(n) (void *)n,
-static void *nt_fns[] = { NT_LIST(XF) NULL };
+#define NTSTUB_XF(n) (void *)n,
+static void *nt_fns[] = { NTSTUB_LIST(NTSTUB_XF) NULL };
 static void *k32_fns[] = { K32_LIST(XF) NULL };
 static void *u32_fns[] = { U32_LIST(XF) NULL };
 static void *g32_fns[] = { G32_LIST(XF) NULL };

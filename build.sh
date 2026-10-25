@@ -237,6 +237,7 @@ put build/losgpu "$ROOT/usr/bin/losgpu"
 say "8/14 win32 subsystem (w32host + PE apps)"
 mkdir -p build build/winapps
 python3 win/gen_ntsyscalls.py build/ntsyscalls.inc
+python3 win/gen_ntstubs.py
 python3 win/gen_importlibs.py win/w32host.c build/winapps
 # PE32 (i386) parse fixture: generated image (no i386pe linker script exists
 # in binutils here) with a low preferred base -> the 64-bit host must rebase
