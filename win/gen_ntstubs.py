@@ -54,6 +54,28 @@ IMPLEMENTED = {
     "NtMapUserPhysicalPages", "NtMapUserPhysicalPagesScatter",
     "NtModifyBootEntry", "NtModifyDriverEntry", "NtNotifyChangeSession",
     "NtPowerInformation",
+    # batch N: boot / power-transaction / port / worker no-ops
+    "NtAddBootEntry", "NtAddDriverEntry", "NtDeleteBootEntry", "NtDeleteDriverEntry",
+    "NtEnumerateBootEntries", "NtEnumerateDriverEntries", "NtQueryBootEntryOrder",
+    "NtSetBootEntryOrder", "NtQueryBootOptions", "NtSetBootOptions",
+    "NtDisableLastKnownGood", "NtEnableLastKnownGood", "NtQueryIntervalProfile",
+    "NtSetIntervalProfile", "NtSerializeBoot", "NtTraceControl", "NtShutdownSystem",
+    "NtSinglePhaseReject", "NtPrePrepareComplete", "NtPrePrepareEnlistment",
+    "NtPrepareComplete", "NtPrepareEnlistment", "NtPropagationComplete",
+    "NtPropagationFailed", "NtRollbackComplete", "NtRollbackEnlistment",
+    "NtRollbackRegistryTransaction", "NtRollbackTransaction",
+    "NtRollforwardTransactionManager", "NtRecoverTransactionManager",
+    "NtRenameTransactionManager", "NtCommitComplete", "NtCommitEnlistment",
+    "NtCommitRegistryTransaction", "NtCommitTransaction", "NtRecoverEnlistment",
+    "NtRecoverResourceManager", "NtShutdownWorkerFactory", "NtCreateWorkerFactory",
+    "NtQueryInformationWorkerFactory", "NtSetInformationWorkerFactory",
+    "NtReleaseWorkerFactoryWorker", "NtWorkerFactoryWorkerReady",
+    "NtCreateWaitCompletionPacket", "NtCancelWaitCompletionPacket",
+    "NtAssociateWaitCompletionPacket", "NtCreateWaitablePort", "NtCreatePort",
+    "NtConnectPort", "NtAcceptConnectPort", "NtQueryInformationPort",
+"NtListenPort", "NtRequestPort", "NtReplyPort",
+    "NtReplyWaitReceivePortEx", "NtReplyWaitReplyPort",
+"NtSecureConnectPort", "NtCompleteConnectPort",
 }
 # Zw-style alias entry: NtOpenFile is the same syscall as NtCreateFile
 ALIASES = {"NtOpenFile": "NtCreateFile"}
