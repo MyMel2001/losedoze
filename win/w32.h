@@ -561,6 +561,16 @@ W32API NTSTATUS ZwReadFileScatter(HANDLE h, HANDLE ev, PVOID apc, PVOID apcctx,
                                  IO_STATUS_BLOCK *iosb, PVOID buf, ULONG count, ULONG len);
 W32API NTSTATUS ZwWriteFileGather(HANDLE h, HANDLE ev, PVOID apc, PVOID apcctx,
                                  IO_STATUS_BLOCK *iosb, PVOID buf, ULONG count, ULONG len);
+W32API NTSTATUS NtCreateSection(HANDLE *SectionHandle, W32 Class, PVOID Buffer, ULONG Size,
+                              ULONG SectionFlags, HANDLE Parent);
+W32API NTSTATUS NtMapViewOfSection(HANDLE SectionHandle, HANDLE hProcess, PVOID BaseAddress,
+                                 ULONG ViewLength, PVOID *BaseOut);
+W32API NTSTATUS NtExtendSection(HANDLE SectionHandle, PVOID Extend);
+W32API NTSTATUS ZwCreateSection(HANDLE *SectionHandle, W32 Class, PVOID Buffer, ULONG Size,
+                               ULONG SectionFlags, HANDLE Parent);
+W32API NTSTATUS ZwMapViewOfSection(HANDLE SectionHandle, HANDLE hProcess, PVOID BaseAddress,
+                                 ULONG ViewLength, PVOID *BaseOut);
+W32API NTSTATUS ZwExtendSection(HANDLE SectionHandle, PVOID Extend);
 
 /* diagnostics */
 W32API const char *nt_name(W32 nr);

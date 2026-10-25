@@ -875,6 +875,61 @@ static long h_NtWriteFileGather(const long *a) {
   return STATUS_SUCCESS;
 }
 
+/* ---------------- section syscalls: create / map / extend ---------------- */
+
+static long h_NtCreateSection(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  W32 class = (W32)a[1];
+  PVOID buffer = (PVOID)a[2];
+  W32 size = (W32)a[3];
+  W32 flags = (W32)a[4];
+  HANDLE parent = (HANDLE)a[5];
+  (void)class; (void)flags; (void)parent;
+  if (!out) return STATUS_INVALID_HANDLE;
+  W32Handle *h;
+  if (buffer) {
+    h = w32_handle_new(HK_SEC, -1);
+    if (!h) return STATUS_NO_MEMORY;
+    h->kind = HK_SEC; h->fd = -1; h->ptr = buffer; h->size = size ? size : 0;
+  } else {
+    size_t sz = size ? (size_t)size : 4096;
+    void *p = mmap(NULL, sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (p == MAP_FAILED) return STATUS_NO_MEMORY;
+    h = w32_handle_new(HK_SEC, -1);
+    if (!h) return STATUS_NO_MEMORY;
+    h->kind = HK_SEC; h->fd = -1; h->ptr = p; h->size = (W64)sz;
+  }
+  nt_mem_register(h);
+  *out = h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtMapViewOfSection(const long *a) {
+  W32Handle *sh = w32_handle((HANDLE)a[0]);
+  HANDLE hproc = (HANDLE)a[1];
+  PVOID base = (PVOID)a[2];
+  W32 viewlen = (W32)a[3];
+  PVOID *baseout = (PVOID *)a[4];
+  (void)hproc;
+  if (!sh || sh->kind != HK_SEC) return STATUS_INVALID_HANDLE;
+  size_t sz = (size_t)sh->size;
+  if (!base) sz = sz ? sz : 4096;
+  void *p = mmap(base, sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS |
+                 (base ? MAP_FIXED_NOREPLACE : 0), -1, 0);
+  if (p == MAP_FAILED) return STATUS_NO_MEMORY;
+  if (baseout) *baseout = p;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtExtendSection(const long *a) {
+  W32Handle *sh = w32_handle((HANDLE)a[0]);
+  PVOID extend = (PVOID)a[1];
+  if (!sh || sh->kind != HK_SEC) return STATUS_INVALID_HANDLE;
+  size_t end = (size_t)((char *)extend - (char *)sh->ptr) + 1;
+  if (end > (size_t)sh->size) sh->size = (W64)end;
+  return STATUS_SUCCESS;
+}
+
 /* ---------------- dispatch table (numbers from windows-syscalls) -------- */
 static ntfn nt_tab[NT_NR_MAX];
 static int nt_ready;
@@ -1344,6 +1399,44 @@ NTSTATUS NtWriteFileGather(HANDLE h, HANDLE ev, PVOID apc, PVOID apcctx, IO_STAT
   a[0] = (long)h; a[1] = (long)ev; a[2] = (long)apc; a[3] = (long)apcctx;
   a[4] = (long)iosb; a[5] = (long)buf; a[6] = (long)count; a[7] = (long)len;
   return (NTSTATUS)nt_dispatch(NR_NtWriteFileGather, a);
+}
+
+/* ---- section syscalls: create / map / extend ---- */
+
+NTSTATUS ZwCreateSection(HANDLE *SectionHandle, W32 Class, PVOID Buffer, ULONG Size,
+                         ULONG SectionFlags, HANDLE Parent) {
+  return NtCreateSection(SectionHandle, Class, Buffer, Size, SectionFlags, Parent);
+}
+
+NTSTATUS ZwMapViewOfSection(HANDLE SectionHandle, HANDLE hProcess, PVOID BaseAddress,
+                            ULONG ViewLength, PVOID *BaseOut) {
+  return NtMapViewOfSection(SectionHandle, hProcess, BaseAddress, ViewLength, BaseOut);
+}
+
+NTSTATUS ZwExtendSection(HANDLE SectionHandle, PVOID Extend) {
+  return NtExtendSection(SectionHandle, Extend);
+}
+
+NTSTATUS NtCreateSection(HANDLE *SectionHandle, W32 Class, PVOID Buffer, ULONG Size,
+                         ULONG SectionFlags, HANDLE Parent) {
+  ARGV(6);
+  a[0] = (long)SectionHandle; a[1] = (long)Class; a[2] = (long)Buffer; a[3] = (long)Size;
+  a[4] = (long)SectionFlags; a[5] = (long)Parent;
+  return (NTSTATUS)nt_dispatch(NR_NtCreateSection, a);
+}
+
+NTSTATUS NtMapViewOfSection(HANDLE SectionHandle, HANDLE hProcess, PVOID BaseAddress,
+                            ULONG ViewLength, PVOID *BaseOut) {
+  ARGV(5);
+  a[0] = (long)SectionHandle; a[1] = (long)hProcess; a[2] = (long)BaseAddress;
+  a[3] = (long)ViewLength; a[4] = (long)BaseOut;
+  return (NTSTATUS)nt_dispatch(NR_NtMapViewOfSection, a);
+}
+
+NTSTATUS NtExtendSection(HANDLE SectionHandle, PVOID Extend) {
+  ARGV(2);
+  a[0] = (long)SectionHandle; a[1] = (long)Extend;
+  return (NTSTATUS)nt_dispatch(NR_NtExtendSection, a);
 }
 
 NTSTATUS NtCreateFile(HANDLE *FileHandle, ULONG Access, OBJECT_ATTRIBUTES *Obj,
