@@ -1183,6 +1183,38 @@ static long h_NtUnmapViewOfSectionEx(const long *a) {
 static long h_NtMapViewOfSectionEx(const long *a) { return h_NtMapViewOfSection(a); }
 static long h_NtCreateSectionEx(const long *a) { return h_NtCreateSection(a); }
 
+/* ---------------- event / semaphore state syscalls ---------------------- */
+
+static long h_NtQueryEvent(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  W32 *outState = (W32 *)a[1];
+  if (!h || h->kind != HK_EVENT) { if (outState) *outState = 0; return STATUS_INVALID_HANDLE; }
+  if (outState) *outState = (W32)*(long *)h->ptr;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtQuerySemaphore(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  W32 *outCount = (W32 *)a[1];
+  if (!h || h->kind != HK_SEM) { if (outCount) *outCount = 0; return STATUS_INVALID_HANDLE; }
+  if (outCount) *outCount = (W32)*(long *)h->ptr;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtClearEvent(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  if (!h || h->kind != HK_EVENT) return STATUS_INVALID_HANDLE;
+  *(long *)h->ptr = 0;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtPulseEvent(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  if (!h || h->kind != HK_EVENT) return STATUS_INVALID_HANDLE;
+  if (*(long *)h->ptr != 0) *(long *)h->ptr = 0; /* one-shot pulse */
+  return STATUS_SUCCESS;
+}
+
 /* ---------------- dispatch table (numbers from windows-syscalls) -------- */
 /* ---------------- wait syscalls: multiple objects ---------------- */
 
@@ -2000,6 +2032,48 @@ NTSTATUS NtCreateSectionEx(HANDLE *SectionHandle, W32 Class, PVOID Buffer, ULONG
   a[0] = (long)SectionHandle; a[1] = (long)Class; a[2] = (long)Buffer; a[3] = (long)Size;
   a[4] = (long)SectionFlags; a[5] = (long)Parent;
   return (NTSTATUS)nt_dispatch(NR_NtCreateSectionEx, a);
+}
+
+/* ---- event / semaphore state syscalls ---- */
+
+NTSTATUS ZwQueryEvent(HANDLE h, W32 *PreviousState) {
+  return NtQueryEvent(h, PreviousState);
+}
+
+NTSTATUS NtQueryEvent(HANDLE h, W32 *PreviousState) {
+  ARGV(2);
+  a[0] = (long)h; a[1] = (long)PreviousState;
+  return (NTSTATUS)nt_dispatch(NR_NtQueryEvent, a);
+}
+
+NTSTATUS ZwQuerySemaphore(HANDLE h, W32 *Count) {
+  return NtQuerySemaphore(h, Count);
+}
+
+NTSTATUS NtQuerySemaphore(HANDLE h, W32 *Count) {
+  ARGV(2);
+  a[0] = (long)h; a[1] = (long)Count;
+  return (NTSTATUS)nt_dispatch(NR_NtQuerySemaphore, a);
+}
+
+NTSTATUS ZwClearEvent(HANDLE h) {
+  return NtClearEvent(h);
+}
+
+NTSTATUS NtClearEvent(HANDLE h) {
+  ARGV(1);
+  a[0] = (long)h;
+  return (NTSTATUS)nt_dispatch(NR_NtClearEvent, a);
+}
+
+NTSTATUS ZwPulseEvent(HANDLE h) {
+  return NtPulseEvent(h);
+}
+
+NTSTATUS NtPulseEvent(HANDLE h) {
+  ARGV(1);
+  a[0] = (long)h;
+  return (NTSTATUS)nt_dispatch(NR_NtPulseEvent, a);
 }
 
 /* ---------------- registry syscalls: typed wrappers ---------------- */

@@ -627,6 +627,15 @@ W32API NTSTATUS ZwUnmapViewOfSectionEx(HANDLE h, PVOID BaseAddress);
 W32API NTSTATUS NtCreateSectionEx(HANDLE *SectionHandle, W32 Class, PVOID Buffer, ULONG Size, ULONG SectionFlags, HANDLE Parent);
 W32API NTSTATUS ZwCreateSectionEx(HANDLE *SectionHandle, W32 Class, PVOID Buffer, ULONG Size, ULONG SectionFlags, HANDLE Parent);
 
+W32API NTSTATUS NtQueryEvent(HANDLE h, W32 *PreviousState);
+W32API NTSTATUS ZwQueryEvent(HANDLE h, W32 *PreviousState);
+W32API NTSTATUS NtQuerySemaphore(HANDLE h, W32 *Count);
+W32API NTSTATUS ZwQuerySemaphore(HANDLE h, W32 *Count);
+W32API NTSTATUS NtClearEvent(HANDLE h);
+W32API NTSTATUS ZwClearEvent(HANDLE h);
+W32API NTSTATUS NtPulseEvent(HANDLE h);
+W32API NTSTATUS ZwPulseEvent(HANDLE h);
+
 /* diagnostics */
 W32API const char *nt_name(W32 nr);
 
