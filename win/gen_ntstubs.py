@@ -73,9 +73,9 @@ IMPLEMENTED = {
     "NtCreateWaitCompletionPacket", "NtCancelWaitCompletionPacket",
     "NtAssociateWaitCompletionPacket", "NtCreateWaitablePort", "NtCreatePort",
     "NtConnectPort", "NtAcceptConnectPort", "NtQueryInformationPort",
-"NtListenPort", "NtRequestPort", "NtReplyPort",
-    "NtReplyWaitReceivePortEx", "NtReplyWaitReplyPort",
-"NtSecureConnectPort", "NtCompleteConnectPort",
+    "NtListenPort", "NtRequestPort", "NtReplyPort",
+    "NtReplyWaitReceivePort", "NtReplyWaitReceivePortEx", "NtReplyWaitReplyPort",
+    "NtSecureConnectPort", "NtCompleteConnectPort",
 }
 # Zw-style alias entry: NtOpenFile is the same syscall as NtCreateFile
 ALIASES = {"NtOpenFile": "NtCreateFile"}
