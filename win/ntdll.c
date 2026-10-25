@@ -329,8 +329,66 @@ static long nt_dispatch(W32 nr, const long *args) {
 
 /* NtOpenFile maps to NtCreateFile (FILE_OPEN) */
 
-/* ---------------- exported Nt* stubs ---------------- */
+/* ---------------- exported Nt* / Zw* stubs ---------------- */
 #define ARGV(n) long a[n]; memset(a, 0, sizeof a)
+
+/* Zw* are the Windows names for the same syscalls Nt* dispatch to (ntdll
+ * exports both families; real binaries may import either spelling). */
+NTSTATUS ZwCreateFile(HANDLE *FileHandle, ULONG Access, OBJECT_ATTRIBUTES *Obj,
+                      IO_STATUS_BLOCK *Iosb, PVOID AllocSize, ULONG FileAttr,
+                      ULONG Share, ULONG Disp, ULONG Opts, PVOID Ea, ULONG EaLen) {
+  return NtCreateFile(FileHandle, Access, Obj, Iosb, AllocSize, FileAttr,
+                      Share, Disp, Opts, Ea, EaLen);
+}
+
+NTSTATUS ZwOpenFile(HANDLE *FileHandle, ULONG Access, OBJECT_ATTRIBUTES *Obj,
+                    IO_STATUS_BLOCK *Iosb, ULONG Share, ULONG Opts) {
+  return NtOpenFile(FileHandle, Access, Obj, Iosb, Share, Opts);
+}
+
+NTSTATUS ZwReadFile(HANDLE fh, HANDLE ev, PVOID apc, PVOID apcctx,
+                     IO_STATUS_BLOCK *Iosb, PVOID Buf, ULONG Len, PVOID off,
+                     PVOID key) {
+  return NtReadFile(fh, ev, apc, apcctx, Iosb, Buf, Len, off, key);
+}
+
+NTSTATUS ZwWriteFile(HANDLE fh, HANDLE ev, PVOID apc, PVOID apcctx,
+                      IO_STATUS_BLOCK *Iosb, PVOID Buf, ULONG Len, PVOID off,
+                      PVOID key) {
+  return NtWriteFile(fh, ev, apc, apcctx, Iosb, Buf, Len, off, key);
+}
+
+NTSTATUS ZwClose(HANDLE h) {
+  return NtClose(h);
+}
+
+NTSTATUS ZwAllocateVirtualMemory(HANDLE proc, PVOID *base, ULONG_PTR zero,
+                                 ULONG_PTR *size, ULONG type, ULONG prot) {
+  return NtAllocateVirtualMemory(proc, base, zero, size, type, prot);
+}
+
+NTSTATUS ZwFreeVirtualMemory(HANDLE proc, PVOID *base, ULONG_PTR *size,
+                             ULONG type) {
+  return NtFreeVirtualMemory(proc, base, size, type);
+}
+
+NTSTATUS ZwDelayExecution(BOOL Alertable, W64S *Interval) {
+  return NtDelayExecution(Alertable, Interval);
+}
+
+NTSTATUS ZwWaitForSingleObject(HANDLE h, BOOL Alertable, W64S *Timeout) {
+  return NtWaitForSingleObject(h, Alertable, Timeout);
+}
+
+NTSTATUS ZwQueryInformationFile(HANDLE h, IO_STATUS_BLOCK *iosb, void *buf,
+                                ULONG len, int cls) {
+  return NtQueryInformationFile(h, iosb, buf, len, cls);
+}
+
+NTSTATUS ZwSetInformationFile(HANDLE h, IO_STATUS_BLOCK *iosb, void *buf,
+                              ULONG len, int cls) {
+  return NtSetInformationFile(h, iosb, buf, len, cls);
+}
 
 NTSTATUS NtCreateFile(HANDLE *FileHandle, ULONG Access, OBJECT_ATTRIBUTES *Obj,
                       IO_STATUS_BLOCK *Iosb, PVOID AllocSize, ULONG FileAttr,

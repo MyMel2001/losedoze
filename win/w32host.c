@@ -30,6 +30,9 @@ HMODULE pe_module_main(void) { return main_img ? pe_module(main_img) : NULL; }
   X(NtCreateFile) X(NtOpenFile) X(NtReadFile) X(NtWriteFile) X(NtClose) \
   X(NtAllocateVirtualMemory) X(NtFreeVirtualMemory) X(NtDelayExecution) \
   X(NtWaitForSingleObject) X(NtQueryInformationFile) X(NtSetInformationFile) \
+  X(ZwCreateFile) X(ZwOpenFile) X(ZwReadFile) X(ZwWriteFile) X(ZwClose) \
+  X(ZwAllocateVirtualMemory) X(ZwFreeVirtualMemory) X(ZwDelayExecution) \
+  X(ZwWaitForSingleObject) X(ZwQueryInformationFile) X(ZwSetInformationFile) \
   X(nt_name)
 
 #define K32_LIST(X) \
