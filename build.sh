@@ -507,6 +507,29 @@ fi
 EOF
     fi
     cat >> "$ROOT/etc/losedoze/autostart.sh" <<'EOF'
+MODE=$(tr '\0' '\n' < /proc/cmdline 2>/dev/null | sed -n 's/^LOSEDOZE_AUTORUN=//p' | head -n1)
+[ -n "$MODE" ] || MODE=${LOSEDOZE_AUTORUN:-browser}
+LOG=/var/log/losedoze.log
+count_manage() {
+    c=$(grep -c "manage:" "$LOG" 2>/dev/null)
+    [ -n "$c" ] || c=0
+    echo "$c"
+}
+run_browser() {
+    rm -f /tmp/losweb
+    /usr/bin/losweb > /tmp/losweb 2>&1 &
+    i=0
+    while ! grep -q "LOSEDOZE BROWSER OK" /tmp/losweb 2>/dev/null && [ $i -lt 150 ]; do sleep 0.2; i=$((i + 1)); done
+    grep -q "LOSEDOZE BROWSER OK" /tmp/losweb 2>/dev/null && echo "LOSEDOZE BROWSER OK" > /dev/console || echo "LOSEDOZE BROWSER FAIL" > /dev/console
+}
+run_terminal() {
+    rm -f /tmp/losterm
+    /usr/bin/losterm > /tmp/losterm 2>&1 &
+    i=0
+    while ! grep -q "LOSEDOZE TERMINAL OK" /tmp/losterm 2>/dev/null && [ $i -lt 150 ]; do sleep 0.2; i=$((i + 1)); done
+    grep -q "LOSEDOZE TERMINAL OK" /tmp/losterm 2>/dev/null && echo "LOSEDOZE TERMINAL OK" > /dev/console || echo "LOSEDOZE TERMINAL FAIL" > /dev/console
+}
+if [ "$MODE" = "suite" ]; then
 # console app: stdout carries the marker
 w32host /opt/losedoze/apps/hello.exe > /tmp/w32hello 2>&1; HRC=$?
 grep -q "LOSEDOZE WIN32 APP OK" /tmp/w32hello 2>/dev/null && HOK=1 || HOK=0
@@ -701,10 +724,19 @@ fi
 cat /tmp/netdesktop.log /tmp/loseset.log /tmp/winforms.log > /dev/console 2>/dev/null
 cat /tmp/winforms.log > /dev/console 2>/dev/null
 
+# terminal app: /bin/sh -c runner over the Win32 layer
+run_terminal
+
+# web browser: clean-room k93 engine + http client over the Win32 layer
+run_browser
+
 # crash evidence: kernel fault reports (ip + module offset) and the
 # compositor's own log tail (its last actions before dying)
 dmesg 2>/dev/null | grep -i "segfault\|trap\|Call Trace\|general protection" > /dev/console
 tail -40 /var/log/losedoze.log > /dev/console 2>&1
+else
+    run_browser
+fi
 EOF
     chmod 755 "$ROOT/etc/losedoze/autostart.sh"
 fi

@@ -47,6 +47,12 @@ static int render_node(HDC dc, int *y, k93node *n, int cw, int scale, uint32_t f
 #define TOOLBAR    0x2a2a2au
 #define OMNI_X     60
 
+/* ---------------- link hit-testing ---------------- */
+typedef struct { char href[256]; int y, h; } Anchor;
+#define MAX_ANCHORS 64
+static Anchor anchors[MAX_ANCHORS];
+static int anchor_n;
+
 /* ---------------- browser state ---------------- */
 static HWND hwnd;
 static char cur_url[1024];
@@ -82,6 +88,8 @@ static void nav_to_impl(const char *url, int push) {
     if (push) push_hist();
     loading = 1;
     page_valid = 0;
+    anchor_n = 0;
+    content_y = 0;
     InvalidateRect(hwnd, NULL, 1);
     struct loshttp r;
     char err[256];
@@ -255,7 +263,19 @@ static int render_node(HDC dc, int *y, k93node *n, int cw, int scale, uint32_t f
         !strcmp(n->tag, "blockquote") || !strcmp(n->tag, "pre") || !strcmp(n->tag, "td") ||
         !strcmp(n->tag, "th") || !strcmp(n->tag, "center") || !strcmp(n->tag, "figcaption")) {
         uint32_t col = (!strcmp(n->tag, "a") || !strcmp(n->tag, "li")) ? ACCENT : fg;
+        int ay = *y;
         adv = text_block(dc, 8, y, cw - 16, n->text ? n->text : "", nsize, col);
+        if (!strcmp(n->tag, "a") && n->text) {
+            /* record link rect for hit-testing (page coords, top-left origin) */
+            if (anchor_n < MAX_ANCHORS) {
+                Anchor *a = &anchors[anchor_n];
+                const char *href = k93html_attr(n, "href");
+                snprintf(a->href, sizeof a->href, "%s", href ? href : n->text);
+                a->y = ay;
+                a->h = adv;
+                anchor_n++;
+            }
+        }
     }
     return adv;
 }
@@ -265,6 +285,7 @@ static void render_content(HDC dc, int y, int cw) {
     k93node *b = k93html_query(doc, "body");
     k93node *root = b ? b : doc;
     int cy = y;
+    anchor_n = 0;
     render_node(dc, &cy, root, cw, 1, INK);
 }
 
@@ -296,7 +317,7 @@ static void paint(HWND h) {
     draw_btn(dc, 122, 7, 34, 26, "H", ACCENT, 0xffffffu);
     fill_rect(dc, OMNI_X, 7, W - OMNI_X - 12, 26, 0x333333u);
     txt_draw(dc, OMNI_X + 8, 8, omni_len ? omni : cur_url, 14, 0xf0f0f0u);
-    int y = TOOLBAR_H + 8;
+    int y = TOOLBAR_H + 8 + content_y;
     if (page_valid && doc) {
         txt_state(dc, 16, INK, PAGE_BG);
         render_content(dc, y, W - 16);
@@ -346,9 +367,21 @@ static LRESULT wndproc(HWND h, UINT msg, WPARAM wp, LPARAM lp) {
             else if (x >= 46 && x < 80) hist_fwd();
             else if (x >= 84 && x < 118) nav_reload();
             else if (x >= 122 && x < 156) nav_home();
-        } else {
-            content_y = y - TOOLBAR_H - 8;
+            InvalidateRect(h, NULL, 1);
+            return 0;
         }
+        /* content coordinates: page row under the pointer -> link hit-test */
+        int page_y = content_y + (y - TOOLBAR_H - 8);
+        const char *clicked = NULL;
+        for (int i = anchor_n - 1; i >= 0; i--) {
+            if (x >= 8 && page_y >= anchors[i].y && page_y < anchors[i].y + anchors[i].h) {
+                clicked = anchors[i].href;
+                break;
+            }
+        }
+        content_y = y - TOOLBAR_H - 8;
+        if (content_y < 0) content_y = 0;
+        if (clicked) { nav_to(clicked); return 0; }
         InvalidateRect(h, NULL, 1);
         return 0;
     }

@@ -1110,8 +1110,7 @@ const u32 *wlwin_pixels(WlWin *w, int *stride4, int *bw, int *bh) {
 }
 
 void wlwin_configure(WlWin *w, int cw, int ch) {
-    if (cw < 1) cw = 1;
-    if (ch < 1) ch = 1;
+    if (cw < 1 || ch < 1) return;        /* unset/"client picks": never push a bogus 1x1 */
     w->cw = cw; w->ch = ch;              /* requested size sticks */
     xdg_send_configure((Wi *)w, (uint32_t)cw, (uint32_t)ch, w->activated);
 }
