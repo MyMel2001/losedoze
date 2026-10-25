@@ -96,7 +96,8 @@ int user32_have_msg(void);        /* queued messages or pending paint */
 
 /* ---------------- shared handle/string layer (ntdll.c) ---------------- */
 #define W32_HANDLE_MAGIC 0x33484e57u
-enum { HK_FD = 1, HK_STDIN, HK_STDOUT, HK_STDERR, HK_HEAP, HK_MODULE, HK_EVENT };
+enum { HK_FD = 1, HK_STDIN, HK_STDOUT, HK_STDERR, HK_HEAP, HK_MODULE, HK_EVENT,
+       HK_MEM, HK_SEM, HK_MUTEX, HK_TIMER };
 typedef struct W32Handle {
   W32 magic;
   int kind;   /* HK_* (ntdll internal) */

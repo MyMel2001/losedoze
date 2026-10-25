@@ -448,6 +448,44 @@ W32API NTSTATUS NtDelayExecution(BOOL, W64S *);
 W32API NTSTATUS NtWaitForSingleObject(HANDLE, BOOL, W64S *);
 W32API NTSTATUS NtQueryInformationFile(HANDLE, IO_STATUS_BLOCK *, PVOID, ULONG, int);
 W32API NTSTATUS NtSetInformationFile(HANDLE, IO_STATUS_BLOCK *, PVOID, ULONG, int);
+W32API NTSTATUS NtCreateEvent(HANDLE *, W32, W32);
+W32API NTSTATUS NtOpenEvent(HANDLE *, OBJECT_ATTRIBUTES *);
+W32API NTSTATUS NtSetEvent(HANDLE);
+W32API NTSTATUS NtResetEvent(HANDLE);
+W32API NTSTATUS NtCloseEvent(HANDLE);
+W32API NTSTATUS NtCreateSemaphore(HANDLE *, W32, OBJECT_ATTRIBUTES *);
+W32API NTSTATUS NtOpenSemaphore(HANDLE *, OBJECT_ATTRIBUTES *);
+W32API NTSTATUS NtReleaseSemaphore(HANDLE, W32);
+W32API NTSTATUS NtCloseSemaphore(HANDLE);
+W32API NTSTATUS NtCreateMutex(HANDLE *, W32, OBJECT_ATTRIBUTES *);
+W32API NTSTATUS NtOpenMutex(HANDLE *, OBJECT_ATTRIBUTES *);
+W32API NTSTATUS NtReleaseMutex(HANDLE);
+W32API NTSTATUS NtCloseMutex(HANDLE);
+W32API NTSTATUS NtCreateTimer(HANDLE *, W64, OBJECT_ATTRIBUTES *);
+W32API NTSTATUS NtOpenTimer(HANDLE *, OBJECT_ATTRIBUTES *);
+W32API NTSTATUS NtSetTimer(HANDLE, W64);
+W32API NTSTATUS NtCancelTimer(HANDLE);
+W32API NTSTATUS NtCloseTimer(HANDLE);
+W32API NTSTATUS NtSignalAndWaitForSingleObject(HANDLE, HANDLE);
+W32API NTSTATUS ZwCreateEvent(HANDLE *, W32, W32);
+W32API NTSTATUS ZwOpenEvent(HANDLE *, OBJECT_ATTRIBUTES *);
+W32API NTSTATUS ZwSetEvent(HANDLE);
+W32API NTSTATUS ZwResetEvent(HANDLE);
+W32API NTSTATUS ZwCloseEvent(HANDLE);
+W32API NTSTATUS ZwCreateSemaphore(HANDLE *, W32, OBJECT_ATTRIBUTES *);
+W32API NTSTATUS ZwOpenSemaphore(HANDLE *, OBJECT_ATTRIBUTES *);
+W32API NTSTATUS ZwReleaseSemaphore(HANDLE, W32);
+W32API NTSTATUS ZwCloseSemaphore(HANDLE);
+W32API NTSTATUS ZwCreateMutex(HANDLE *, W32, OBJECT_ATTRIBUTES *);
+W32API NTSTATUS ZwOpenMutex(HANDLE *, OBJECT_ATTRIBUTES *);
+W32API NTSTATUS ZwReleaseMutex(HANDLE);
+W32API NTSTATUS ZwCloseMutex(HANDLE);
+W32API NTSTATUS ZwCreateTimer(HANDLE *, W64, OBJECT_ATTRIBUTES *);
+W32API NTSTATUS ZwOpenTimer(HANDLE *, OBJECT_ATTRIBUTES *);
+W32API NTSTATUS ZwSetTimer(HANDLE, W64);
+W32API NTSTATUS ZwCancelTimer(HANDLE);
+W32API NTSTATUS ZwCloseTimer(HANDLE);
+W32API NTSTATUS ZwSignalAndWaitForSingleObject(HANDLE, HANDLE);
 W32API NTSTATUS ZwCreateFile(HANDLE *, ULONG, OBJECT_ATTRIBUTES *, IO_STATUS_BLOCK *,
                       PVOID, ULONG, ULONG, ULONG, ULONG, PVOID, ULONG);
 W32API NTSTATUS ZwOpenFile(HANDLE *, ULONG, OBJECT_ATTRIBUTES *, IO_STATUS_BLOCK *,
@@ -464,6 +502,39 @@ W32API NTSTATUS ZwDelayExecution(BOOL, W64S *);
 W32API NTSTATUS ZwWaitForSingleObject(HANDLE, BOOL, W64S *);
 W32API NTSTATUS ZwQueryInformationFile(HANDLE, IO_STATUS_BLOCK *, PVOID, ULONG, int);
 W32API NTSTATUS ZwSetInformationFile(HANDLE, IO_STATUS_BLOCK *, PVOID, ULONG, int);
+
+W32API NTSTATUS NtReadVirtualMemory(HANDLE h, PVOID BaseAddress, PVOID Buffer,
+                                   ULONG Length, ULONG *ReturnLength);
+W32API NTSTATUS NtWriteVirtualMemory(HANDLE h, PVOID BaseAddress, PVOID Buffer,
+                                   ULONG Length, ULONG *ReturnLength);
+W32API NTSTATUS NtUnmapViewOfSection(HANDLE h, PVOID BaseAddress);
+W32API NTSTATUS NtProtectVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Protect,
+                                     ULONG *PageProtection);
+W32API NTSTATUS NtFlushVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Length);
+W32API NTSTATUS NtLockVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Length);
+W32API NTSTATUS NtUnlockVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Length);
+W32API NTSTATUS NtReadVirtualMemoryEx(HANDLE h, HANDLE section, PVOID BaseAddress,
+                                    PVOID Buffer, ULONG Len, ULONG *ReturnLength);
+W32API NTSTATUS NtWriteVirtualMemoryEx(HANDLE h, HANDLE section, PVOID BaseAddress,
+                                    PVOID Buffer, ULONG Len, ULONG *ReturnLength);
+W32API NTSTATUS NtAllocateVirtualMemoryEx(HANDLE h, PVOID *BaseAddress, ULONG AllocType,
+                                        ULONG Protect, ULONG_PTR *Size);
+W32API NTSTATUS ZwReadVirtualMemory(HANDLE h, PVOID BaseAddress, PVOID Buffer,
+                                   ULONG Length, ULONG *ReturnLength);
+W32API NTSTATUS ZwWriteVirtualMemory(HANDLE h, PVOID BaseAddress, PVOID Buffer,
+                                   ULONG Length, ULONG *ReturnLength);
+W32API NTSTATUS ZwUnmapViewOfSection(HANDLE h, PVOID BaseAddress);
+W32API NTSTATUS ZwProtectVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Protect,
+                                     ULONG *PageProtection);
+W32API NTSTATUS ZwFlushVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Length);
+W32API NTSTATUS ZwLockVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Length);
+W32API NTSTATUS ZwUnlockVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Length);
+W32API NTSTATUS ZwReadVirtualMemoryEx(HANDLE h, HANDLE section, PVOID BaseAddress,
+                                    PVOID Buffer, ULONG Len, ULONG *ReturnLength);
+W32API NTSTATUS ZwWriteVirtualMemoryEx(HANDLE h, HANDLE section, PVOID BaseAddress,
+                                    PVOID Buffer, ULONG Len, ULONG *ReturnLength);
+W32API NTSTATUS ZwAllocateVirtualMemoryEx(HANDLE h, PVOID *BaseAddress, ULONG AllocType,
+                                        ULONG Protect, ULONG_PTR *Size);
 
 /* diagnostics */
 W32API const char *nt_name(W32 nr);

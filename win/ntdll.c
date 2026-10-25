@@ -24,6 +24,13 @@ enum {
 #undef X
 };
 
+/* hand-added object-syscall slots absent from the reference CSV */
+enum {
+  NR_NtCloseEvent = 0x1ea, NR_NtCloseSemaphore = 0x1eb, NR_NtCreateMutex = 0x1ec,
+  NR_NtOpenMutex = 0x1ed, NR_NtReleaseMutex = 0x1ee, NR_NtCloseMutex = 0x1ef,
+  NR_NtCloseTimer = 0x1f0, NR_NtWriteVirtualMemoryEx = 0x1f1,
+};
+
 static const char *const nt_names[NT_NR_MAX] = {
 #define X(name, nr) [nr] = #name,
     NT_SYSCALL_LIST(X)
@@ -53,6 +60,26 @@ int w32_handle_kind(HANDLE h, int want) {
 int w32_handle_fd(HANDLE h) { return w32_handle_kind(h, 0) ? ((W32Handle *)h)->fd : -1; }
 W32Handle *w32_handle(HANDLE h) {
   return w32_handle_kind(h, 0) ? (W32Handle *)h : NULL;
+}
+
+/* ---------------- anonymous memory handles (Nt* virtual memory) ---------------- */
+enum { NT_MEM_HANDLES = 64 };
+static W32Handle *nt_mem_handles[NT_MEM_HANDLES];
+static int nt_nmem_handles;
+
+static W32Handle *nt_mem_find(PVOID base) {
+  for (int i = 0; i < NT_MEM_HANDLES; i++)
+    if (nt_mem_handles[i] && nt_mem_handles[i]->ptr == base) return nt_mem_handles[i];
+  return NULL;
+}
+
+static void nt_mem_register(W32Handle *h) {
+  if (nt_nmem_handles < NT_MEM_HANDLES) nt_mem_handles[nt_nmem_handles++] = h;
+}
+
+static void nt_mem_unregister(W32Handle *h) {
+  for (int i = 0; i < NT_MEM_HANDLES; i++)
+    if (nt_mem_handles[i] == h) { nt_mem_handles[i] = nt_mem_handles[--nt_nmem_handles]; break; }
 }
 
 /* ---------------- string helpers (shared) ---------------- */
@@ -192,16 +219,17 @@ static long h_NtClose(const long *a) {
   W32Handle *h = w32_handle((HANDLE)a[0]);
   if (!h) return STATUS_INVALID_HANDLE;
   if (h->fd >= 0 && h->kind == HK_FD) close(h->fd);
+  if (h->kind == HK_MEM) {
+    if (h->ptr) munmap(h->ptr, h->size ? (size_t)h->size : 4096);
+    nt_mem_unregister(h);
+    h->ptr = NULL;
+  }
   h->magic = 0;
   free(h);
   return STATUS_SUCCESS;
 }
 
-static long h_NtAllocateVirtualMemory(const long *a) {
-  PVOID *base = (PVOID *)a[1];
-  ULONG_PTR *psize = (ULONG_PTR *)a[3];
-  W32 type = (W32)a[4], prot = (W32)a[5];
-  (void)type;
+static long nt_allocate_mem(PVOID *base, ULONG_PTR *psize, W32 prot) {
   if (!base || !psize) return STATUS_ACCESS_DENIED;
   size_t sz = *psize ? (size_t)*psize : 4096;
   sz = (sz + 0xfff) & ~0xffful;
@@ -211,7 +239,25 @@ static long h_NtAllocateVirtualMemory(const long *a) {
   if (p == MAP_FAILED) return STATUS_NO_MEMORY;
   *base = p;
   *psize = sz;
+  W32Handle *h = w32_handle_new(HK_MEM, -1);
+  if (h) { h->kind = HK_MEM; h->fd = -1; h->ptr = p; h->size = sz; nt_mem_register(h); }
   return STATUS_SUCCESS;
+}
+
+static long h_NtAllocateVirtualMemory(const long *a) {
+  PVOID *base = (PVOID *)a[1];
+  ULONG_PTR *psize = (ULONG_PTR *)a[3];
+  W32 type = (W32)a[4], prot = (W32)a[5];
+  (void)type;
+  return nt_allocate_mem(base, psize, prot);
+}
+
+static long h_NtAllocateVirtualMemoryEx(const long *a) {
+  PVOID *base = (PVOID *)a[1];
+  W32 type = (W32)a[2], prot = (W32)a[3];
+  ULONG_PTR *psize = (ULONG_PTR *)a[4];
+  (void)type;
+  return nt_allocate_mem(base, psize, prot);
 }
 
 static long h_NtFreeVirtualMemory(const long *a) {
@@ -220,10 +266,14 @@ static long h_NtFreeVirtualMemory(const long *a) {
   W32 type = (W32)a[3];
   if (!base) return STATUS_ACCESS_DENIED;
   if (type & MEM_RELEASE) {
-    size_t sz = psize && *psize ? (size_t)*psize : 0;
-    if (munmap(*base, sz ? sz : 4096) != 0) return STATUS_ACCESS_DENIED;
-    *base = NULL;
-    if (psize) *psize = 0;
+    if (*base) {
+      W32Handle *h = nt_mem_find(*base);
+      size_t sz = psize && *psize ? (size_t)*psize : 0;
+      if (munmap(*base, sz ? sz : 4096) != 0) return STATUS_ACCESS_DENIED;
+      *base = NULL;
+      if (psize) *psize = 0;
+      if (h) nt_mem_unregister(h);
+    }
   }
   return STATUS_SUCCESS;
 }
@@ -248,7 +298,29 @@ static long h_NtWaitForSingleObject(const long *a) {
   W64S *timeout = (W64S *)a[2];
   (void)alert;
   if (!h) return STATUS_INVALID_HANDLE;
-  if (h->kind == HK_EVENT) return STATUS_SUCCESS; /* auto/manual: always signaled */
+  if (h->kind == HK_EVENT) {
+    if (*(long *)h->ptr) return STATUS_SUCCESS; /* signaled -> done */
+    return STATUS_PENDING;
+  }
+  if (h->kind == HK_SEM) { /* counting semaphore: wait consumes one */
+    long s = *(long *)h->ptr;
+    if (s > 0) { *(long *)h->ptr = s - 1; return STATUS_SUCCESS; }
+    return STATUS_PENDING;
+  }
+  if (h->kind == HK_MUTEX) { /* boolean mutex: 0 = free, 1 = held */
+    if (*(long *)h->ptr == 0) { *(long *)h->ptr = 1; return STATUS_SUCCESS; }
+    return STATUS_PENDING;
+  }
+  if (h->kind == HK_TIMER) { /* waitable timer: absolute 100ns-ish deadline */
+    long due = *(long *)h->ptr;
+    if (due > 0) {
+      struct timespec ts;
+      clock_gettime(CLOCK_MONOTONIC, &ts);
+      long long now = (long long)ts.tv_sec * 10000000LL + (long long)ts.tv_nsec / 100;
+      if (now >= due) { *(long *)h->ptr = 0; return STATUS_SUCCESS; }
+    }
+    return STATUS_PENDING;
+  }
   if (timeout && *timeout == 0) return STATUS_PENDING;
   return STATUS_SUCCESS; /* single-threaded host: no real wait needed */
 }
@@ -298,6 +370,383 @@ static long h_NtSetInformationFile(const long *a) {
   return STATUS_SUCCESS;
 }
 
+/* ---------------- named object state: events / semaphores / mutexes / timers - */
+
+enum { NT_MAX_OBJS = 256 };
+typedef struct { int kind; char name[256]; W32Handle *h; } NtRegObj;
+static NtRegObj nt_reg[NT_MAX_OBJS];
+static int nt_nreg;
+
+static int nt_obj_find(const char *name, int kind) {
+  for (int i = 0; i < nt_nreg; i++)
+    if (nt_reg[i].h && !strcmp(nt_reg[i].name, name) && nt_reg[i].kind == kind) return i;
+  return -1;
+}
+
+static int nt_obj_intern(const char *name, int kind, long state, W32Handle **oph) {
+  int i = nt_obj_find(name, kind);
+  if (i >= 0) { *(long *)nt_reg[i].h->ptr = state; if (oph) *oph = nt_reg[i].h; return i; }
+  if (nt_nreg >= NT_MAX_OBJS) return -1;
+  W32Handle *h = w32_handle_new(kind, -1);
+  if (!h) return -1;
+  h->kind = kind; h->fd = -1; h->ptr = calloc(1, sizeof(long));
+  if (!h->ptr) { free(h); return -1; }
+  *(long *)h->ptr = state;
+  NtRegObj *o = &nt_reg[nt_nreg++];
+  o->kind = kind; o->h = h; snprintf(o->name, sizeof o->name, "%s", name);
+  if (oph) *oph = h;
+  return nt_nreg - 1;
+}
+
+static W32Handle *nt_obj_new(int kind, long state) {
+  W32Handle *h = w32_handle_new(kind, -1);
+  if (!h) return NULL;
+  h->kind = kind; h->fd = -1; h->ptr = calloc(1, sizeof(long));
+  if (!h->ptr) { free(h); return NULL; }
+  *(long *)h->ptr = state;
+  return h;
+}
+
+static long nt_obj_state_of(W32Handle *h, int kind) {
+  if (!h || h->kind != kind) return -1;
+  return h->ptr ? *(long *)h->ptr : -1;
+}
+
+static long h_NtCreateEvent(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  W32 state = (W32)a[1];
+  OBJECT_ATTRIBUTES *oa = (OBJECT_ATTRIBUTES *)a[2];
+  if (!out) return STATUS_INVALID_HANDLE;
+  W32Handle *h;
+  if (oa && oa->ObjectName && oa->ObjectName->Buffer) {
+    char u8[1024];
+    w16_to_utf8(oa->ObjectName->Buffer, oa->ObjectName->Length / 2, u8, sizeof u8);
+    if (nt_obj_intern(u8, HK_EVENT, state, &h) < 0) return STATUS_NO_MEMORY;
+  } else {
+    h = nt_obj_new(HK_EVENT, state);
+    if (!h) return STATUS_NO_MEMORY;
+  }
+  *out = h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtOpenEvent(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  OBJECT_ATTRIBUTES *oa = (OBJECT_ATTRIBUTES *)a[1];
+  if (!out || !oa || !oa->ObjectName || !oa->ObjectName->Buffer) return STATUS_INVALID_HANDLE;
+  char u8[1024];
+  w16_to_utf8(oa->ObjectName->Buffer, oa->ObjectName->Length / 2, u8, sizeof u8);
+  int i = nt_obj_find(u8, HK_EVENT);
+  if (i < 0) return STATUS_OBJECT_NAME_NOT_FOUND;
+  *out = nt_reg[i].h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtSetEvent(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  if (!h || h->kind != HK_EVENT) return STATUS_INVALID_HANDLE;
+  *(long *)h->ptr = 1;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtResetEvent(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  if (!h || h->kind != HK_EVENT) return STATUS_INVALID_HANDLE;
+  *(long *)h->ptr = 0;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtCloseEvent(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  if (!h || h->kind != HK_EVENT) return STATUS_INVALID_HANDLE;
+  free(h->ptr); h->ptr = NULL; h->magic = 0; free(h);
+  return STATUS_SUCCESS;
+}
+
+static long h_NtCreateSemaphore(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  W32 count = (W32)a[1];
+  OBJECT_ATTRIBUTES *oa = (OBJECT_ATTRIBUTES *)a[2];
+  if (!out) return STATUS_INVALID_HANDLE;
+  W32Handle *h;
+  if (oa && oa->ObjectName && oa->ObjectName->Buffer) {
+    char u8[1024];
+    w16_to_utf8(oa->ObjectName->Buffer, oa->ObjectName->Length / 2, u8, sizeof u8);
+    if (nt_obj_intern(u8, HK_SEM, count, &h) < 0) return STATUS_NO_MEMORY;
+  } else { h = nt_obj_new(HK_SEM, count); if (!h) return STATUS_NO_MEMORY; }
+  *out = h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtOpenSemaphore(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  OBJECT_ATTRIBUTES *oa = (OBJECT_ATTRIBUTES *)a[1];
+  if (!out || !oa || !oa->ObjectName || !oa->ObjectName->Buffer) return STATUS_INVALID_HANDLE;
+  char u8[1024];
+  w16_to_utf8(oa->ObjectName->Buffer, oa->ObjectName->Length / 2, u8, sizeof u8);
+  int i = nt_obj_find(u8, HK_SEM);
+  if (i < 0) return STATUS_OBJECT_NAME_NOT_FOUND;
+  *out = nt_reg[i].h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtReleaseSemaphore(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  W32 count = (W32)a[1];
+  long st = nt_obj_state_of(h, HK_SEM);
+  if (st < 0) return STATUS_INVALID_HANDLE;
+  *(long *)h->ptr += (long)count;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtCloseSemaphore(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  if (!h || h->kind != HK_SEM) return STATUS_INVALID_HANDLE;
+  free(h->ptr); h->ptr = NULL; h->magic = 0; free(h);
+  return STATUS_SUCCESS;
+}
+
+static long h_NtCreateMutex(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  W32 state = (W32)a[1];
+  OBJECT_ATTRIBUTES *oa = (OBJECT_ATTRIBUTES *)a[2];
+  if (!out) return STATUS_INVALID_HANDLE;
+  W32Handle *h;
+  if (oa && oa->ObjectName && oa->ObjectName->Buffer) {
+    char u8[1024];
+    w16_to_utf8(oa->ObjectName->Buffer, oa->ObjectName->Length / 2, u8, sizeof u8);
+    if (nt_obj_intern(u8, HK_MUTEX, state, &h) < 0) return STATUS_NO_MEMORY;
+  } else { h = nt_obj_new(HK_MUTEX, state); if (!h) return STATUS_NO_MEMORY; }
+  *out = h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtOpenMutex(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  OBJECT_ATTRIBUTES *oa = (OBJECT_ATTRIBUTES *)a[1];
+  if (!out || !oa || !oa->ObjectName || !oa->ObjectName->Buffer) return STATUS_INVALID_HANDLE;
+  char u8[1024];
+  w16_to_utf8(oa->ObjectName->Buffer, oa->ObjectName->Length / 2, u8, sizeof u8);
+  int i = nt_obj_find(u8, HK_MUTEX);
+  if (i < 0) return STATUS_OBJECT_NAME_NOT_FOUND;
+  *out = nt_reg[i].h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtReleaseMutex(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  if (!h || h->kind != HK_MUTEX) return STATUS_INVALID_HANDLE;
+  *(long *)h->ptr = 1;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtCloseMutex(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  if (!h || h->kind != HK_MUTEX) return STATUS_INVALID_HANDLE;
+  free(h->ptr); h->ptr = NULL; h->magic = 0; free(h);
+  return STATUS_SUCCESS;
+}
+
+static long h_NtCreateTimer(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  W64 due = (W64)a[1];
+  OBJECT_ATTRIBUTES *oa = (OBJECT_ATTRIBUTES *)a[2];
+  if (!out) return STATUS_INVALID_HANDLE;
+  W32Handle *h;
+  if (oa && oa->ObjectName && oa->ObjectName->Buffer) {
+    char u8[1024];
+    w16_to_utf8(oa->ObjectName->Buffer, oa->ObjectName->Length / 2, u8, sizeof u8);
+    if (nt_obj_intern(u8, HK_TIMER, (long)due, &h) < 0) return STATUS_NO_MEMORY;
+  } else { h = nt_obj_new(HK_TIMER, (long)due); if (!h) return STATUS_NO_MEMORY; }
+  *out = h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtOpenTimer(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  OBJECT_ATTRIBUTES *oa = (OBJECT_ATTRIBUTES *)a[1];
+  if (!out || !oa || !oa->ObjectName || !oa->ObjectName->Buffer) return STATUS_INVALID_HANDLE;
+  char u8[1024];
+  w16_to_utf8(oa->ObjectName->Buffer, oa->ObjectName->Length / 2, u8, sizeof u8);
+  int i = nt_obj_find(u8, HK_TIMER);
+  if (i < 0) return STATUS_OBJECT_NAME_NOT_FOUND;
+  *out = nt_reg[i].h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtSetTimer(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  W64 due = (W64)a[1];
+  if (!h || h->kind != HK_TIMER) return STATUS_INVALID_HANDLE;
+  *(long *)h->ptr = (long)due;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtCancelTimer(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  if (!h || h->kind != HK_TIMER) return STATUS_INVALID_HANDLE;
+  *(long *)h->ptr = -1; /* cancelled */
+  return STATUS_SUCCESS;
+}
+
+static long h_NtCloseTimer(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  if (!h || h->kind != HK_TIMER) return STATUS_INVALID_HANDLE;
+  free(h->ptr); h->ptr = NULL; h->magic = 0; free(h);
+  return STATUS_SUCCESS;
+}
+
+static long h_NtSignalAndWaitForSingleObject(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  W32Handle *h2 = w32_handle((HANDLE)a[1]);
+  if (!h || h->kind != HK_EVENT) return STATUS_INVALID_HANDLE;
+  *(long *)h->ptr = 1;
+  long st = -2;
+  if (h2 && h2->kind == HK_EVENT && *(long *)h2->ptr) st = 0;
+  if (h2 && h2->kind == HK_SEM && *(long *)h2->ptr > 0) { *(long *)h2->ptr -= 1; st = 0; }
+  if (h2 && h2->kind == HK_MUTEX && *(long *)h2->ptr == 0) { *(long *)h2->ptr = 1; st = 0; }
+  if (st != 0) return STATUS_PENDING;
+  *(long *)h->ptr = 0;
+  return STATUS_SUCCESS;
+}
+
+/* ---------------- memory syscalls: read / write / protect / unmap -------- */
+
+static W32Handle *nt_mem_for(PVOID base, W32Handle *h) {
+  if (h && h->kind == HK_MEM) return h;
+  return nt_mem_find(base);
+}
+
+static long h_NtReadVirtualMemory(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  PVOID base = (PVOID)a[1];
+  void *buf = (void *)a[2];
+  W32 len = (W32)a[3];
+  ULONG *rl = (ULONG *)a[4];
+  W32Handle *mh = nt_mem_for(base, h);
+  if (!mh) { if (rl) *rl = 0; return STATUS_INVALID_HANDLE; }
+  size_t off = (size_t)((char *)base - (char *)mh->ptr);
+  if (off >= (size_t)mh->size || (size_t)len > (size_t)mh->size - off) { if (rl) *rl = 0; return STATUS_INVALID_PARAMETER; }
+  if (len > 0) memcpy(buf, (char *)mh->ptr + off, len);
+  if (rl) *rl = (ULONG)len;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtWriteVirtualMemory(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  PVOID base = (PVOID)a[1];
+  const void *buf = (const void *)a[2];
+  W32 len = (W32)a[3];
+  ULONG *rl = (ULONG *)a[4];
+  W32Handle *mh = nt_mem_for(base, h);
+  if (!mh) { if (rl) *rl = 0; return STATUS_INVALID_HANDLE; }
+  size_t off = (size_t)((char *)base - (char *)mh->ptr);
+  if (off >= (size_t)mh->size || (size_t)len > (size_t)mh->size - off) { if (rl) *rl = 0; return STATUS_INVALID_PARAMETER; }
+  if (len > 0) memcpy((char *)mh->ptr + off, buf, len);
+  if (rl) *rl = (ULONG)len;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtUnmapViewOfSection(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  PVOID base = (PVOID)a[1];
+  W32Handle *mh = nt_mem_for(base, h);
+  if (!mh) return STATUS_INVALID_HANDLE;
+  size_t sz = (size_t)mh->size;
+  if (munmap(mh->ptr, sz ? sz : 4096) != 0) return STATUS_ACCESS_DENIED;
+  nt_mem_unregister(mh);
+  free(mh->ptr);
+  mh->ptr = NULL; mh->magic = 0;
+  free(mh);
+  return STATUS_SUCCESS;
+}
+
+static long h_NtProtectVirtualMemory(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  PVOID base = (PVOID)a[1];
+  W32 protect = (W32)a[2];
+  ULONG *ppage = (ULONG *)a[3];
+  W32Handle *mh = nt_mem_for(base, h);
+  if (!mh) { if (ppage) *ppage = PAGE_READWRITE; return STATUS_INVALID_HANDLE; }
+  if ((size_t)((char *)base - (char *)mh->ptr) >= (size_t)mh->size) {
+    if (ppage) *ppage = PAGE_READWRITE;
+    return STATUS_INVALID_PARAMETER;
+  }
+  int pr = 0;
+  if (protect & PAGE_EXECUTE_READWRITE) pr = PROT_READ | PROT_WRITE | PROT_EXEC;
+  else if (protect & PAGE_READWRITE) pr = PROT_READ | PROT_WRITE;
+  else if (protect & PAGE_READONLY) pr = PROT_READ;
+  else if (protect & PAGE_NOACCESS) pr = 0;
+  size_t pg = 4096;
+  size_t pgoff = ((size_t)((char *)base)) % pg;
+  char *start = (char *)((size_t)((char *)base) - pgoff);
+  size_t len = ((size_t)mh->size + pg - 1) & ~(pg - 1);
+  if (mprotect(start, len, pr) != 0) return STATUS_ACCESS_DENIED;
+  if (ppage) *ppage = protect;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtFlushVirtualMemory(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  PVOID base = (PVOID)a[1];
+  W32 len = (W32)a[2];
+  (void)len;
+  W32Handle *mh = nt_mem_for(base, h);
+  return mh ? STATUS_SUCCESS : STATUS_INVALID_HANDLE;
+}
+
+static long h_NtLockVirtualMemory(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  PVOID base = (PVOID)a[1];
+  W32 len = (W32)a[2];
+  (void)len;
+  W32Handle *mh = nt_mem_for(base, h);
+  return mh ? STATUS_SUCCESS : STATUS_INVALID_HANDLE;
+}
+
+static long h_NtUnlockVirtualMemory(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  PVOID base = (PVOID)a[1];
+  W32 len = (W32)a[2];
+  (void)len;
+  W32Handle *mh = nt_mem_for(base, h);
+  return mh ? STATUS_SUCCESS : STATUS_INVALID_HANDLE;
+}
+
+static long h_NtReadVirtualMemoryEx(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  W32Handle *sh = w32_handle((HANDLE)a[1]);
+  (void)sh;
+  PVOID base = (PVOID)a[2];
+  void *buf = (void *)a[3];
+  W32 len = (W32)a[4];
+  ULONG *rl = (ULONG *)a[5];
+  W32Handle *mh = nt_mem_for(base, h);
+  if (!mh) { if (rl) *rl = 0; return STATUS_INVALID_HANDLE; }
+  size_t off = (size_t)((char *)base - (char *)mh->ptr);
+  if (off >= (size_t)mh->size || (size_t)len > (size_t)mh->size - off) { if (rl) *rl = 0; return STATUS_INVALID_PARAMETER; }
+  if (len > 0) memcpy(buf, (char *)mh->ptr + off, len);
+  if (rl) *rl = (ULONG)len;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtWriteVirtualMemoryEx(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  W32Handle *sh = w32_handle((HANDLE)a[1]);
+  (void)sh;
+  PVOID base = (PVOID)a[2];
+  const void *buf = (const void *)a[3];
+  W32 len = (W32)a[4];
+  ULONG *rl = (ULONG *)a[5];
+  W32Handle *mh = nt_mem_for(base, h);
+  if (!mh) { if (rl) *rl = 0; return STATUS_INVALID_HANDLE; }
+  size_t off = (size_t)((char *)base - (char *)mh->ptr);
+  if (off >= (size_t)mh->size || (size_t)len > (size_t)mh->size - off) { if (rl) *rl = 0; return STATUS_INVALID_PARAMETER; }
+  if (len > 0) memcpy((char *)mh->ptr + off, buf, len);
+  if (rl) *rl = (ULONG)len;
+  return STATUS_SUCCESS;
+}
+
 /* ---------------- dispatch table (numbers from windows-syscalls) -------- */
 static ntfn nt_tab[NT_NR_MAX];
 static int nt_ready;
@@ -310,6 +759,14 @@ static int nt_ready;
 
 static void nt_register(void) {
   NT_IMPL_MAP(NT_IMPL_MAP_REG)
+  nt_tab[NR_NtCloseEvent] = h_NtCloseEvent;
+  nt_tab[NR_NtCloseSemaphore] = h_NtCloseSemaphore;
+  nt_tab[NR_NtCreateMutex] = h_NtCreateMutex;
+  nt_tab[NR_NtOpenMutex] = h_NtOpenMutex;
+  nt_tab[NR_NtReleaseMutex] = h_NtReleaseMutex;
+  nt_tab[NR_NtCloseMutex] = h_NtCloseMutex;
+  nt_tab[NR_NtCloseTimer] = h_NtCloseTimer;
+  nt_tab[NR_NtWriteVirtualMemoryEx] = h_NtWriteVirtualMemoryEx;
   nt_trace_on = getenv("NT_TRACE") != NULL;
   nt_ready = 1;
 }
@@ -383,6 +840,285 @@ NTSTATUS ZwQueryInformationFile(HANDLE h, IO_STATUS_BLOCK *iosb, void *buf,
 NTSTATUS ZwSetInformationFile(HANDLE h, IO_STATUS_BLOCK *iosb, void *buf,
                               ULONG len, int cls) {
   return NtSetInformationFile(h, iosb, buf, len, cls);
+}
+
+/* ---- object state syscalls: events / semaphores / mutexes / timers ---- */
+
+NTSTATUS ZwSignalAndWaitForSingleObject(HANDLE hSignal, HANDLE hWait) {
+  return NtSignalAndWaitForSingleObject(hSignal, hWait);
+}
+
+NTSTATUS ZwCreateEvent(HANDLE *EventHandle, W32 Attributes, W32 InitialState) {
+  return NtCreateEvent(EventHandle, Attributes, InitialState);
+}
+
+NTSTATUS ZwOpenEvent(HANDLE *EventHandle, OBJECT_ATTRIBUTES *Attributes) {
+  return NtOpenEvent(EventHandle, Attributes);
+}
+
+NTSTATUS ZwSetEvent(HANDLE h) { return NtSetEvent(h); }
+NTSTATUS ZwResetEvent(HANDLE h) { return NtResetEvent(h); }
+NTSTATUS ZwCloseEvent(HANDLE h) { return NtCloseEvent(h); }
+
+NTSTATUS ZwCreateSemaphore(HANDLE *h, W32 Count, OBJECT_ATTRIBUTES *Oa) {
+  return NtCreateSemaphore(h, Count, Oa);
+}
+
+NTSTATUS ZwOpenSemaphore(HANDLE *h, OBJECT_ATTRIBUTES *Oa) {
+  return NtOpenSemaphore(h, Oa);
+}
+
+NTSTATUS ZwReleaseSemaphore(HANDLE h, W32 Count) { return NtReleaseSemaphore(h, Count); }
+NTSTATUS ZwCloseSemaphore(HANDLE h) { return NtCloseSemaphore(h); }
+
+NTSTATUS ZwCreateMutex(HANDLE *h, W32 State, OBJECT_ATTRIBUTES *Oa) {
+  return NtCreateMutex(h, State, Oa);
+}
+
+NTSTATUS ZwOpenMutex(HANDLE *h, OBJECT_ATTRIBUTES *Oa) { return NtOpenMutex(h, Oa); }
+NTSTATUS ZwReleaseMutex(HANDLE h) { return NtReleaseMutex(h); }
+NTSTATUS ZwCloseMutex(HANDLE h) { return NtCloseMutex(h); }
+
+NTSTATUS ZwCreateTimer(HANDLE *h, W64 Due, OBJECT_ATTRIBUTES *Oa) {
+  return NtCreateTimer(h, Due, Oa);
+}
+
+NTSTATUS ZwOpenTimer(HANDLE *h, OBJECT_ATTRIBUTES *Oa) { return NtOpenTimer(h, Oa); }
+NTSTATUS ZwSetTimer(HANDLE h, W64 Due) { return NtSetTimer(h, Due); }
+NTSTATUS ZwCancelTimer(HANDLE h) { return NtCancelTimer(h); }
+NTSTATUS ZwCloseTimer(HANDLE h) { return NtCloseTimer(h); }
+
+NTSTATUS NtCreateEvent(HANDLE *EventHandle, W32 Attributes, W32 InitialState) {
+  ARGV(3);
+  a[0] = (long)EventHandle; a[1] = (long)InitialState; a[2] = (long)Attributes;
+  return (NTSTATUS)nt_dispatch(NR_NtCreateEvent, a);
+}
+
+NTSTATUS NtOpenEvent(HANDLE *EventHandle, OBJECT_ATTRIBUTES *Attributes) {
+  ARGV(2);
+  a[0] = (long)EventHandle; a[1] = (long)Attributes;
+  return (NTSTATUS)nt_dispatch(NR_NtOpenEvent, a);
+}
+
+NTSTATUS NtSetEvent(HANDLE h) {
+  ARGV(1);
+  a[0] = (long)h;
+  return (NTSTATUS)nt_dispatch(NR_NtSetEvent, a);
+}
+
+NTSTATUS NtResetEvent(HANDLE h) {
+  ARGV(1);
+  a[0] = (long)h;
+  return (NTSTATUS)nt_dispatch(NR_NtResetEvent, a);
+}
+
+NTSTATUS NtCloseEvent(HANDLE h) {
+  ARGV(1);
+  a[0] = (long)h;
+  return (NTSTATUS)nt_dispatch(NR_NtCloseEvent, a);
+}
+
+NTSTATUS NtCreateSemaphore(HANDLE *h, W32 Count, OBJECT_ATTRIBUTES *Oa) {
+  ARGV(3);
+  a[0] = (long)h; a[1] = (long)Count; a[2] = (long)Oa;
+  return (NTSTATUS)nt_dispatch(NR_NtCreateSemaphore, a);
+}
+
+NTSTATUS NtOpenSemaphore(HANDLE *h, OBJECT_ATTRIBUTES *Oa) {
+  ARGV(2);
+  a[0] = (long)h; a[1] = (long)Oa;
+  return (NTSTATUS)nt_dispatch(NR_NtOpenSemaphore, a);
+}
+
+NTSTATUS NtReleaseSemaphore(HANDLE h, W32 Count) {
+  ARGV(2);
+  a[0] = (long)h; a[1] = (long)Count;
+  return (NTSTATUS)nt_dispatch(NR_NtReleaseSemaphore, a);
+}
+
+NTSTATUS NtCloseSemaphore(HANDLE h) {
+  ARGV(1);
+  a[0] = (long)h;
+  return (NTSTATUS)nt_dispatch(NR_NtCloseSemaphore, a);
+}
+
+NTSTATUS NtCreateMutex(HANDLE *h, W32 State, OBJECT_ATTRIBUTES *Oa) {
+  ARGV(3);
+  a[0] = (long)h; a[1] = (long)State; a[2] = (long)Oa;
+  return (NTSTATUS)nt_dispatch(NR_NtCreateMutex, a);
+}
+
+NTSTATUS NtOpenMutex(HANDLE *h, OBJECT_ATTRIBUTES *Oa) {
+  ARGV(2);
+  a[0] = (long)h; a[1] = (long)Oa;
+  return (NTSTATUS)nt_dispatch(NR_NtOpenMutex, a);
+}
+
+NTSTATUS NtReleaseMutex(HANDLE h) {
+  ARGV(1);
+  a[0] = (long)h;
+  return (NTSTATUS)nt_dispatch(NR_NtReleaseMutex, a);
+}
+
+NTSTATUS NtCloseMutex(HANDLE h) {
+  ARGV(1);
+  a[0] = (long)h;
+  return (NTSTATUS)nt_dispatch(NR_NtCloseMutex, a);
+}
+
+NTSTATUS NtCreateTimer(HANDLE *h, W64 Due, OBJECT_ATTRIBUTES *Oa) {
+  ARGV(3);
+  a[0] = (long)h; a[1] = (long)Due; a[2] = (long)Oa;
+  return (NTSTATUS)nt_dispatch(NR_NtCreateTimer, a);
+}
+
+NTSTATUS NtOpenTimer(HANDLE *h, OBJECT_ATTRIBUTES *Oa) {
+  ARGV(2);
+  a[0] = (long)h; a[1] = (long)Oa;
+  return (NTSTATUS)nt_dispatch(NR_NtOpenTimer, a);
+}
+
+NTSTATUS NtSetTimer(HANDLE h, W64 Due) {
+  ARGV(2);
+  a[0] = (long)h; a[1] = (long)Due;
+  return (NTSTATUS)nt_dispatch(NR_NtSetTimer, a);
+}
+
+NTSTATUS NtCancelTimer(HANDLE h) {
+  ARGV(1);
+  a[0] = (long)h;
+  return (NTSTATUS)nt_dispatch(NR_NtCancelTimer, a);
+}
+
+NTSTATUS NtCloseTimer(HANDLE h) {
+  ARGV(1);
+  a[0] = (long)h;
+  return (NTSTATUS)nt_dispatch(NR_NtCloseTimer, a);
+}
+
+NTSTATUS NtSignalAndWaitForSingleObject(HANDLE hSignal, HANDLE hWait) {
+  ARGV(2);
+  a[0] = (long)hSignal; a[1] = (long)hWait;
+  return (NTSTATUS)nt_dispatch(NR_NtSignalAndWaitForSingleObject, a);
+}
+
+/* ---- memory syscalls: read / write / protect / unmap / lock / flush ---- */
+
+NTSTATUS ZwReadVirtualMemory(HANDLE h, PVOID BaseAddress, PVOID Buffer, ULONG Length,
+                             ULONG *ReturnLength) {
+  return NtReadVirtualMemory(h, BaseAddress, Buffer, Length, ReturnLength);
+}
+
+NTSTATUS ZwWriteVirtualMemory(HANDLE h, PVOID BaseAddress, PVOID Buffer, ULONG Length,
+                              ULONG *ReturnLength) {
+  return NtWriteVirtualMemory(h, BaseAddress, Buffer, Length, ReturnLength);
+}
+
+NTSTATUS ZwUnmapViewOfSection(HANDLE h, PVOID BaseAddress) {
+  return NtUnmapViewOfSection(h, BaseAddress);
+}
+
+NTSTATUS ZwProtectVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Protect,
+                                ULONG *PageProtection) {
+  return NtProtectVirtualMemory(h, BaseAddress, Protect, PageProtection);
+}
+
+NTSTATUS ZwFlushVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Length) {
+  return NtFlushVirtualMemory(h, BaseAddress, Length);
+}
+
+NTSTATUS ZwLockVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Length) {
+  return NtLockVirtualMemory(h, BaseAddress, Length);
+}
+
+NTSTATUS ZwUnlockVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Length) {
+  return NtUnlockVirtualMemory(h, BaseAddress, Length);
+}
+
+NTSTATUS ZwReadVirtualMemoryEx(HANDLE h, HANDLE section, PVOID BaseAddress, PVOID Buffer,
+                              ULONG Len, ULONG *ReturnLength) {
+  return NtReadVirtualMemoryEx(h, section, BaseAddress, Buffer, Len, ReturnLength);
+}
+
+NTSTATUS ZwWriteVirtualMemoryEx(HANDLE h, HANDLE section, PVOID BaseAddress, PVOID Buffer,
+                               ULONG Len, ULONG *ReturnLength) {
+  return NtWriteVirtualMemoryEx(h, section, BaseAddress, Buffer, Len, ReturnLength);
+}
+
+NTSTATUS ZwAllocateVirtualMemoryEx(HANDLE h, PVOID *BaseAddress, ULONG AllocType,
+                                  ULONG Protect, ULONG_PTR *Size) {
+  return NtAllocateVirtualMemoryEx(h, BaseAddress, AllocType, Protect, Size);
+}
+
+NTSTATUS NtReadVirtualMemory(HANDLE h, PVOID BaseAddress, PVOID Buffer, ULONG Length,
+                             ULONG *ReturnLength) {
+  ARGV(5);
+  a[0] = (long)h; a[1] = (long)BaseAddress; a[2] = (long)Buffer;
+  a[3] = (long)Length; a[4] = (long)ReturnLength;
+  return (NTSTATUS)nt_dispatch(NR_NtReadVirtualMemory, a);
+}
+
+NTSTATUS NtWriteVirtualMemory(HANDLE h, PVOID BaseAddress, PVOID Buffer, ULONG Length,
+                              ULONG *ReturnLength) {
+  ARGV(5);
+  a[0] = (long)h; a[1] = (long)BaseAddress; a[2] = (long)Buffer;
+  a[3] = (long)Length; a[4] = (long)ReturnLength;
+  return (NTSTATUS)nt_dispatch(NR_NtWriteVirtualMemory, a);
+}
+
+NTSTATUS NtUnmapViewOfSection(HANDLE h, PVOID BaseAddress) {
+  ARGV(2);
+  a[0] = (long)h; a[1] = (long)BaseAddress;
+  return (NTSTATUS)nt_dispatch(NR_NtUnmapViewOfSection, a);
+}
+
+NTSTATUS NtProtectVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Protect,
+                                ULONG *PageProtection) {
+  ARGV(4);
+  a[0] = (long)h; a[1] = (long)BaseAddress; a[2] = (long)Protect; a[3] = (long)PageProtection;
+  return (NTSTATUS)nt_dispatch(NR_NtProtectVirtualMemory, a);
+}
+
+NTSTATUS NtFlushVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Length) {
+  ARGV(3);
+  a[0] = (long)h; a[1] = (long)BaseAddress; a[2] = (long)Length;
+  return (NTSTATUS)nt_dispatch(NR_NtFlushVirtualMemory, a);
+}
+
+NTSTATUS NtLockVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Length) {
+  ARGV(3);
+  a[0] = (long)h; a[1] = (long)BaseAddress; a[2] = (long)Length;
+  return (NTSTATUS)nt_dispatch(NR_NtLockVirtualMemory, a);
+}
+
+NTSTATUS NtUnlockVirtualMemory(HANDLE h, PVOID BaseAddress, ULONG Length) {
+  ARGV(3);
+  a[0] = (long)h; a[1] = (long)BaseAddress; a[2] = (long)Length;
+  return (NTSTATUS)nt_dispatch(NR_NtUnlockVirtualMemory, a);
+}
+
+NTSTATUS NtReadVirtualMemoryEx(HANDLE h, HANDLE section, PVOID BaseAddress, PVOID Buffer,
+                              ULONG Len, ULONG *ReturnLength) {
+  ARGV(6);
+  a[0] = (long)h; a[1] = (long)section; a[2] = (long)BaseAddress; a[3] = (long)Buffer;
+  a[4] = (long)Len; a[5] = (long)ReturnLength;
+  return (NTSTATUS)nt_dispatch(NR_NtReadVirtualMemoryEx, a);
+}
+
+NTSTATUS NtWriteVirtualMemoryEx(HANDLE h, HANDLE section, PVOID BaseAddress, PVOID Buffer,
+                               ULONG Len, ULONG *ReturnLength) {
+  ARGV(6);
+  a[0] = (long)h; a[1] = (long)section; a[2] = (long)BaseAddress; a[3] = (long)Buffer;
+  a[4] = (long)Len; a[5] = (long)ReturnLength;
+  return (NTSTATUS)nt_dispatch(NR_NtWriteVirtualMemoryEx, a);
+}
+
+NTSTATUS NtAllocateVirtualMemoryEx(HANDLE h, PVOID *BaseAddress, ULONG AllocType,
+                                  ULONG Protect, ULONG_PTR *Size) {
+  ARGV(5);
+  a[0] = (long)h; a[1] = (long)BaseAddress; a[2] = (long)AllocType; a[3] = (long)Protect;
+  a[4] = (long)Size;
+  return (NTSTATUS)nt_dispatch(NR_NtAllocateVirtualMemoryEx, a);
 }
 
 NTSTATUS NtCreateFile(HANDLE *FileHandle, ULONG Access, OBJECT_ATTRIBUTES *Obj,
