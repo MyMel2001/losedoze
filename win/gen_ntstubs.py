@@ -33,6 +33,7 @@ IMPLEMENTED = {
     "NtCreateSection", "NtMapViewOfSection", "NtExtendSection",
     "NtSetSystemTime", "NtQueryTimerResolution", "NtSetTimerResolution",
     "NtQuerySystemInformation",
+    "NtCreateKey", "NtOpenKey", "NtQueryKey", "NtCloseKey",
 }
 # Zw-style alias entry: NtOpenFile is the same syscall as NtCreateFile
 ALIASES = {"NtOpenFile": "NtCreateFile"}
@@ -48,6 +49,7 @@ NT_EXTRA_NAMES = [
     "NtCloseMutex", "ZwCloseMutex",
     "NtCloseTimer", "ZwCloseTimer",
     "NtWriteVirtualMemoryEx", "ZwWriteVirtualMemoryEx",
+    "NtCloseKey", "ZwCloseKey",
 ]
 
 

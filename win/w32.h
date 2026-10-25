@@ -579,6 +579,14 @@ W32API NTSTATUS ZwSetSystemTime(W64 *SystemTime, W64 *TimeZoneBias);
 W32API NTSTATUS ZwQueryTimerResolution(W32 *TimerResolution);
 W32API NTSTATUS ZwSetTimerResolution(W32 DesiredResolution, BOOL SetResolution, W32 *NewResolution);
 W32API NTSTATUS ZwQuerySystemInformation(W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength);
+W32API NTSTATUS NtCreateKey(HANDLE *KeyHandle, OBJECT_ATTRIBUTES *ObjectAttributes, ULONG DesiredAccess);
+W32API NTSTATUS NtOpenKey(HANDLE *KeyHandle, ULONG DesiredAccess, OBJECT_ATTRIBUTES *ObjectAttributes);
+W32API NTSTATUS NtQueryKey(HANDLE KeyHandle, W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength);
+W32API NTSTATUS NtCloseKey(HANDLE KeyHandle);
+W32API NTSTATUS ZwCreateKey(HANDLE *KeyHandle, OBJECT_ATTRIBUTES *ObjectAttributes, ULONG DesiredAccess);
+W32API NTSTATUS ZwOpenKey(HANDLE *KeyHandle, ULONG DesiredAccess, OBJECT_ATTRIBUTES *ObjectAttributes);
+W32API NTSTATUS ZwQueryKey(HANDLE KeyHandle, W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength);
+W32API NTSTATUS ZwCloseKey(HANDLE KeyHandle);
 
 /* diagnostics */
 W32API const char *nt_name(W32 nr);

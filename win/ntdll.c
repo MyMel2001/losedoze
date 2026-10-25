@@ -29,7 +29,7 @@ enum {
 enum {
   NR_NtCloseEvent = 0x1ea, NR_NtCloseSemaphore = 0x1eb, NR_NtCreateMutex = 0x1ec,
   NR_NtOpenMutex = 0x1ed, NR_NtReleaseMutex = 0x1ee, NR_NtCloseMutex = 0x1ef,
-  NR_NtCloseTimer = 0x1f0, NR_NtWriteVirtualMemoryEx = 0x1f1,
+  NR_NtCloseTimer = 0x1f0, NR_NtWriteVirtualMemoryEx = 0x1f1, NR_NtCloseKey = 0x1f2,
 };
 
 static const char *const nt_names[NT_NR_MAX] = {
@@ -968,6 +968,66 @@ static long h_NtQuerySystemInformation(const long *a) {
   return STATUS_SUCCESS;
 }
 
+/* ---------------- registry syscalls: in-memory key store ------------------ */
+
+static long h_NtCreateKey(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  OBJECT_ATTRIBUTES *oa = (OBJECT_ATTRIBUTES *)a[1];
+  W32 access = (W32)a[2];
+  (void)access;
+  if (!out) return STATUS_INVALID_HANDLE;
+  W32Handle *h;
+  if (oa && oa->ObjectName && oa->ObjectName->Buffer) {
+    char u8[1024];
+    w16_to_utf8(oa->ObjectName->Buffer, oa->ObjectName->Length / 2, u8, sizeof u8);
+    if (nt_obj_intern(u8, HK_KEY, 0, &h) < 0) return STATUS_NO_MEMORY;
+  } else {
+    h = w32_handle_new(HK_KEY, -1);
+    if (!h) return STATUS_NO_MEMORY;
+    h->kind = HK_KEY; h->fd = -1; h->ptr = calloc(1, sizeof(long));
+    if (!h->ptr) { free(h); return STATUS_NO_MEMORY; }
+  }
+  *out = h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtOpenKey(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  W32 access = (W32)a[1];
+  OBJECT_ATTRIBUTES *oa = (OBJECT_ATTRIBUTES *)a[2];
+  (void)access;
+  if (!out || !oa || !oa->ObjectName || !oa->ObjectName->Buffer) return STATUS_INVALID_HANDLE;
+  char u8[1024];
+  w16_to_utf8(oa->ObjectName->Buffer, oa->ObjectName->Length / 2, u8, sizeof u8);
+  int i = nt_obj_find(u8, HK_KEY);
+  if (i < 0) return STATUS_OBJECT_NAME_NOT_FOUND;
+  *out = nt_reg[i].h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtQueryKey(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  W32 cls = (W32)a[1];
+  PVOID buffer = (PVOID)a[2];
+  W32 len = (W32)a[3];
+  W32 *retlen = (W32 *)a[4];
+  (void)cls; (void)buffer; (void)len;
+  if (!h || h->kind != HK_KEY) return STATUS_INVALID_HANDLE;
+  if (retlen) *retlen = 0;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtCloseKey(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  if (!h || h->kind != HK_KEY) return STATUS_INVALID_HANDLE;
+  int i = -1;
+  for (int k = 0; k < nt_nreg; k++)
+    if (nt_reg[k].h == h) { i = k; break; }
+  if (i >= 0) { nt_mem_unregister(h); free(h->ptr); h->ptr = NULL; h->magic = 0; free(h); nt_reg[i].h = NULL; }
+  else { h->ptr = NULL; h->magic = 0; free(h); }
+  return STATUS_SUCCESS;
+}
+
 /* ---------------- dispatch table (numbers from windows-syscalls) -------- */
 static ntfn nt_tab[NT_NR_MAX];
 static int nt_ready;
@@ -988,6 +1048,7 @@ static void nt_register(void) {
   nt_tab[NR_NtCloseMutex] = h_NtCloseMutex;
   nt_tab[NR_NtCloseTimer] = h_NtCloseTimer;
   nt_tab[NR_NtWriteVirtualMemoryEx] = h_NtWriteVirtualMemoryEx;
+  nt_tab[NR_NtCloseKey] = h_NtCloseKey;
   nt_trace_on = getenv("NT_TRACE") != NULL;
   nt_ready = 1;
 }
@@ -1517,6 +1578,49 @@ NTSTATUS NtQuerySystemInformation(W32 InfoClass, PVOID Buffer, W32 BufferLen, W3
   ARGV(4);
   a[0] = (long)InfoClass; a[1] = (long)Buffer; a[2] = (long)BufferLen; a[3] = (long)ReturnLength;
   return (NTSTATUS)nt_dispatch(NR_NtQuerySystemInformation, a);
+}
+
+/* ---------------- registry syscalls: typed wrappers ---------------- */
+
+NTSTATUS ZwCreateKey(HANDLE *KeyHandle, OBJECT_ATTRIBUTES *ObjectAttributes, ULONG DesiredAccess) {
+  return NtCreateKey(KeyHandle, ObjectAttributes, DesiredAccess);
+}
+
+NTSTATUS NtCreateKey(HANDLE *KeyHandle, OBJECT_ATTRIBUTES *ObjectAttributes, ULONG DesiredAccess) {
+  ARGV(3);
+  a[0] = (long)KeyHandle; a[1] = (long)ObjectAttributes; a[2] = (long)DesiredAccess;
+  return (NTSTATUS)nt_dispatch(NR_NtCreateKey, a);
+}
+
+NTSTATUS ZwOpenKey(HANDLE *KeyHandle, ULONG DesiredAccess, OBJECT_ATTRIBUTES *ObjectAttributes) {
+  return NtOpenKey(KeyHandle, DesiredAccess, ObjectAttributes);
+}
+
+NTSTATUS NtOpenKey(HANDLE *KeyHandle, ULONG DesiredAccess, OBJECT_ATTRIBUTES *ObjectAttributes) {
+  ARGV(3);
+  a[0] = (long)KeyHandle; a[1] = (long)DesiredAccess; a[2] = (long)ObjectAttributes;
+  return (NTSTATUS)nt_dispatch(NR_NtOpenKey, a);
+}
+
+NTSTATUS ZwQueryKey(HANDLE KeyHandle, W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength) {
+  return NtQueryKey(KeyHandle, InfoClass, Buffer, BufferLen, ReturnLength);
+}
+
+NTSTATUS NtQueryKey(HANDLE KeyHandle, W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength) {
+  ARGV(5);
+  a[0] = (long)KeyHandle; a[1] = (long)InfoClass; a[2] = (long)Buffer; a[3] = (long)BufferLen;
+  a[4] = (long)ReturnLength;
+  return (NTSTATUS)nt_dispatch(NR_NtQueryKey, a);
+}
+
+NTSTATUS ZwCloseKey(HANDLE KeyHandle) {
+  return NtCloseKey(KeyHandle);
+}
+
+NTSTATUS NtCloseKey(HANDLE KeyHandle) {
+  ARGV(1);
+  a[0] = (long)KeyHandle;
+  return (NTSTATUS)nt_dispatch(NR_NtCloseKey, a);
 }
 
 NTSTATUS NtCreateFile(HANDLE *FileHandle, ULONG Access, OBJECT_ATTRIBUTES *Obj,
