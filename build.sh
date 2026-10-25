@@ -437,24 +437,24 @@ gcc -shared -fPIC -O2 -Wall -DW32_ABI_SYSV -o build/libwin32.so \
     -Iwin -Ishell -Ibuild -ldl -lm
 put build/libwin32.so "$ROOT/usr/lib64/libwin32.so"
 gcc -O2 -Wall -DW32_ABI_SYSV -Iwin -o build/loseset tools/loseset.c \
-    -Lbuild -lwin32 -Wl,-rpath,/usr/lib64
+    -Lbuild -lwin32 -Wl,-rpath,'$ORIGIN:/usr/lib64'
 put build/loseset "$ROOT/usr/bin/loseset"
 # disk installer: same Win32 layer, so it is a real desktop app
 gcc -O2 -Wall -DW32_ABI_SYSV -Iwin -o build/losinstall tools/losinstall.c \
-    -Lbuild -lwin32 -Wl,-rpath,/usr/lib64
+    -Lbuild -lwin32 -Wl,-rpath,'$ORIGIN:/usr/lib64'
 LD_LIBRARY_PATH=build ./build/losinstall --selftest > /dev/null
 put build/losinstall "$ROOT/usr/bin/losinstall"
 
 # web browser: clean-room k93 html engine + minimal http client + browser client
 gcc -O2 -Wall -DW32_ABI_SYSV -Iwin -Iweb -o build/losweb tools/losweb.c \
     web/loshttp.c web/k93html.c web/k93font.c web/k93svg.c web/k93util.c \
-    -Lbuild -lwin32 -Wl,-rpath,/usr/lib64 -lm -ldl
+    -Lbuild -lwin32 -Wl,-rpath,'$ORIGIN:/usr/lib64' -lm -ldl
 ./build/losweb --selftest > /dev/null
 put build/losweb "$ROOT/usr/bin/losweb"
 
 # terminal: /bin/sh command runner over the same Win32 layer
 gcc -O2 -Wall -DW32_ABI_SYSV -Iwin -o build/losterm tools/losterm.c \
-    -Lbuild -lwin32 -Wl,-rpath,/usr/lib64 -lm -ldl
+    -Lbuild -lwin32 -Wl,-rpath,'$ORIGIN:/usr/lib64' -lm -ldl
 ./build/losterm --selftest > /dev/null
 put build/losterm "$ROOT/usr/bin/losterm"
 
