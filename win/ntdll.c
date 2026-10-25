@@ -930,6 +930,44 @@ static long h_NtExtendSection(const long *a) {
   return STATUS_SUCCESS;
 }
 
+/* ---------------- system syscalls: clock / timer / info queries ------- */
+
+static long h_NtSetSystemTime(const long *a) {
+  W64 *sys = (W64 *)a[0];
+  W64 *tzb = (W64 *)a[1];
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  W64 now = (W64)ts.tv_sec * 10000000LL + (W64)ts.tv_nsec / 100;
+  if (sys) *sys = now;
+  if (tzb) *tzb = 0;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtQueryTimerResolution(const long *a) {
+  W32 *out = (W32 *)a[0];
+  if (out) *out = 10000;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtSetTimerResolution(const long *a) {
+  W32 desired = (W32)a[0];
+  W32 setres = (W32)a[1];
+  W32 *newres = (W32 *)a[2];
+  (void)setres;
+  if (newres) *newres = desired ? desired : 10000;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtQuerySystemInformation(const long *a) {
+  W32 cls = (W32)a[0];
+  PVOID buffer = (PVOID)a[1];
+  W32 len = (W32)a[2];
+  W32 *retlen = (W32 *)a[3];
+  (void)cls; (void)buffer; (void)len;
+  if (retlen) *retlen = 0;
+  return STATUS_SUCCESS;
+}
+
 /* ---------------- dispatch table (numbers from windows-syscalls) -------- */
 static ntfn nt_tab[NT_NR_MAX];
 static int nt_ready;
@@ -1437,6 +1475,48 @@ NTSTATUS NtExtendSection(HANDLE SectionHandle, PVOID Extend) {
   ARGV(2);
   a[0] = (long)SectionHandle; a[1] = (long)Extend;
   return (NTSTATUS)nt_dispatch(NR_NtExtendSection, a);
+}
+
+/* ---- system syscalls: clock / timer / info queries ---- */
+
+NTSTATUS ZwSetSystemTime(W64 *SystemTime, W64 *TimeZoneBias) {
+  return NtSetSystemTime(SystemTime, TimeZoneBias);
+}
+
+NTSTATUS NtSetSystemTime(W64 *SystemTime, W64 *TimeZoneBias) {
+  ARGV(2);
+  a[0] = (long)SystemTime; a[1] = (long)TimeZoneBias;
+  return (NTSTATUS)nt_dispatch(NR_NtSetSystemTime, a);
+}
+
+NTSTATUS ZwQueryTimerResolution(W32 *TimerResolution) {
+  return NtQueryTimerResolution(TimerResolution);
+}
+
+NTSTATUS NtQueryTimerResolution(W32 *TimerResolution) {
+  ARGV(1);
+  a[0] = (long)TimerResolution;
+  return (NTSTATUS)nt_dispatch(NR_NtQueryTimerResolution, a);
+}
+
+NTSTATUS ZwSetTimerResolution(W32 DesiredResolution, BOOL SetResolution, W32 *NewResolution) {
+  return NtSetTimerResolution(DesiredResolution, SetResolution, NewResolution);
+}
+
+NTSTATUS NtSetTimerResolution(W32 DesiredResolution, BOOL SetResolution, W32 *NewResolution) {
+  ARGV(3);
+  a[0] = (long)DesiredResolution; a[1] = (long)SetResolution; a[2] = (long)NewResolution;
+  return (NTSTATUS)nt_dispatch(NR_NtSetTimerResolution, a);
+}
+
+NTSTATUS ZwQuerySystemInformation(W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength) {
+  return NtQuerySystemInformation(InfoClass, Buffer, BufferLen, ReturnLength);
+}
+
+NTSTATUS NtQuerySystemInformation(W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength) {
+  ARGV(4);
+  a[0] = (long)InfoClass; a[1] = (long)Buffer; a[2] = (long)BufferLen; a[3] = (long)ReturnLength;
+  return (NTSTATUS)nt_dispatch(NR_NtQuerySystemInformation, a);
 }
 
 NTSTATUS NtCreateFile(HANDLE *FileHandle, ULONG Access, OBJECT_ATTRIBUTES *Obj,

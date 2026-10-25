@@ -31,6 +31,8 @@ IMPLEMENTED = {
     "NtFlushBuffersFile", "NtFlushBuffersFileEx", "NtLockFile", "NtUnlockFile",
     "NtDeviceIoControlFile", "NtFsControlFile", "NtReadFileScatter", "NtWriteFileGather",
     "NtCreateSection", "NtMapViewOfSection", "NtExtendSection",
+    "NtSetSystemTime", "NtQueryTimerResolution", "NtSetTimerResolution",
+    "NtQuerySystemInformation",
 }
 # Zw-style alias entry: NtOpenFile is the same syscall as NtCreateFile
 ALIASES = {"NtOpenFile": "NtCreateFile"}

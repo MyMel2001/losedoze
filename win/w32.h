@@ -571,6 +571,14 @@ W32API NTSTATUS ZwCreateSection(HANDLE *SectionHandle, W32 Class, PVOID Buffer, 
 W32API NTSTATUS ZwMapViewOfSection(HANDLE SectionHandle, HANDLE hProcess, PVOID BaseAddress,
                                  ULONG ViewLength, PVOID *BaseOut);
 W32API NTSTATUS ZwExtendSection(HANDLE SectionHandle, PVOID Extend);
+W32API NTSTATUS NtSetSystemTime(W64 *SystemTime, W64 *TimeZoneBias);
+W32API NTSTATUS NtQueryTimerResolution(W32 *TimerResolution);
+W32API NTSTATUS NtSetTimerResolution(W32 DesiredResolution, BOOL SetResolution, W32 *NewResolution);
+W32API NTSTATUS NtQuerySystemInformation(W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength);
+W32API NTSTATUS ZwSetSystemTime(W64 *SystemTime, W64 *TimeZoneBias);
+W32API NTSTATUS ZwQueryTimerResolution(W32 *TimerResolution);
+W32API NTSTATUS ZwSetTimerResolution(W32 DesiredResolution, BOOL SetResolution, W32 *NewResolution);
+W32API NTSTATUS ZwQuerySystemInformation(W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength);
 
 /* diagnostics */
 W32API const char *nt_name(W32 nr);
