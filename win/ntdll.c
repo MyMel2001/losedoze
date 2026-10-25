@@ -1353,6 +1353,338 @@ static long h_NtReplyWaitReceivePortEx(const long *a) { (void)a; return (long)ST
 static long h_NtReplyWaitReplyPort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSecureConnectPort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtCompleteConnectPort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAccessCheckAndAuditAlarm(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAccessCheckByType(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAccessCheckByTypeAndAuditAlarm(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAccessCheckByTypeResultList(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAccessCheckByTypeResultListAndAuditAlarm(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAccessCheckByTypeResultListAndAuditAlarmByHandle(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAcquireCrossVmMutant(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAcquireProcessActivityReference(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAddAtom(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAddAtomEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAdjustGroupsToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAdjustPrivilegesToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAdjustTokenClaimsAndDeviceGroups(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlertMultipleThreadByThreadId(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlertResumeThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlertThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlertThreadByThreadId(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlertThreadByThreadIdEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAllocateLocallyUniqueId(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAllocateReserveObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAllocateUserPhysicalPages(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAllocateUserPhysicalPagesEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAllocateUuids(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcAcceptConnectPort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcCancelMessage(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcConnectPort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcConnectPortEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcCreatePort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcCreatePortSection(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcCreateResourceReserve(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcCreateSectionView(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcCreateSecurityContext(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcDeletePortSection(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcDeleteResourceReserve(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcDeleteSectionView(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcDeleteSecurityContext(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcDisconnectPort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcImpersonateClientContainerOfPort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcImpersonateClientOfPort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcOpenSenderProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcOpenSenderThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcQueryInformation(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcQueryInformationMessage(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcRevokeSecurityContext(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcSendWaitReceivePort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAlpcSetInformation(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtApphelpCacheControl(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAreMappedFilesTheSame(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAssignProcessToJobObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCallEnclave(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCallbackReturn(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCancelIoFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCancelIoFileEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCancelSynchronousIoFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCancelTimer2(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtChangeProcessState(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtChangeThreadState(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCloseObjectAuditAlarm(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCompactKeys(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCompareObjects(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCompareSigningLevels(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCompareTokens(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCompressKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtContinue(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtContinueEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtConvertBetweenAuxiliaryCounterAndPerformanceCounter(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCopyFileChunk(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateCpuPartition(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateCrossVmEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateCrossVmMutant(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateDebugObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateDirectoryObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateDirectoryObjectEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateEnclave(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateEventPair(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateIRTimer(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateIoCompletion(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateIoRing(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateJobObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateJobSet(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateKeyTransacted(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateKeyedEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateLowBoxToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateMailslotFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateMutant(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateNamedPipeFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreatePagingFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreatePartition(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreatePrivateNamespace(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateProcessStateChange(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateProfile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateProfileEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateRegistryTransaction(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateResourceManager(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateSymbolicLinkObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateThreadStateChange(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateTimer2(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateTokenEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateTransaction(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateTransactionManager(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateUserProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateWnfStateName(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDebugActiveProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDebugContinue(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDeleteAtom(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDeleteFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDeleteKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDeleteObjectAuditAlarm(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDeletePrivateNamespace(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDeleteValueKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDeleteWnfStateData(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDeleteWnfStateName(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDirectGraphicsCall(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDisplayString(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDrawText(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDuplicateObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDuplicateToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtEnumerateKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtEnumerateSystemEnvironmentValuesEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtEnumerateTransactionObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtEnumerateValueKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFilterBootOption(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFilterToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFilterTokenEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFindAtom(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFlushInstallUILanguage(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFlushKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFlushWriteBuffer(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFreeUserPhysicalPages(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFreezeRegistry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFreezeTransactions(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtGetCompleteWnfStateSubscription(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtGetContextThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtGetMUIRegistryInfo(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtGetNextProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtGetNextThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtGetNotificationResourceManager(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtImpersonateAnonymousToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtImpersonateClientOfPort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtImpersonateThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtInitializeEnclave(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtInitializeNlsFiles(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtInitializeRegistry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtLoadEnclaveData(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtLoadKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtLoadKey2(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtLoadKey3(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtLoadKeyEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtMapCMFModule(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtNotifyChangeDirectoryFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtNotifyChangeDirectoryFileEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtNotifyChangeKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtNotifyChangeMultipleKeys(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenCpuPartition(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenDirectoryObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenEventPair(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenIoCompletion(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenJobObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenKeyEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenKeyTransacted(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenKeyTransactedEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenKeyedEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenMutant(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenObjectAuditAlarm(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenPartition(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenPrivateNamespace(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenProcessToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenProcessTokenEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenRegistryTransaction(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenResourceManager(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenSection(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenSession(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenSymbolicLinkObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenThreadToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenThreadTokenEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenTransaction(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenTransactionManager(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtPlugPlayControl(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtPrivilegeCheck(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtPrivilegeObjectAuditAlarm(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtPrivilegedServiceAuditAlarm(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtPssCaptureVaSpaceBulk(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryAttributesFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryAuxiliaryCounterFrequency(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryDebugFilterState(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryDefaultLocale(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryDefaultUILanguage(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryDirectoryFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryDirectoryFileEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryDirectoryObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryDriverEntryOrder(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryEaFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryFullAttributesFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryInformationAtom(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryInformationByName(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryInformationCpuPartition(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryInformationEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryInformationJobObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryInformationResourceManager(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryInformationToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryInformationTransaction(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryInformationTransactionManager(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryInstallUILanguage(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryIoCompletion(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryIoRingCapabilities(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryLicenseValue(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryMultipleValueKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryMutant(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryOpenSubKeys(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryOpenSubKeysEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryPortInformationProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryQuotaInformationFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQuerySection(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQuerySecurityAttributesToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQuerySecurityObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQuerySecurityPolicy(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQuerySymbolicLinkObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQuerySystemEnvironmentValue(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQuerySystemEnvironmentValueEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQuerySystemInformationEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQuerySystemTime(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryTimer(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryValueKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryVolumeInformationFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryWnfStateData(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryWnfStateNameInformation(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueueApcThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueueApcThreadEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueueApcThreadEx2(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRaiseException(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRaiseHardError(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtReadOnlyEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtReadRequestData(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRegisterProtocolAddressInformation(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRegisterThreadTerminatePort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtReleaseKeyedEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtReleaseMutant(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRemoveIoCompletion(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRemoveIoCompletionEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRemoveProcessDebug(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRenameKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtReplaceKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtReplacePartitionUnit(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRequestWaitReplyPort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtResetWriteWatch(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRestoreKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtResumeProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtResumeThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRevertContainerImpersonation(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSaveKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSaveKeyEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSaveMergedKeys(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetCachedSigningLevel(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetCachedSigningLevel2(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetContextThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetDebugFilterState(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetDefaultHardErrorPort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetDefaultLocale(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetDefaultUILanguage(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetDriverEntryOrder(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetEaFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetEventBoostPriority(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetEventEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetHighEventPair(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetHighWaitLowEventPair(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetIRTimer(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationCpuPartition(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationDebugObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationIoRing(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationJobObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationResourceManager(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationSymbolicLink(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationTransaction(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationTransactionManager(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationVirtualMemory(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetIoCompletion(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetIoCompletionEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetLdtEntries(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetLowEventPair(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetLowWaitHighEventPair(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetQuotaInformationFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetSecurityObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetSystemEnvironmentValue(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetSystemEnvironmentValueEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetSystemInformation(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetSystemPowerState(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetThreadExecutionState(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetTimer2(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetTimerEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetUuidSeed(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetValueKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetVolumeInformationFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetWnfProcessNotificationEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtStartProfile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtStopProfile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSubmitIoRing(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSubscribeWnfStateChange(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSuspendProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSuspendThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSystemDebugControl(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtTerminateEnclave(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtTerminateJobObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtTestAlert(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtThawRegistry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtThawTransactions(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtTraceEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtTranslateFilePath(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtUmsThreadYield(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtUnloadDriver(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtUnloadKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtUnloadKey2(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtUnloadKeyEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtUnsubscribeWnfStateChange(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtUpdateWnfStateData(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtVdmControl(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtWaitForAlertByThreadId(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtWaitForDebugEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtWaitForKeyedEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtWaitForWorkViaWorkerFactory(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtWaitHighEventPair(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtWaitLowEventPair(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtWriteRequestData(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 /* ---------------- dispatch table (numbers from windows-syscalls) -------- */
 /* ---------------- wait syscalls: multiple objects ---------------- */
 
@@ -2632,6 +2964,1334 @@ W32API NTSTATUS ZwSecureConnectPort();
 W32API NTSTATUS NtSecureConnectPort();
 W32API NTSTATUS ZwCompleteConnectPort();
 W32API NTSTATUS NtCompleteConnectPort();
+NTSTATUS ZwAccessCheckAndAuditAlarm() { return NtAccessCheckAndAuditAlarm(); }
+NTSTATUS NtAccessCheckAndAuditAlarm() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAccessCheckAndAuditAlarm, a); }
+NTSTATUS ZwAccessCheckByType() { return NtAccessCheckByType(); }
+NTSTATUS NtAccessCheckByType() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAccessCheckByType, a); }
+NTSTATUS ZwAccessCheckByTypeAndAuditAlarm() { return NtAccessCheckByTypeAndAuditAlarm(); }
+NTSTATUS NtAccessCheckByTypeAndAuditAlarm() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAccessCheckByTypeAndAuditAlarm, a); }
+NTSTATUS ZwAccessCheckByTypeResultList() { return NtAccessCheckByTypeResultList(); }
+NTSTATUS NtAccessCheckByTypeResultList() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAccessCheckByTypeResultList, a); }
+NTSTATUS ZwAccessCheckByTypeResultListAndAuditAlarm() { return NtAccessCheckByTypeResultListAndAuditAlarm(); }
+NTSTATUS NtAccessCheckByTypeResultListAndAuditAlarm() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAccessCheckByTypeResultListAndAuditAlarm, a); }
+NTSTATUS ZwAccessCheckByTypeResultListAndAuditAlarmByHandle() { return NtAccessCheckByTypeResultListAndAuditAlarmByHandle(); }
+NTSTATUS NtAccessCheckByTypeResultListAndAuditAlarmByHandle() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAccessCheckByTypeResultListAndAuditAlarmByHandle, a); }
+NTSTATUS ZwAcquireCrossVmMutant() { return NtAcquireCrossVmMutant(); }
+NTSTATUS NtAcquireCrossVmMutant() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAcquireCrossVmMutant, a); }
+NTSTATUS ZwAcquireProcessActivityReference() { return NtAcquireProcessActivityReference(); }
+NTSTATUS NtAcquireProcessActivityReference() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAcquireProcessActivityReference, a); }
+NTSTATUS ZwAddAtom() { return NtAddAtom(); }
+NTSTATUS NtAddAtom() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAddAtom, a); }
+NTSTATUS ZwAddAtomEx() { return NtAddAtomEx(); }
+NTSTATUS NtAddAtomEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAddAtomEx, a); }
+NTSTATUS ZwAdjustGroupsToken() { return NtAdjustGroupsToken(); }
+NTSTATUS NtAdjustGroupsToken() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAdjustGroupsToken, a); }
+NTSTATUS ZwAdjustPrivilegesToken() { return NtAdjustPrivilegesToken(); }
+NTSTATUS NtAdjustPrivilegesToken() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAdjustPrivilegesToken, a); }
+NTSTATUS ZwAdjustTokenClaimsAndDeviceGroups() { return NtAdjustTokenClaimsAndDeviceGroups(); }
+NTSTATUS NtAdjustTokenClaimsAndDeviceGroups() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAdjustTokenClaimsAndDeviceGroups, a); }
+NTSTATUS ZwAlertMultipleThreadByThreadId() { return NtAlertMultipleThreadByThreadId(); }
+NTSTATUS NtAlertMultipleThreadByThreadId() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlertMultipleThreadByThreadId, a); }
+NTSTATUS ZwAlertResumeThread() { return NtAlertResumeThread(); }
+NTSTATUS NtAlertResumeThread() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlertResumeThread, a); }
+NTSTATUS ZwAlertThread() { return NtAlertThread(); }
+NTSTATUS NtAlertThread() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlertThread, a); }
+NTSTATUS ZwAlertThreadByThreadId() { return NtAlertThreadByThreadId(); }
+NTSTATUS NtAlertThreadByThreadId() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlertThreadByThreadId, a); }
+NTSTATUS ZwAlertThreadByThreadIdEx() { return NtAlertThreadByThreadIdEx(); }
+NTSTATUS NtAlertThreadByThreadIdEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlertThreadByThreadIdEx, a); }
+NTSTATUS ZwAllocateLocallyUniqueId() { return NtAllocateLocallyUniqueId(); }
+NTSTATUS NtAllocateLocallyUniqueId() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAllocateLocallyUniqueId, a); }
+NTSTATUS ZwAllocateReserveObject() { return NtAllocateReserveObject(); }
+NTSTATUS NtAllocateReserveObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAllocateReserveObject, a); }
+NTSTATUS ZwAllocateUserPhysicalPages() { return NtAllocateUserPhysicalPages(); }
+NTSTATUS NtAllocateUserPhysicalPages() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAllocateUserPhysicalPages, a); }
+NTSTATUS ZwAllocateUserPhysicalPagesEx() { return NtAllocateUserPhysicalPagesEx(); }
+NTSTATUS NtAllocateUserPhysicalPagesEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAllocateUserPhysicalPagesEx, a); }
+NTSTATUS ZwAllocateUuids() { return NtAllocateUuids(); }
+NTSTATUS NtAllocateUuids() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAllocateUuids, a); }
+NTSTATUS ZwAlpcAcceptConnectPort() { return NtAlpcAcceptConnectPort(); }
+NTSTATUS NtAlpcAcceptConnectPort() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcAcceptConnectPort, a); }
+NTSTATUS ZwAlpcCancelMessage() { return NtAlpcCancelMessage(); }
+NTSTATUS NtAlpcCancelMessage() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcCancelMessage, a); }
+NTSTATUS ZwAlpcConnectPort() { return NtAlpcConnectPort(); }
+NTSTATUS NtAlpcConnectPort() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcConnectPort, a); }
+NTSTATUS ZwAlpcConnectPortEx() { return NtAlpcConnectPortEx(); }
+NTSTATUS NtAlpcConnectPortEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcConnectPortEx, a); }
+NTSTATUS ZwAlpcCreatePort() { return NtAlpcCreatePort(); }
+NTSTATUS NtAlpcCreatePort() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcCreatePort, a); }
+NTSTATUS ZwAlpcCreatePortSection() { return NtAlpcCreatePortSection(); }
+NTSTATUS NtAlpcCreatePortSection() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcCreatePortSection, a); }
+NTSTATUS ZwAlpcCreateResourceReserve() { return NtAlpcCreateResourceReserve(); }
+NTSTATUS NtAlpcCreateResourceReserve() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcCreateResourceReserve, a); }
+NTSTATUS ZwAlpcCreateSectionView() { return NtAlpcCreateSectionView(); }
+NTSTATUS NtAlpcCreateSectionView() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcCreateSectionView, a); }
+NTSTATUS ZwAlpcCreateSecurityContext() { return NtAlpcCreateSecurityContext(); }
+NTSTATUS NtAlpcCreateSecurityContext() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcCreateSecurityContext, a); }
+NTSTATUS ZwAlpcDeletePortSection() { return NtAlpcDeletePortSection(); }
+NTSTATUS NtAlpcDeletePortSection() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcDeletePortSection, a); }
+NTSTATUS ZwAlpcDeleteResourceReserve() { return NtAlpcDeleteResourceReserve(); }
+NTSTATUS NtAlpcDeleteResourceReserve() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcDeleteResourceReserve, a); }
+NTSTATUS ZwAlpcDeleteSectionView() { return NtAlpcDeleteSectionView(); }
+NTSTATUS NtAlpcDeleteSectionView() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcDeleteSectionView, a); }
+NTSTATUS ZwAlpcDeleteSecurityContext() { return NtAlpcDeleteSecurityContext(); }
+NTSTATUS NtAlpcDeleteSecurityContext() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcDeleteSecurityContext, a); }
+NTSTATUS ZwAlpcDisconnectPort() { return NtAlpcDisconnectPort(); }
+NTSTATUS NtAlpcDisconnectPort() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcDisconnectPort, a); }
+NTSTATUS ZwAlpcImpersonateClientContainerOfPort() { return NtAlpcImpersonateClientContainerOfPort(); }
+NTSTATUS NtAlpcImpersonateClientContainerOfPort() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcImpersonateClientContainerOfPort, a); }
+NTSTATUS ZwAlpcImpersonateClientOfPort() { return NtAlpcImpersonateClientOfPort(); }
+NTSTATUS NtAlpcImpersonateClientOfPort() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcImpersonateClientOfPort, a); }
+NTSTATUS ZwAlpcOpenSenderProcess() { return NtAlpcOpenSenderProcess(); }
+NTSTATUS NtAlpcOpenSenderProcess() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcOpenSenderProcess, a); }
+NTSTATUS ZwAlpcOpenSenderThread() { return NtAlpcOpenSenderThread(); }
+NTSTATUS NtAlpcOpenSenderThread() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcOpenSenderThread, a); }
+NTSTATUS ZwAlpcQueryInformation() { return NtAlpcQueryInformation(); }
+NTSTATUS NtAlpcQueryInformation() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcQueryInformation, a); }
+NTSTATUS ZwAlpcQueryInformationMessage() { return NtAlpcQueryInformationMessage(); }
+NTSTATUS NtAlpcQueryInformationMessage() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcQueryInformationMessage, a); }
+NTSTATUS ZwAlpcRevokeSecurityContext() { return NtAlpcRevokeSecurityContext(); }
+NTSTATUS NtAlpcRevokeSecurityContext() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcRevokeSecurityContext, a); }
+NTSTATUS ZwAlpcSendWaitReceivePort() { return NtAlpcSendWaitReceivePort(); }
+NTSTATUS NtAlpcSendWaitReceivePort() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcSendWaitReceivePort, a); }
+NTSTATUS ZwAlpcSetInformation() { return NtAlpcSetInformation(); }
+NTSTATUS NtAlpcSetInformation() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAlpcSetInformation, a); }
+NTSTATUS ZwApphelpCacheControl() { return NtApphelpCacheControl(); }
+NTSTATUS NtApphelpCacheControl() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtApphelpCacheControl, a); }
+NTSTATUS ZwAreMappedFilesTheSame() { return NtAreMappedFilesTheSame(); }
+NTSTATUS NtAreMappedFilesTheSame() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAreMappedFilesTheSame, a); }
+NTSTATUS ZwAssignProcessToJobObject() { return NtAssignProcessToJobObject(); }
+NTSTATUS NtAssignProcessToJobObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtAssignProcessToJobObject, a); }
+NTSTATUS ZwCallEnclave() { return NtCallEnclave(); }
+NTSTATUS NtCallEnclave() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCallEnclave, a); }
+NTSTATUS ZwCallbackReturn() { return NtCallbackReturn(); }
+NTSTATUS NtCallbackReturn() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCallbackReturn, a); }
+NTSTATUS ZwCancelIoFile() { return NtCancelIoFile(); }
+NTSTATUS NtCancelIoFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCancelIoFile, a); }
+NTSTATUS ZwCancelIoFileEx() { return NtCancelIoFileEx(); }
+NTSTATUS NtCancelIoFileEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCancelIoFileEx, a); }
+NTSTATUS ZwCancelSynchronousIoFile() { return NtCancelSynchronousIoFile(); }
+NTSTATUS NtCancelSynchronousIoFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCancelSynchronousIoFile, a); }
+NTSTATUS ZwCancelTimer2() { return NtCancelTimer2(); }
+NTSTATUS NtCancelTimer2() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCancelTimer2, a); }
+NTSTATUS ZwChangeProcessState() { return NtChangeProcessState(); }
+NTSTATUS NtChangeProcessState() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtChangeProcessState, a); }
+NTSTATUS ZwChangeThreadState() { return NtChangeThreadState(); }
+NTSTATUS NtChangeThreadState() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtChangeThreadState, a); }
+NTSTATUS ZwCloseObjectAuditAlarm() { return NtCloseObjectAuditAlarm(); }
+NTSTATUS NtCloseObjectAuditAlarm() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCloseObjectAuditAlarm, a); }
+NTSTATUS ZwCompactKeys() { return NtCompactKeys(); }
+NTSTATUS NtCompactKeys() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCompactKeys, a); }
+NTSTATUS ZwCompareObjects() { return NtCompareObjects(); }
+NTSTATUS NtCompareObjects() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCompareObjects, a); }
+NTSTATUS ZwCompareSigningLevels() { return NtCompareSigningLevels(); }
+NTSTATUS NtCompareSigningLevels() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCompareSigningLevels, a); }
+NTSTATUS ZwCompareTokens() { return NtCompareTokens(); }
+NTSTATUS NtCompareTokens() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCompareTokens, a); }
+NTSTATUS ZwCompressKey() { return NtCompressKey(); }
+NTSTATUS NtCompressKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCompressKey, a); }
+NTSTATUS ZwContinue() { return NtContinue(); }
+NTSTATUS NtContinue() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtContinue, a); }
+NTSTATUS ZwContinueEx() { return NtContinueEx(); }
+NTSTATUS NtContinueEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtContinueEx, a); }
+NTSTATUS ZwConvertBetweenAuxiliaryCounterAndPerformanceCounter() { return NtConvertBetweenAuxiliaryCounterAndPerformanceCounter(); }
+NTSTATUS NtConvertBetweenAuxiliaryCounterAndPerformanceCounter() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtConvertBetweenAuxiliaryCounterAndPerformanceCounter, a); }
+NTSTATUS ZwCopyFileChunk() { return NtCopyFileChunk(); }
+NTSTATUS NtCopyFileChunk() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCopyFileChunk, a); }
+NTSTATUS ZwCreateCpuPartition() { return NtCreateCpuPartition(); }
+NTSTATUS NtCreateCpuPartition() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateCpuPartition, a); }
+NTSTATUS ZwCreateCrossVmEvent() { return NtCreateCrossVmEvent(); }
+NTSTATUS NtCreateCrossVmEvent() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateCrossVmEvent, a); }
+NTSTATUS ZwCreateCrossVmMutant() { return NtCreateCrossVmMutant(); }
+NTSTATUS NtCreateCrossVmMutant() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateCrossVmMutant, a); }
+NTSTATUS ZwCreateDebugObject() { return NtCreateDebugObject(); }
+NTSTATUS NtCreateDebugObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateDebugObject, a); }
+NTSTATUS ZwCreateDirectoryObject() { return NtCreateDirectoryObject(); }
+NTSTATUS NtCreateDirectoryObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateDirectoryObject, a); }
+NTSTATUS ZwCreateDirectoryObjectEx() { return NtCreateDirectoryObjectEx(); }
+NTSTATUS NtCreateDirectoryObjectEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateDirectoryObjectEx, a); }
+NTSTATUS ZwCreateEnclave() { return NtCreateEnclave(); }
+NTSTATUS NtCreateEnclave() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateEnclave, a); }
+NTSTATUS ZwCreateEnlistment() { return NtCreateEnlistment(); }
+NTSTATUS NtCreateEnlistment() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateEnlistment, a); }
+NTSTATUS ZwCreateEventPair() { return NtCreateEventPair(); }
+NTSTATUS NtCreateEventPair() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateEventPair, a); }
+NTSTATUS ZwCreateIRTimer() { return NtCreateIRTimer(); }
+NTSTATUS NtCreateIRTimer() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateIRTimer, a); }
+NTSTATUS ZwCreateIoCompletion() { return NtCreateIoCompletion(); }
+NTSTATUS NtCreateIoCompletion() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateIoCompletion, a); }
+NTSTATUS ZwCreateIoRing() { return NtCreateIoRing(); }
+NTSTATUS NtCreateIoRing() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateIoRing, a); }
+NTSTATUS ZwCreateJobObject() { return NtCreateJobObject(); }
+NTSTATUS NtCreateJobObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateJobObject, a); }
+NTSTATUS ZwCreateJobSet() { return NtCreateJobSet(); }
+NTSTATUS NtCreateJobSet() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateJobSet, a); }
+NTSTATUS ZwCreateKeyTransacted() { return NtCreateKeyTransacted(); }
+NTSTATUS NtCreateKeyTransacted() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateKeyTransacted, a); }
+NTSTATUS ZwCreateKeyedEvent() { return NtCreateKeyedEvent(); }
+NTSTATUS NtCreateKeyedEvent() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateKeyedEvent, a); }
+NTSTATUS ZwCreateLowBoxToken() { return NtCreateLowBoxToken(); }
+NTSTATUS NtCreateLowBoxToken() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateLowBoxToken, a); }
+NTSTATUS ZwCreateMailslotFile() { return NtCreateMailslotFile(); }
+NTSTATUS NtCreateMailslotFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateMailslotFile, a); }
+NTSTATUS ZwCreateMutant() { return NtCreateMutant(); }
+NTSTATUS NtCreateMutant() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateMutant, a); }
+NTSTATUS ZwCreateNamedPipeFile() { return NtCreateNamedPipeFile(); }
+NTSTATUS NtCreateNamedPipeFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateNamedPipeFile, a); }
+NTSTATUS ZwCreatePagingFile() { return NtCreatePagingFile(); }
+NTSTATUS NtCreatePagingFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreatePagingFile, a); }
+NTSTATUS ZwCreatePartition() { return NtCreatePartition(); }
+NTSTATUS NtCreatePartition() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreatePartition, a); }
+NTSTATUS ZwCreatePrivateNamespace() { return NtCreatePrivateNamespace(); }
+NTSTATUS NtCreatePrivateNamespace() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreatePrivateNamespace, a); }
+NTSTATUS ZwCreateProcessStateChange() { return NtCreateProcessStateChange(); }
+NTSTATUS NtCreateProcessStateChange() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateProcessStateChange, a); }
+NTSTATUS ZwCreateProfile() { return NtCreateProfile(); }
+NTSTATUS NtCreateProfile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateProfile, a); }
+NTSTATUS ZwCreateProfileEx() { return NtCreateProfileEx(); }
+NTSTATUS NtCreateProfileEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateProfileEx, a); }
+NTSTATUS ZwCreateRegistryTransaction() { return NtCreateRegistryTransaction(); }
+NTSTATUS NtCreateRegistryTransaction() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateRegistryTransaction, a); }
+NTSTATUS ZwCreateResourceManager() { return NtCreateResourceManager(); }
+NTSTATUS NtCreateResourceManager() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateResourceManager, a); }
+NTSTATUS ZwCreateSymbolicLinkObject() { return NtCreateSymbolicLinkObject(); }
+NTSTATUS NtCreateSymbolicLinkObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateSymbolicLinkObject, a); }
+NTSTATUS ZwCreateThreadStateChange() { return NtCreateThreadStateChange(); }
+NTSTATUS NtCreateThreadStateChange() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateThreadStateChange, a); }
+NTSTATUS ZwCreateTimer2() { return NtCreateTimer2(); }
+NTSTATUS NtCreateTimer2() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateTimer2, a); }
+NTSTATUS ZwCreateToken() { return NtCreateToken(); }
+NTSTATUS NtCreateToken() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateToken, a); }
+NTSTATUS ZwCreateTokenEx() { return NtCreateTokenEx(); }
+NTSTATUS NtCreateTokenEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateTokenEx, a); }
+NTSTATUS ZwCreateTransaction() { return NtCreateTransaction(); }
+NTSTATUS NtCreateTransaction() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateTransaction, a); }
+NTSTATUS ZwCreateTransactionManager() { return NtCreateTransactionManager(); }
+NTSTATUS NtCreateTransactionManager() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateTransactionManager, a); }
+NTSTATUS ZwCreateUserProcess() { return NtCreateUserProcess(); }
+NTSTATUS NtCreateUserProcess() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateUserProcess, a); }
+NTSTATUS ZwCreateWnfStateName() { return NtCreateWnfStateName(); }
+NTSTATUS NtCreateWnfStateName() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtCreateWnfStateName, a); }
+NTSTATUS ZwDebugActiveProcess() { return NtDebugActiveProcess(); }
+NTSTATUS NtDebugActiveProcess() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDebugActiveProcess, a); }
+NTSTATUS ZwDebugContinue() { return NtDebugContinue(); }
+NTSTATUS NtDebugContinue() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDebugContinue, a); }
+NTSTATUS ZwDeleteAtom() { return NtDeleteAtom(); }
+NTSTATUS NtDeleteAtom() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDeleteAtom, a); }
+NTSTATUS ZwDeleteFile() { return NtDeleteFile(); }
+NTSTATUS NtDeleteFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDeleteFile, a); }
+NTSTATUS ZwDeleteKey() { return NtDeleteKey(); }
+NTSTATUS NtDeleteKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDeleteKey, a); }
+NTSTATUS ZwDeleteObjectAuditAlarm() { return NtDeleteObjectAuditAlarm(); }
+NTSTATUS NtDeleteObjectAuditAlarm() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDeleteObjectAuditAlarm, a); }
+NTSTATUS ZwDeletePrivateNamespace() { return NtDeletePrivateNamespace(); }
+NTSTATUS NtDeletePrivateNamespace() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDeletePrivateNamespace, a); }
+NTSTATUS ZwDeleteValueKey() { return NtDeleteValueKey(); }
+NTSTATUS NtDeleteValueKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDeleteValueKey, a); }
+NTSTATUS ZwDeleteWnfStateData() { return NtDeleteWnfStateData(); }
+NTSTATUS NtDeleteWnfStateData() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDeleteWnfStateData, a); }
+NTSTATUS ZwDeleteWnfStateName() { return NtDeleteWnfStateName(); }
+NTSTATUS NtDeleteWnfStateName() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDeleteWnfStateName, a); }
+NTSTATUS ZwDirectGraphicsCall() { return NtDirectGraphicsCall(); }
+NTSTATUS NtDirectGraphicsCall() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDirectGraphicsCall, a); }
+NTSTATUS ZwDisplayString() { return NtDisplayString(); }
+NTSTATUS NtDisplayString() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDisplayString, a); }
+NTSTATUS ZwDrawText() { return NtDrawText(); }
+NTSTATUS NtDrawText() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDrawText, a); }
+NTSTATUS ZwDuplicateObject() { return NtDuplicateObject(); }
+NTSTATUS NtDuplicateObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDuplicateObject, a); }
+NTSTATUS ZwDuplicateToken() { return NtDuplicateToken(); }
+NTSTATUS NtDuplicateToken() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtDuplicateToken, a); }
+NTSTATUS ZwEnumerateKey() { return NtEnumerateKey(); }
+NTSTATUS NtEnumerateKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtEnumerateKey, a); }
+NTSTATUS ZwEnumerateSystemEnvironmentValuesEx() { return NtEnumerateSystemEnvironmentValuesEx(); }
+NTSTATUS NtEnumerateSystemEnvironmentValuesEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtEnumerateSystemEnvironmentValuesEx, a); }
+NTSTATUS ZwEnumerateTransactionObject() { return NtEnumerateTransactionObject(); }
+NTSTATUS NtEnumerateTransactionObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtEnumerateTransactionObject, a); }
+NTSTATUS ZwEnumerateValueKey() { return NtEnumerateValueKey(); }
+NTSTATUS NtEnumerateValueKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtEnumerateValueKey, a); }
+NTSTATUS ZwFilterBootOption() { return NtFilterBootOption(); }
+NTSTATUS NtFilterBootOption() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtFilterBootOption, a); }
+NTSTATUS ZwFilterToken() { return NtFilterToken(); }
+NTSTATUS NtFilterToken() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtFilterToken, a); }
+NTSTATUS ZwFilterTokenEx() { return NtFilterTokenEx(); }
+NTSTATUS NtFilterTokenEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtFilterTokenEx, a); }
+NTSTATUS ZwFindAtom() { return NtFindAtom(); }
+NTSTATUS NtFindAtom() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtFindAtom, a); }
+NTSTATUS ZwFlushInstallUILanguage() { return NtFlushInstallUILanguage(); }
+NTSTATUS NtFlushInstallUILanguage() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtFlushInstallUILanguage, a); }
+NTSTATUS ZwFlushKey() { return NtFlushKey(); }
+NTSTATUS NtFlushKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtFlushKey, a); }
+NTSTATUS ZwFlushWriteBuffer() { return NtFlushWriteBuffer(); }
+NTSTATUS NtFlushWriteBuffer() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtFlushWriteBuffer, a); }
+NTSTATUS ZwFreeUserPhysicalPages() { return NtFreeUserPhysicalPages(); }
+NTSTATUS NtFreeUserPhysicalPages() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtFreeUserPhysicalPages, a); }
+NTSTATUS ZwFreezeRegistry() { return NtFreezeRegistry(); }
+NTSTATUS NtFreezeRegistry() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtFreezeRegistry, a); }
+NTSTATUS ZwFreezeTransactions() { return NtFreezeTransactions(); }
+NTSTATUS NtFreezeTransactions() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtFreezeTransactions, a); }
+NTSTATUS ZwGetCompleteWnfStateSubscription() { return NtGetCompleteWnfStateSubscription(); }
+NTSTATUS NtGetCompleteWnfStateSubscription() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtGetCompleteWnfStateSubscription, a); }
+NTSTATUS ZwGetContextThread() { return NtGetContextThread(); }
+NTSTATUS NtGetContextThread() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtGetContextThread, a); }
+NTSTATUS ZwGetMUIRegistryInfo() { return NtGetMUIRegistryInfo(); }
+NTSTATUS NtGetMUIRegistryInfo() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtGetMUIRegistryInfo, a); }
+NTSTATUS ZwGetNextProcess() { return NtGetNextProcess(); }
+NTSTATUS NtGetNextProcess() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtGetNextProcess, a); }
+NTSTATUS ZwGetNextThread() { return NtGetNextThread(); }
+NTSTATUS NtGetNextThread() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtGetNextThread, a); }
+NTSTATUS ZwGetNotificationResourceManager() { return NtGetNotificationResourceManager(); }
+NTSTATUS NtGetNotificationResourceManager() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtGetNotificationResourceManager, a); }
+NTSTATUS ZwImpersonateAnonymousToken() { return NtImpersonateAnonymousToken(); }
+NTSTATUS NtImpersonateAnonymousToken() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtImpersonateAnonymousToken, a); }
+NTSTATUS ZwImpersonateClientOfPort() { return NtImpersonateClientOfPort(); }
+NTSTATUS NtImpersonateClientOfPort() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtImpersonateClientOfPort, a); }
+NTSTATUS ZwImpersonateThread() { return NtImpersonateThread(); }
+NTSTATUS NtImpersonateThread() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtImpersonateThread, a); }
+NTSTATUS ZwInitializeEnclave() { return NtInitializeEnclave(); }
+NTSTATUS NtInitializeEnclave() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtInitializeEnclave, a); }
+NTSTATUS ZwInitializeNlsFiles() { return NtInitializeNlsFiles(); }
+NTSTATUS NtInitializeNlsFiles() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtInitializeNlsFiles, a); }
+NTSTATUS ZwInitializeRegistry() { return NtInitializeRegistry(); }
+NTSTATUS NtInitializeRegistry() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtInitializeRegistry, a); }
+NTSTATUS ZwLoadEnclaveData() { return NtLoadEnclaveData(); }
+NTSTATUS NtLoadEnclaveData() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtLoadEnclaveData, a); }
+NTSTATUS ZwLoadKey() { return NtLoadKey(); }
+NTSTATUS NtLoadKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtLoadKey, a); }
+NTSTATUS ZwLoadKey2() { return NtLoadKey2(); }
+NTSTATUS NtLoadKey2() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtLoadKey2, a); }
+NTSTATUS ZwLoadKey3() { return NtLoadKey3(); }
+NTSTATUS NtLoadKey3() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtLoadKey3, a); }
+NTSTATUS ZwLoadKeyEx() { return NtLoadKeyEx(); }
+NTSTATUS NtLoadKeyEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtLoadKeyEx, a); }
+NTSTATUS ZwMapCMFModule() { return NtMapCMFModule(); }
+NTSTATUS NtMapCMFModule() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtMapCMFModule, a); }
+NTSTATUS ZwNotifyChangeDirectoryFile() { return NtNotifyChangeDirectoryFile(); }
+NTSTATUS NtNotifyChangeDirectoryFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtNotifyChangeDirectoryFile, a); }
+NTSTATUS ZwNotifyChangeDirectoryFileEx() { return NtNotifyChangeDirectoryFileEx(); }
+NTSTATUS NtNotifyChangeDirectoryFileEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtNotifyChangeDirectoryFileEx, a); }
+NTSTATUS ZwNotifyChangeKey() { return NtNotifyChangeKey(); }
+NTSTATUS NtNotifyChangeKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtNotifyChangeKey, a); }
+NTSTATUS ZwNotifyChangeMultipleKeys() { return NtNotifyChangeMultipleKeys(); }
+NTSTATUS NtNotifyChangeMultipleKeys() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtNotifyChangeMultipleKeys, a); }
+NTSTATUS ZwOpenCpuPartition() { return NtOpenCpuPartition(); }
+NTSTATUS NtOpenCpuPartition() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenCpuPartition, a); }
+NTSTATUS ZwOpenDirectoryObject() { return NtOpenDirectoryObject(); }
+NTSTATUS NtOpenDirectoryObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenDirectoryObject, a); }
+NTSTATUS ZwOpenEnlistment() { return NtOpenEnlistment(); }
+NTSTATUS NtOpenEnlistment() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenEnlistment, a); }
+NTSTATUS ZwOpenEventPair() { return NtOpenEventPair(); }
+NTSTATUS NtOpenEventPair() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenEventPair, a); }
+NTSTATUS ZwOpenIoCompletion() { return NtOpenIoCompletion(); }
+NTSTATUS NtOpenIoCompletion() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenIoCompletion, a); }
+NTSTATUS ZwOpenJobObject() { return NtOpenJobObject(); }
+NTSTATUS NtOpenJobObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenJobObject, a); }
+NTSTATUS ZwOpenKeyEx() { return NtOpenKeyEx(); }
+NTSTATUS NtOpenKeyEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenKeyEx, a); }
+NTSTATUS ZwOpenKeyTransacted() { return NtOpenKeyTransacted(); }
+NTSTATUS NtOpenKeyTransacted() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenKeyTransacted, a); }
+NTSTATUS ZwOpenKeyTransactedEx() { return NtOpenKeyTransactedEx(); }
+NTSTATUS NtOpenKeyTransactedEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenKeyTransactedEx, a); }
+NTSTATUS ZwOpenKeyedEvent() { return NtOpenKeyedEvent(); }
+NTSTATUS NtOpenKeyedEvent() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenKeyedEvent, a); }
+NTSTATUS ZwOpenMutant() { return NtOpenMutant(); }
+NTSTATUS NtOpenMutant() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenMutant, a); }
+NTSTATUS ZwOpenObjectAuditAlarm() { return NtOpenObjectAuditAlarm(); }
+NTSTATUS NtOpenObjectAuditAlarm() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenObjectAuditAlarm, a); }
+NTSTATUS ZwOpenPartition() { return NtOpenPartition(); }
+NTSTATUS NtOpenPartition() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenPartition, a); }
+NTSTATUS ZwOpenPrivateNamespace() { return NtOpenPrivateNamespace(); }
+NTSTATUS NtOpenPrivateNamespace() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenPrivateNamespace, a); }
+NTSTATUS ZwOpenProcessToken() { return NtOpenProcessToken(); }
+NTSTATUS NtOpenProcessToken() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenProcessToken, a); }
+NTSTATUS ZwOpenProcessTokenEx() { return NtOpenProcessTokenEx(); }
+NTSTATUS NtOpenProcessTokenEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenProcessTokenEx, a); }
+NTSTATUS ZwOpenRegistryTransaction() { return NtOpenRegistryTransaction(); }
+NTSTATUS NtOpenRegistryTransaction() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenRegistryTransaction, a); }
+NTSTATUS ZwOpenResourceManager() { return NtOpenResourceManager(); }
+NTSTATUS NtOpenResourceManager() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenResourceManager, a); }
+NTSTATUS ZwOpenSection() { return NtOpenSection(); }
+NTSTATUS NtOpenSection() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenSection, a); }
+NTSTATUS ZwOpenSession() { return NtOpenSession(); }
+NTSTATUS NtOpenSession() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenSession, a); }
+NTSTATUS ZwOpenSymbolicLinkObject() { return NtOpenSymbolicLinkObject(); }
+NTSTATUS NtOpenSymbolicLinkObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenSymbolicLinkObject, a); }
+NTSTATUS ZwOpenThreadToken() { return NtOpenThreadToken(); }
+NTSTATUS NtOpenThreadToken() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenThreadToken, a); }
+NTSTATUS ZwOpenThreadTokenEx() { return NtOpenThreadTokenEx(); }
+NTSTATUS NtOpenThreadTokenEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenThreadTokenEx, a); }
+NTSTATUS ZwOpenTransaction() { return NtOpenTransaction(); }
+NTSTATUS NtOpenTransaction() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenTransaction, a); }
+NTSTATUS ZwOpenTransactionManager() { return NtOpenTransactionManager(); }
+NTSTATUS NtOpenTransactionManager() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtOpenTransactionManager, a); }
+NTSTATUS ZwPlugPlayControl() { return NtPlugPlayControl(); }
+NTSTATUS NtPlugPlayControl() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtPlugPlayControl, a); }
+NTSTATUS ZwPrivilegeCheck() { return NtPrivilegeCheck(); }
+NTSTATUS NtPrivilegeCheck() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtPrivilegeCheck, a); }
+NTSTATUS ZwPrivilegeObjectAuditAlarm() { return NtPrivilegeObjectAuditAlarm(); }
+NTSTATUS NtPrivilegeObjectAuditAlarm() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtPrivilegeObjectAuditAlarm, a); }
+NTSTATUS ZwPrivilegedServiceAuditAlarm() { return NtPrivilegedServiceAuditAlarm(); }
+NTSTATUS NtPrivilegedServiceAuditAlarm() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtPrivilegedServiceAuditAlarm, a); }
+NTSTATUS ZwPssCaptureVaSpaceBulk() { return NtPssCaptureVaSpaceBulk(); }
+NTSTATUS NtPssCaptureVaSpaceBulk() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtPssCaptureVaSpaceBulk, a); }
+NTSTATUS ZwQueryAttributesFile() { return NtQueryAttributesFile(); }
+NTSTATUS NtQueryAttributesFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryAttributesFile, a); }
+NTSTATUS ZwQueryAuxiliaryCounterFrequency() { return NtQueryAuxiliaryCounterFrequency(); }
+NTSTATUS NtQueryAuxiliaryCounterFrequency() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryAuxiliaryCounterFrequency, a); }
+NTSTATUS ZwQueryDebugFilterState() { return NtQueryDebugFilterState(); }
+NTSTATUS NtQueryDebugFilterState() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryDebugFilterState, a); }
+NTSTATUS ZwQueryDefaultLocale() { return NtQueryDefaultLocale(); }
+NTSTATUS NtQueryDefaultLocale() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryDefaultLocale, a); }
+NTSTATUS ZwQueryDefaultUILanguage() { return NtQueryDefaultUILanguage(); }
+NTSTATUS NtQueryDefaultUILanguage() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryDefaultUILanguage, a); }
+NTSTATUS ZwQueryDirectoryFile() { return NtQueryDirectoryFile(); }
+NTSTATUS NtQueryDirectoryFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryDirectoryFile, a); }
+NTSTATUS ZwQueryDirectoryFileEx() { return NtQueryDirectoryFileEx(); }
+NTSTATUS NtQueryDirectoryFileEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryDirectoryFileEx, a); }
+NTSTATUS ZwQueryDirectoryObject() { return NtQueryDirectoryObject(); }
+NTSTATUS NtQueryDirectoryObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryDirectoryObject, a); }
+NTSTATUS ZwQueryDriverEntryOrder() { return NtQueryDriverEntryOrder(); }
+NTSTATUS NtQueryDriverEntryOrder() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryDriverEntryOrder, a); }
+NTSTATUS ZwQueryEaFile() { return NtQueryEaFile(); }
+NTSTATUS NtQueryEaFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryEaFile, a); }
+NTSTATUS ZwQueryFullAttributesFile() { return NtQueryFullAttributesFile(); }
+NTSTATUS NtQueryFullAttributesFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryFullAttributesFile, a); }
+NTSTATUS ZwQueryInformationAtom() { return NtQueryInformationAtom(); }
+NTSTATUS NtQueryInformationAtom() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryInformationAtom, a); }
+NTSTATUS ZwQueryInformationByName() { return NtQueryInformationByName(); }
+NTSTATUS NtQueryInformationByName() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryInformationByName, a); }
+NTSTATUS ZwQueryInformationCpuPartition() { return NtQueryInformationCpuPartition(); }
+NTSTATUS NtQueryInformationCpuPartition() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryInformationCpuPartition, a); }
+NTSTATUS ZwQueryInformationEnlistment() { return NtQueryInformationEnlistment(); }
+NTSTATUS NtQueryInformationEnlistment() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryInformationEnlistment, a); }
+NTSTATUS ZwQueryInformationJobObject() { return NtQueryInformationJobObject(); }
+NTSTATUS NtQueryInformationJobObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryInformationJobObject, a); }
+NTSTATUS ZwQueryInformationResourceManager() { return NtQueryInformationResourceManager(); }
+NTSTATUS NtQueryInformationResourceManager() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryInformationResourceManager, a); }
+NTSTATUS ZwQueryInformationToken() { return NtQueryInformationToken(); }
+NTSTATUS NtQueryInformationToken() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryInformationToken, a); }
+NTSTATUS ZwQueryInformationTransaction() { return NtQueryInformationTransaction(); }
+NTSTATUS NtQueryInformationTransaction() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryInformationTransaction, a); }
+NTSTATUS ZwQueryInformationTransactionManager() { return NtQueryInformationTransactionManager(); }
+NTSTATUS NtQueryInformationTransactionManager() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryInformationTransactionManager, a); }
+NTSTATUS ZwQueryInstallUILanguage() { return NtQueryInstallUILanguage(); }
+NTSTATUS NtQueryInstallUILanguage() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryInstallUILanguage, a); }
+NTSTATUS ZwQueryIoCompletion() { return NtQueryIoCompletion(); }
+NTSTATUS NtQueryIoCompletion() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryIoCompletion, a); }
+NTSTATUS ZwQueryIoRingCapabilities() { return NtQueryIoRingCapabilities(); }
+NTSTATUS NtQueryIoRingCapabilities() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryIoRingCapabilities, a); }
+NTSTATUS ZwQueryLicenseValue() { return NtQueryLicenseValue(); }
+NTSTATUS NtQueryLicenseValue() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryLicenseValue, a); }
+NTSTATUS ZwQueryMultipleValueKey() { return NtQueryMultipleValueKey(); }
+NTSTATUS NtQueryMultipleValueKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryMultipleValueKey, a); }
+NTSTATUS ZwQueryMutant() { return NtQueryMutant(); }
+NTSTATUS NtQueryMutant() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryMutant, a); }
+NTSTATUS ZwQueryObject() { return NtQueryObject(); }
+NTSTATUS NtQueryObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryObject, a); }
+NTSTATUS ZwQueryOpenSubKeys() { return NtQueryOpenSubKeys(); }
+NTSTATUS NtQueryOpenSubKeys() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryOpenSubKeys, a); }
+NTSTATUS ZwQueryOpenSubKeysEx() { return NtQueryOpenSubKeysEx(); }
+NTSTATUS NtQueryOpenSubKeysEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryOpenSubKeysEx, a); }
+NTSTATUS ZwQueryPortInformationProcess() { return NtQueryPortInformationProcess(); }
+NTSTATUS NtQueryPortInformationProcess() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryPortInformationProcess, a); }
+NTSTATUS ZwQueryQuotaInformationFile() { return NtQueryQuotaInformationFile(); }
+NTSTATUS NtQueryQuotaInformationFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryQuotaInformationFile, a); }
+NTSTATUS ZwQuerySection() { return NtQuerySection(); }
+NTSTATUS NtQuerySection() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQuerySection, a); }
+NTSTATUS ZwQuerySecurityAttributesToken() { return NtQuerySecurityAttributesToken(); }
+NTSTATUS NtQuerySecurityAttributesToken() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQuerySecurityAttributesToken, a); }
+NTSTATUS ZwQuerySecurityObject() { return NtQuerySecurityObject(); }
+NTSTATUS NtQuerySecurityObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQuerySecurityObject, a); }
+NTSTATUS ZwQuerySecurityPolicy() { return NtQuerySecurityPolicy(); }
+NTSTATUS NtQuerySecurityPolicy() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQuerySecurityPolicy, a); }
+NTSTATUS ZwQuerySymbolicLinkObject() { return NtQuerySymbolicLinkObject(); }
+NTSTATUS NtQuerySymbolicLinkObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQuerySymbolicLinkObject, a); }
+NTSTATUS ZwQuerySystemEnvironmentValue() { return NtQuerySystemEnvironmentValue(); }
+NTSTATUS NtQuerySystemEnvironmentValue() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQuerySystemEnvironmentValue, a); }
+NTSTATUS ZwQuerySystemEnvironmentValueEx() { return NtQuerySystemEnvironmentValueEx(); }
+NTSTATUS NtQuerySystemEnvironmentValueEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQuerySystemEnvironmentValueEx, a); }
+NTSTATUS ZwQuerySystemInformationEx() { return NtQuerySystemInformationEx(); }
+NTSTATUS NtQuerySystemInformationEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQuerySystemInformationEx, a); }
+NTSTATUS ZwQuerySystemTime() { return NtQuerySystemTime(); }
+NTSTATUS NtQuerySystemTime() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQuerySystemTime, a); }
+NTSTATUS ZwQueryTimer() { return NtQueryTimer(); }
+NTSTATUS NtQueryTimer() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryTimer, a); }
+NTSTATUS ZwQueryValueKey() { return NtQueryValueKey(); }
+NTSTATUS NtQueryValueKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryValueKey, a); }
+NTSTATUS ZwQueryVolumeInformationFile() { return NtQueryVolumeInformationFile(); }
+NTSTATUS NtQueryVolumeInformationFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryVolumeInformationFile, a); }
+NTSTATUS ZwQueryWnfStateData() { return NtQueryWnfStateData(); }
+NTSTATUS NtQueryWnfStateData() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryWnfStateData, a); }
+NTSTATUS ZwQueryWnfStateNameInformation() { return NtQueryWnfStateNameInformation(); }
+NTSTATUS NtQueryWnfStateNameInformation() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueryWnfStateNameInformation, a); }
+NTSTATUS ZwQueueApcThread() { return NtQueueApcThread(); }
+NTSTATUS NtQueueApcThread() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueueApcThread, a); }
+NTSTATUS ZwQueueApcThreadEx() { return NtQueueApcThreadEx(); }
+NTSTATUS NtQueueApcThreadEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueueApcThreadEx, a); }
+NTSTATUS ZwQueueApcThreadEx2() { return NtQueueApcThreadEx2(); }
+NTSTATUS NtQueueApcThreadEx2() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtQueueApcThreadEx2, a); }
+NTSTATUS ZwRaiseException() { return NtRaiseException(); }
+NTSTATUS NtRaiseException() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtRaiseException, a); }
+NTSTATUS ZwRaiseHardError() { return NtRaiseHardError(); }
+NTSTATUS NtRaiseHardError() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtRaiseHardError, a); }
+NTSTATUS ZwReadOnlyEnlistment() { return NtReadOnlyEnlistment(); }
+NTSTATUS NtReadOnlyEnlistment() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtReadOnlyEnlistment, a); }
+NTSTATUS ZwReadRequestData() { return NtReadRequestData(); }
+NTSTATUS NtReadRequestData() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtReadRequestData, a); }
+NTSTATUS ZwRegisterProtocolAddressInformation() { return NtRegisterProtocolAddressInformation(); }
+NTSTATUS NtRegisterProtocolAddressInformation() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtRegisterProtocolAddressInformation, a); }
+NTSTATUS ZwRegisterThreadTerminatePort() { return NtRegisterThreadTerminatePort(); }
+NTSTATUS NtRegisterThreadTerminatePort() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtRegisterThreadTerminatePort, a); }
+NTSTATUS ZwReleaseKeyedEvent() { return NtReleaseKeyedEvent(); }
+NTSTATUS NtReleaseKeyedEvent() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtReleaseKeyedEvent, a); }
+NTSTATUS ZwReleaseMutant() { return NtReleaseMutant(); }
+NTSTATUS NtReleaseMutant() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtReleaseMutant, a); }
+NTSTATUS ZwRemoveIoCompletion() { return NtRemoveIoCompletion(); }
+NTSTATUS NtRemoveIoCompletion() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtRemoveIoCompletion, a); }
+NTSTATUS ZwRemoveIoCompletionEx() { return NtRemoveIoCompletionEx(); }
+NTSTATUS NtRemoveIoCompletionEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtRemoveIoCompletionEx, a); }
+NTSTATUS ZwRemoveProcessDebug() { return NtRemoveProcessDebug(); }
+NTSTATUS NtRemoveProcessDebug() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtRemoveProcessDebug, a); }
+NTSTATUS ZwRenameKey() { return NtRenameKey(); }
+NTSTATUS NtRenameKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtRenameKey, a); }
+NTSTATUS ZwReplaceKey() { return NtReplaceKey(); }
+NTSTATUS NtReplaceKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtReplaceKey, a); }
+NTSTATUS ZwReplacePartitionUnit() { return NtReplacePartitionUnit(); }
+NTSTATUS NtReplacePartitionUnit() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtReplacePartitionUnit, a); }
+NTSTATUS ZwRequestWaitReplyPort() { return NtRequestWaitReplyPort(); }
+NTSTATUS NtRequestWaitReplyPort() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtRequestWaitReplyPort, a); }
+NTSTATUS ZwResetWriteWatch() { return NtResetWriteWatch(); }
+NTSTATUS NtResetWriteWatch() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtResetWriteWatch, a); }
+NTSTATUS ZwRestoreKey() { return NtRestoreKey(); }
+NTSTATUS NtRestoreKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtRestoreKey, a); }
+NTSTATUS ZwResumeProcess() { return NtResumeProcess(); }
+NTSTATUS NtResumeProcess() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtResumeProcess, a); }
+NTSTATUS ZwResumeThread() { return NtResumeThread(); }
+NTSTATUS NtResumeThread() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtResumeThread, a); }
+NTSTATUS ZwRevertContainerImpersonation() { return NtRevertContainerImpersonation(); }
+NTSTATUS NtRevertContainerImpersonation() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtRevertContainerImpersonation, a); }
+NTSTATUS ZwSaveKey() { return NtSaveKey(); }
+NTSTATUS NtSaveKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSaveKey, a); }
+NTSTATUS ZwSaveKeyEx() { return NtSaveKeyEx(); }
+NTSTATUS NtSaveKeyEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSaveKeyEx, a); }
+NTSTATUS ZwSaveMergedKeys() { return NtSaveMergedKeys(); }
+NTSTATUS NtSaveMergedKeys() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSaveMergedKeys, a); }
+NTSTATUS ZwSetCachedSigningLevel() { return NtSetCachedSigningLevel(); }
+NTSTATUS NtSetCachedSigningLevel() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetCachedSigningLevel, a); }
+NTSTATUS ZwSetCachedSigningLevel2() { return NtSetCachedSigningLevel2(); }
+NTSTATUS NtSetCachedSigningLevel2() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetCachedSigningLevel2, a); }
+NTSTATUS ZwSetContextThread() { return NtSetContextThread(); }
+NTSTATUS NtSetContextThread() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetContextThread, a); }
+NTSTATUS ZwSetDebugFilterState() { return NtSetDebugFilterState(); }
+NTSTATUS NtSetDebugFilterState() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetDebugFilterState, a); }
+NTSTATUS ZwSetDefaultHardErrorPort() { return NtSetDefaultHardErrorPort(); }
+NTSTATUS NtSetDefaultHardErrorPort() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetDefaultHardErrorPort, a); }
+NTSTATUS ZwSetDefaultLocale() { return NtSetDefaultLocale(); }
+NTSTATUS NtSetDefaultLocale() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetDefaultLocale, a); }
+NTSTATUS ZwSetDefaultUILanguage() { return NtSetDefaultUILanguage(); }
+NTSTATUS NtSetDefaultUILanguage() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetDefaultUILanguage, a); }
+NTSTATUS ZwSetDriverEntryOrder() { return NtSetDriverEntryOrder(); }
+NTSTATUS NtSetDriverEntryOrder() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetDriverEntryOrder, a); }
+NTSTATUS ZwSetEaFile() { return NtSetEaFile(); }
+NTSTATUS NtSetEaFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetEaFile, a); }
+NTSTATUS ZwSetEventBoostPriority() { return NtSetEventBoostPriority(); }
+NTSTATUS NtSetEventBoostPriority() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetEventBoostPriority, a); }
+NTSTATUS ZwSetEventEx() { return NtSetEventEx(); }
+NTSTATUS NtSetEventEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetEventEx, a); }
+NTSTATUS ZwSetHighEventPair() { return NtSetHighEventPair(); }
+NTSTATUS NtSetHighEventPair() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetHighEventPair, a); }
+NTSTATUS ZwSetHighWaitLowEventPair() { return NtSetHighWaitLowEventPair(); }
+NTSTATUS NtSetHighWaitLowEventPair() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetHighWaitLowEventPair, a); }
+NTSTATUS ZwSetIRTimer() { return NtSetIRTimer(); }
+NTSTATUS NtSetIRTimer() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetIRTimer, a); }
+NTSTATUS ZwSetInformationCpuPartition() { return NtSetInformationCpuPartition(); }
+NTSTATUS NtSetInformationCpuPartition() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationCpuPartition, a); }
+NTSTATUS ZwSetInformationDebugObject() { return NtSetInformationDebugObject(); }
+NTSTATUS NtSetInformationDebugObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationDebugObject, a); }
+NTSTATUS ZwSetInformationEnlistment() { return NtSetInformationEnlistment(); }
+NTSTATUS NtSetInformationEnlistment() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationEnlistment, a); }
+NTSTATUS ZwSetInformationIoRing() { return NtSetInformationIoRing(); }
+NTSTATUS NtSetInformationIoRing() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationIoRing, a); }
+NTSTATUS ZwSetInformationJobObject() { return NtSetInformationJobObject(); }
+NTSTATUS NtSetInformationJobObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationJobObject, a); }
+NTSTATUS ZwSetInformationKey() { return NtSetInformationKey(); }
+NTSTATUS NtSetInformationKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationKey, a); }
+NTSTATUS ZwSetInformationObject() { return NtSetInformationObject(); }
+NTSTATUS NtSetInformationObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationObject, a); }
+NTSTATUS ZwSetInformationProcess() { return NtSetInformationProcess(); }
+NTSTATUS NtSetInformationProcess() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationProcess, a); }
+NTSTATUS ZwSetInformationResourceManager() { return NtSetInformationResourceManager(); }
+NTSTATUS NtSetInformationResourceManager() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationResourceManager, a); }
+NTSTATUS ZwSetInformationSymbolicLink() { return NtSetInformationSymbolicLink(); }
+NTSTATUS NtSetInformationSymbolicLink() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationSymbolicLink, a); }
+NTSTATUS ZwSetInformationThread() { return NtSetInformationThread(); }
+NTSTATUS NtSetInformationThread() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationThread, a); }
+NTSTATUS ZwSetInformationToken() { return NtSetInformationToken(); }
+NTSTATUS NtSetInformationToken() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationToken, a); }
+NTSTATUS ZwSetInformationTransaction() { return NtSetInformationTransaction(); }
+NTSTATUS NtSetInformationTransaction() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationTransaction, a); }
+NTSTATUS ZwSetInformationTransactionManager() { return NtSetInformationTransactionManager(); }
+NTSTATUS NtSetInformationTransactionManager() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationTransactionManager, a); }
+NTSTATUS ZwSetInformationVirtualMemory() { return NtSetInformationVirtualMemory(); }
+NTSTATUS NtSetInformationVirtualMemory() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetInformationVirtualMemory, a); }
+NTSTATUS ZwSetIoCompletion() { return NtSetIoCompletion(); }
+NTSTATUS NtSetIoCompletion() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetIoCompletion, a); }
+NTSTATUS ZwSetIoCompletionEx() { return NtSetIoCompletionEx(); }
+NTSTATUS NtSetIoCompletionEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetIoCompletionEx, a); }
+NTSTATUS ZwSetLdtEntries() { return NtSetLdtEntries(); }
+NTSTATUS NtSetLdtEntries() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetLdtEntries, a); }
+NTSTATUS ZwSetLowEventPair() { return NtSetLowEventPair(); }
+NTSTATUS NtSetLowEventPair() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetLowEventPair, a); }
+NTSTATUS ZwSetLowWaitHighEventPair() { return NtSetLowWaitHighEventPair(); }
+NTSTATUS NtSetLowWaitHighEventPair() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetLowWaitHighEventPair, a); }
+NTSTATUS ZwSetQuotaInformationFile() { return NtSetQuotaInformationFile(); }
+NTSTATUS NtSetQuotaInformationFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetQuotaInformationFile, a); }
+NTSTATUS ZwSetSecurityObject() { return NtSetSecurityObject(); }
+NTSTATUS NtSetSecurityObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetSecurityObject, a); }
+NTSTATUS ZwSetSystemEnvironmentValue() { return NtSetSystemEnvironmentValue(); }
+NTSTATUS NtSetSystemEnvironmentValue() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetSystemEnvironmentValue, a); }
+NTSTATUS ZwSetSystemEnvironmentValueEx() { return NtSetSystemEnvironmentValueEx(); }
+NTSTATUS NtSetSystemEnvironmentValueEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetSystemEnvironmentValueEx, a); }
+NTSTATUS ZwSetSystemInformation() { return NtSetSystemInformation(); }
+NTSTATUS NtSetSystemInformation() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetSystemInformation, a); }
+NTSTATUS ZwSetSystemPowerState() { return NtSetSystemPowerState(); }
+NTSTATUS NtSetSystemPowerState() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetSystemPowerState, a); }
+NTSTATUS ZwSetThreadExecutionState() { return NtSetThreadExecutionState(); }
+NTSTATUS NtSetThreadExecutionState() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetThreadExecutionState, a); }
+NTSTATUS ZwSetTimer2() { return NtSetTimer2(); }
+NTSTATUS NtSetTimer2() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetTimer2, a); }
+NTSTATUS ZwSetTimerEx() { return NtSetTimerEx(); }
+NTSTATUS NtSetTimerEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetTimerEx, a); }
+NTSTATUS ZwSetUuidSeed() { return NtSetUuidSeed(); }
+NTSTATUS NtSetUuidSeed() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetUuidSeed, a); }
+NTSTATUS ZwSetValueKey() { return NtSetValueKey(); }
+NTSTATUS NtSetValueKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetValueKey, a); }
+NTSTATUS ZwSetVolumeInformationFile() { return NtSetVolumeInformationFile(); }
+NTSTATUS NtSetVolumeInformationFile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetVolumeInformationFile, a); }
+NTSTATUS ZwSetWnfProcessNotificationEvent() { return NtSetWnfProcessNotificationEvent(); }
+NTSTATUS NtSetWnfProcessNotificationEvent() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSetWnfProcessNotificationEvent, a); }
+NTSTATUS ZwStartProfile() { return NtStartProfile(); }
+NTSTATUS NtStartProfile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtStartProfile, a); }
+NTSTATUS ZwStopProfile() { return NtStopProfile(); }
+NTSTATUS NtStopProfile() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtStopProfile, a); }
+NTSTATUS ZwSubmitIoRing() { return NtSubmitIoRing(); }
+NTSTATUS NtSubmitIoRing() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSubmitIoRing, a); }
+NTSTATUS ZwSubscribeWnfStateChange() { return NtSubscribeWnfStateChange(); }
+NTSTATUS NtSubscribeWnfStateChange() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSubscribeWnfStateChange, a); }
+NTSTATUS ZwSuspendProcess() { return NtSuspendProcess(); }
+NTSTATUS NtSuspendProcess() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSuspendProcess, a); }
+NTSTATUS ZwSuspendThread() { return NtSuspendThread(); }
+NTSTATUS NtSuspendThread() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSuspendThread, a); }
+NTSTATUS ZwSystemDebugControl() { return NtSystemDebugControl(); }
+NTSTATUS NtSystemDebugControl() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtSystemDebugControl, a); }
+NTSTATUS ZwTerminateEnclave() { return NtTerminateEnclave(); }
+NTSTATUS NtTerminateEnclave() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtTerminateEnclave, a); }
+NTSTATUS ZwTerminateJobObject() { return NtTerminateJobObject(); }
+NTSTATUS NtTerminateJobObject() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtTerminateJobObject, a); }
+NTSTATUS ZwTestAlert() { return NtTestAlert(); }
+NTSTATUS NtTestAlert() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtTestAlert, a); }
+NTSTATUS ZwThawRegistry() { return NtThawRegistry(); }
+NTSTATUS NtThawRegistry() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtThawRegistry, a); }
+NTSTATUS ZwThawTransactions() { return NtThawTransactions(); }
+NTSTATUS NtThawTransactions() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtThawTransactions, a); }
+NTSTATUS ZwTraceEvent() { return NtTraceEvent(); }
+NTSTATUS NtTraceEvent() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtTraceEvent, a); }
+NTSTATUS ZwTranslateFilePath() { return NtTranslateFilePath(); }
+NTSTATUS NtTranslateFilePath() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtTranslateFilePath, a); }
+NTSTATUS ZwUmsThreadYield() { return NtUmsThreadYield(); }
+NTSTATUS NtUmsThreadYield() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtUmsThreadYield, a); }
+NTSTATUS ZwUnloadDriver() { return NtUnloadDriver(); }
+NTSTATUS NtUnloadDriver() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtUnloadDriver, a); }
+NTSTATUS ZwUnloadKey() { return NtUnloadKey(); }
+NTSTATUS NtUnloadKey() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtUnloadKey, a); }
+NTSTATUS ZwUnloadKey2() { return NtUnloadKey2(); }
+NTSTATUS NtUnloadKey2() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtUnloadKey2, a); }
+NTSTATUS ZwUnloadKeyEx() { return NtUnloadKeyEx(); }
+NTSTATUS NtUnloadKeyEx() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtUnloadKeyEx, a); }
+NTSTATUS ZwUnsubscribeWnfStateChange() { return NtUnsubscribeWnfStateChange(); }
+NTSTATUS NtUnsubscribeWnfStateChange() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtUnsubscribeWnfStateChange, a); }
+NTSTATUS ZwUpdateWnfStateData() { return NtUpdateWnfStateData(); }
+NTSTATUS NtUpdateWnfStateData() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtUpdateWnfStateData, a); }
+NTSTATUS ZwVdmControl() { return NtVdmControl(); }
+NTSTATUS NtVdmControl() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtVdmControl, a); }
+NTSTATUS ZwWaitForAlertByThreadId() { return NtWaitForAlertByThreadId(); }
+NTSTATUS NtWaitForAlertByThreadId() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtWaitForAlertByThreadId, a); }
+NTSTATUS ZwWaitForDebugEvent() { return NtWaitForDebugEvent(); }
+NTSTATUS NtWaitForDebugEvent() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtWaitForDebugEvent, a); }
+NTSTATUS ZwWaitForKeyedEvent() { return NtWaitForKeyedEvent(); }
+NTSTATUS NtWaitForKeyedEvent() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtWaitForKeyedEvent, a); }
+NTSTATUS ZwWaitForWorkViaWorkerFactory() { return NtWaitForWorkViaWorkerFactory(); }
+NTSTATUS NtWaitForWorkViaWorkerFactory() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtWaitForWorkViaWorkerFactory, a); }
+NTSTATUS ZwWaitHighEventPair() { return NtWaitHighEventPair(); }
+NTSTATUS NtWaitHighEventPair() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtWaitHighEventPair, a); }
+NTSTATUS ZwWaitLowEventPair() { return NtWaitLowEventPair(); }
+NTSTATUS NtWaitLowEventPair() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtWaitLowEventPair, a); }
+NTSTATUS ZwWriteRequestData() { return NtWriteRequestData(); }
+NTSTATUS NtWriteRequestData() { long a[4]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtWriteRequestData, a); }
+W32API NTSTATUS ZwAccessCheckAndAuditAlarm();
+W32API NTSTATUS NtAccessCheckAndAuditAlarm();
+W32API NTSTATUS ZwAccessCheckByType();
+W32API NTSTATUS NtAccessCheckByType();
+W32API NTSTATUS ZwAccessCheckByTypeAndAuditAlarm();
+W32API NTSTATUS NtAccessCheckByTypeAndAuditAlarm();
+W32API NTSTATUS ZwAccessCheckByTypeResultList();
+W32API NTSTATUS NtAccessCheckByTypeResultList();
+W32API NTSTATUS ZwAccessCheckByTypeResultListAndAuditAlarm();
+W32API NTSTATUS NtAccessCheckByTypeResultListAndAuditAlarm();
+W32API NTSTATUS ZwAccessCheckByTypeResultListAndAuditAlarmByHandle();
+W32API NTSTATUS NtAccessCheckByTypeResultListAndAuditAlarmByHandle();
+W32API NTSTATUS ZwAcquireCrossVmMutant();
+W32API NTSTATUS NtAcquireCrossVmMutant();
+W32API NTSTATUS ZwAcquireProcessActivityReference();
+W32API NTSTATUS NtAcquireProcessActivityReference();
+W32API NTSTATUS ZwAddAtom();
+W32API NTSTATUS NtAddAtom();
+W32API NTSTATUS ZwAddAtomEx();
+W32API NTSTATUS NtAddAtomEx();
+W32API NTSTATUS ZwAdjustGroupsToken();
+W32API NTSTATUS NtAdjustGroupsToken();
+W32API NTSTATUS ZwAdjustPrivilegesToken();
+W32API NTSTATUS NtAdjustPrivilegesToken();
+W32API NTSTATUS ZwAdjustTokenClaimsAndDeviceGroups();
+W32API NTSTATUS NtAdjustTokenClaimsAndDeviceGroups();
+W32API NTSTATUS ZwAlertMultipleThreadByThreadId();
+W32API NTSTATUS NtAlertMultipleThreadByThreadId();
+W32API NTSTATUS ZwAlertResumeThread();
+W32API NTSTATUS NtAlertResumeThread();
+W32API NTSTATUS ZwAlertThread();
+W32API NTSTATUS NtAlertThread();
+W32API NTSTATUS ZwAlertThreadByThreadId();
+W32API NTSTATUS NtAlertThreadByThreadId();
+W32API NTSTATUS ZwAlertThreadByThreadIdEx();
+W32API NTSTATUS NtAlertThreadByThreadIdEx();
+W32API NTSTATUS ZwAllocateLocallyUniqueId();
+W32API NTSTATUS NtAllocateLocallyUniqueId();
+W32API NTSTATUS ZwAllocateReserveObject();
+W32API NTSTATUS NtAllocateReserveObject();
+W32API NTSTATUS ZwAllocateUserPhysicalPages();
+W32API NTSTATUS NtAllocateUserPhysicalPages();
+W32API NTSTATUS ZwAllocateUserPhysicalPagesEx();
+W32API NTSTATUS NtAllocateUserPhysicalPagesEx();
+W32API NTSTATUS ZwAllocateUuids();
+W32API NTSTATUS NtAllocateUuids();
+W32API NTSTATUS ZwAlpcAcceptConnectPort();
+W32API NTSTATUS NtAlpcAcceptConnectPort();
+W32API NTSTATUS ZwAlpcCancelMessage();
+W32API NTSTATUS NtAlpcCancelMessage();
+W32API NTSTATUS ZwAlpcConnectPort();
+W32API NTSTATUS NtAlpcConnectPort();
+W32API NTSTATUS ZwAlpcConnectPortEx();
+W32API NTSTATUS NtAlpcConnectPortEx();
+W32API NTSTATUS ZwAlpcCreatePort();
+W32API NTSTATUS NtAlpcCreatePort();
+W32API NTSTATUS ZwAlpcCreatePortSection();
+W32API NTSTATUS NtAlpcCreatePortSection();
+W32API NTSTATUS ZwAlpcCreateResourceReserve();
+W32API NTSTATUS NtAlpcCreateResourceReserve();
+W32API NTSTATUS ZwAlpcCreateSectionView();
+W32API NTSTATUS NtAlpcCreateSectionView();
+W32API NTSTATUS ZwAlpcCreateSecurityContext();
+W32API NTSTATUS NtAlpcCreateSecurityContext();
+W32API NTSTATUS ZwAlpcDeletePortSection();
+W32API NTSTATUS NtAlpcDeletePortSection();
+W32API NTSTATUS ZwAlpcDeleteResourceReserve();
+W32API NTSTATUS NtAlpcDeleteResourceReserve();
+W32API NTSTATUS ZwAlpcDeleteSectionView();
+W32API NTSTATUS NtAlpcDeleteSectionView();
+W32API NTSTATUS ZwAlpcDeleteSecurityContext();
+W32API NTSTATUS NtAlpcDeleteSecurityContext();
+W32API NTSTATUS ZwAlpcDisconnectPort();
+W32API NTSTATUS NtAlpcDisconnectPort();
+W32API NTSTATUS ZwAlpcImpersonateClientContainerOfPort();
+W32API NTSTATUS NtAlpcImpersonateClientContainerOfPort();
+W32API NTSTATUS ZwAlpcImpersonateClientOfPort();
+W32API NTSTATUS NtAlpcImpersonateClientOfPort();
+W32API NTSTATUS ZwAlpcOpenSenderProcess();
+W32API NTSTATUS NtAlpcOpenSenderProcess();
+W32API NTSTATUS ZwAlpcOpenSenderThread();
+W32API NTSTATUS NtAlpcOpenSenderThread();
+W32API NTSTATUS ZwAlpcQueryInformation();
+W32API NTSTATUS NtAlpcQueryInformation();
+W32API NTSTATUS ZwAlpcQueryInformationMessage();
+W32API NTSTATUS NtAlpcQueryInformationMessage();
+W32API NTSTATUS ZwAlpcRevokeSecurityContext();
+W32API NTSTATUS NtAlpcRevokeSecurityContext();
+W32API NTSTATUS ZwAlpcSendWaitReceivePort();
+W32API NTSTATUS NtAlpcSendWaitReceivePort();
+W32API NTSTATUS ZwAlpcSetInformation();
+W32API NTSTATUS NtAlpcSetInformation();
+W32API NTSTATUS ZwApphelpCacheControl();
+W32API NTSTATUS NtApphelpCacheControl();
+W32API NTSTATUS ZwAreMappedFilesTheSame();
+W32API NTSTATUS NtAreMappedFilesTheSame();
+W32API NTSTATUS ZwAssignProcessToJobObject();
+W32API NTSTATUS NtAssignProcessToJobObject();
+W32API NTSTATUS ZwCallEnclave();
+W32API NTSTATUS NtCallEnclave();
+W32API NTSTATUS ZwCallbackReturn();
+W32API NTSTATUS NtCallbackReturn();
+W32API NTSTATUS ZwCancelIoFile();
+W32API NTSTATUS NtCancelIoFile();
+W32API NTSTATUS ZwCancelIoFileEx();
+W32API NTSTATUS NtCancelIoFileEx();
+W32API NTSTATUS ZwCancelSynchronousIoFile();
+W32API NTSTATUS NtCancelSynchronousIoFile();
+W32API NTSTATUS ZwCancelTimer2();
+W32API NTSTATUS NtCancelTimer2();
+W32API NTSTATUS ZwChangeProcessState();
+W32API NTSTATUS NtChangeProcessState();
+W32API NTSTATUS ZwChangeThreadState();
+W32API NTSTATUS NtChangeThreadState();
+W32API NTSTATUS ZwCloseObjectAuditAlarm();
+W32API NTSTATUS NtCloseObjectAuditAlarm();
+W32API NTSTATUS ZwCompactKeys();
+W32API NTSTATUS NtCompactKeys();
+W32API NTSTATUS ZwCompareObjects();
+W32API NTSTATUS NtCompareObjects();
+W32API NTSTATUS ZwCompareSigningLevels();
+W32API NTSTATUS NtCompareSigningLevels();
+W32API NTSTATUS ZwCompareTokens();
+W32API NTSTATUS NtCompareTokens();
+W32API NTSTATUS ZwCompressKey();
+W32API NTSTATUS NtCompressKey();
+W32API NTSTATUS ZwContinue();
+W32API NTSTATUS NtContinue();
+W32API NTSTATUS ZwContinueEx();
+W32API NTSTATUS NtContinueEx();
+W32API NTSTATUS ZwConvertBetweenAuxiliaryCounterAndPerformanceCounter();
+W32API NTSTATUS NtConvertBetweenAuxiliaryCounterAndPerformanceCounter();
+W32API NTSTATUS ZwCopyFileChunk();
+W32API NTSTATUS NtCopyFileChunk();
+W32API NTSTATUS ZwCreateCpuPartition();
+W32API NTSTATUS NtCreateCpuPartition();
+W32API NTSTATUS ZwCreateCrossVmEvent();
+W32API NTSTATUS NtCreateCrossVmEvent();
+W32API NTSTATUS ZwCreateCrossVmMutant();
+W32API NTSTATUS NtCreateCrossVmMutant();
+W32API NTSTATUS ZwCreateDebugObject();
+W32API NTSTATUS NtCreateDebugObject();
+W32API NTSTATUS ZwCreateDirectoryObject();
+W32API NTSTATUS NtCreateDirectoryObject();
+W32API NTSTATUS ZwCreateDirectoryObjectEx();
+W32API NTSTATUS NtCreateDirectoryObjectEx();
+W32API NTSTATUS ZwCreateEnclave();
+W32API NTSTATUS NtCreateEnclave();
+W32API NTSTATUS ZwCreateEnlistment();
+W32API NTSTATUS NtCreateEnlistment();
+W32API NTSTATUS ZwCreateEventPair();
+W32API NTSTATUS NtCreateEventPair();
+W32API NTSTATUS ZwCreateIRTimer();
+W32API NTSTATUS NtCreateIRTimer();
+W32API NTSTATUS ZwCreateIoCompletion();
+W32API NTSTATUS NtCreateIoCompletion();
+W32API NTSTATUS ZwCreateIoRing();
+W32API NTSTATUS NtCreateIoRing();
+W32API NTSTATUS ZwCreateJobObject();
+W32API NTSTATUS NtCreateJobObject();
+W32API NTSTATUS ZwCreateJobSet();
+W32API NTSTATUS NtCreateJobSet();
+W32API NTSTATUS ZwCreateKeyTransacted();
+W32API NTSTATUS NtCreateKeyTransacted();
+W32API NTSTATUS ZwCreateKeyedEvent();
+W32API NTSTATUS NtCreateKeyedEvent();
+W32API NTSTATUS ZwCreateLowBoxToken();
+W32API NTSTATUS NtCreateLowBoxToken();
+W32API NTSTATUS ZwCreateMailslotFile();
+W32API NTSTATUS NtCreateMailslotFile();
+W32API NTSTATUS ZwCreateMutant();
+W32API NTSTATUS NtCreateMutant();
+W32API NTSTATUS ZwCreateNamedPipeFile();
+W32API NTSTATUS NtCreateNamedPipeFile();
+W32API NTSTATUS ZwCreatePagingFile();
+W32API NTSTATUS NtCreatePagingFile();
+W32API NTSTATUS ZwCreatePartition();
+W32API NTSTATUS NtCreatePartition();
+W32API NTSTATUS ZwCreatePrivateNamespace();
+W32API NTSTATUS NtCreatePrivateNamespace();
+W32API NTSTATUS ZwCreateProcessStateChange();
+W32API NTSTATUS NtCreateProcessStateChange();
+W32API NTSTATUS ZwCreateProfile();
+W32API NTSTATUS NtCreateProfile();
+W32API NTSTATUS ZwCreateProfileEx();
+W32API NTSTATUS NtCreateProfileEx();
+W32API NTSTATUS ZwCreateRegistryTransaction();
+W32API NTSTATUS NtCreateRegistryTransaction();
+W32API NTSTATUS ZwCreateResourceManager();
+W32API NTSTATUS NtCreateResourceManager();
+W32API NTSTATUS ZwCreateSymbolicLinkObject();
+W32API NTSTATUS NtCreateSymbolicLinkObject();
+W32API NTSTATUS ZwCreateThreadStateChange();
+W32API NTSTATUS NtCreateThreadStateChange();
+W32API NTSTATUS ZwCreateTimer2();
+W32API NTSTATUS NtCreateTimer2();
+W32API NTSTATUS ZwCreateToken();
+W32API NTSTATUS NtCreateToken();
+W32API NTSTATUS ZwCreateTokenEx();
+W32API NTSTATUS NtCreateTokenEx();
+W32API NTSTATUS ZwCreateTransaction();
+W32API NTSTATUS NtCreateTransaction();
+W32API NTSTATUS ZwCreateTransactionManager();
+W32API NTSTATUS NtCreateTransactionManager();
+W32API NTSTATUS ZwCreateUserProcess();
+W32API NTSTATUS NtCreateUserProcess();
+W32API NTSTATUS ZwCreateWnfStateName();
+W32API NTSTATUS NtCreateWnfStateName();
+W32API NTSTATUS ZwDebugActiveProcess();
+W32API NTSTATUS NtDebugActiveProcess();
+W32API NTSTATUS ZwDebugContinue();
+W32API NTSTATUS NtDebugContinue();
+W32API NTSTATUS ZwDeleteAtom();
+W32API NTSTATUS NtDeleteAtom();
+W32API NTSTATUS ZwDeleteFile();
+W32API NTSTATUS NtDeleteFile();
+W32API NTSTATUS ZwDeleteKey();
+W32API NTSTATUS NtDeleteKey();
+W32API NTSTATUS ZwDeleteObjectAuditAlarm();
+W32API NTSTATUS NtDeleteObjectAuditAlarm();
+W32API NTSTATUS ZwDeletePrivateNamespace();
+W32API NTSTATUS NtDeletePrivateNamespace();
+W32API NTSTATUS ZwDeleteValueKey();
+W32API NTSTATUS NtDeleteValueKey();
+W32API NTSTATUS ZwDeleteWnfStateData();
+W32API NTSTATUS NtDeleteWnfStateData();
+W32API NTSTATUS ZwDeleteWnfStateName();
+W32API NTSTATUS NtDeleteWnfStateName();
+W32API NTSTATUS ZwDirectGraphicsCall();
+W32API NTSTATUS NtDirectGraphicsCall();
+W32API NTSTATUS ZwDisplayString();
+W32API NTSTATUS NtDisplayString();
+W32API NTSTATUS ZwDrawText();
+W32API NTSTATUS NtDrawText();
+W32API NTSTATUS ZwDuplicateObject();
+W32API NTSTATUS NtDuplicateObject();
+W32API NTSTATUS ZwDuplicateToken();
+W32API NTSTATUS NtDuplicateToken();
+W32API NTSTATUS ZwEnumerateKey();
+W32API NTSTATUS NtEnumerateKey();
+W32API NTSTATUS ZwEnumerateSystemEnvironmentValuesEx();
+W32API NTSTATUS NtEnumerateSystemEnvironmentValuesEx();
+W32API NTSTATUS ZwEnumerateTransactionObject();
+W32API NTSTATUS NtEnumerateTransactionObject();
+W32API NTSTATUS ZwEnumerateValueKey();
+W32API NTSTATUS NtEnumerateValueKey();
+W32API NTSTATUS ZwFilterBootOption();
+W32API NTSTATUS NtFilterBootOption();
+W32API NTSTATUS ZwFilterToken();
+W32API NTSTATUS NtFilterToken();
+W32API NTSTATUS ZwFilterTokenEx();
+W32API NTSTATUS NtFilterTokenEx();
+W32API NTSTATUS ZwFindAtom();
+W32API NTSTATUS NtFindAtom();
+W32API NTSTATUS ZwFlushInstallUILanguage();
+W32API NTSTATUS NtFlushInstallUILanguage();
+W32API NTSTATUS ZwFlushKey();
+W32API NTSTATUS NtFlushKey();
+W32API NTSTATUS ZwFlushWriteBuffer();
+W32API NTSTATUS NtFlushWriteBuffer();
+W32API NTSTATUS ZwFreeUserPhysicalPages();
+W32API NTSTATUS NtFreeUserPhysicalPages();
+W32API NTSTATUS ZwFreezeRegistry();
+W32API NTSTATUS NtFreezeRegistry();
+W32API NTSTATUS ZwFreezeTransactions();
+W32API NTSTATUS NtFreezeTransactions();
+W32API NTSTATUS ZwGetCompleteWnfStateSubscription();
+W32API NTSTATUS NtGetCompleteWnfStateSubscription();
+W32API NTSTATUS ZwGetContextThread();
+W32API NTSTATUS NtGetContextThread();
+W32API NTSTATUS ZwGetMUIRegistryInfo();
+W32API NTSTATUS NtGetMUIRegistryInfo();
+W32API NTSTATUS ZwGetNextProcess();
+W32API NTSTATUS NtGetNextProcess();
+W32API NTSTATUS ZwGetNextThread();
+W32API NTSTATUS NtGetNextThread();
+W32API NTSTATUS ZwGetNotificationResourceManager();
+W32API NTSTATUS NtGetNotificationResourceManager();
+W32API NTSTATUS ZwImpersonateAnonymousToken();
+W32API NTSTATUS NtImpersonateAnonymousToken();
+W32API NTSTATUS ZwImpersonateClientOfPort();
+W32API NTSTATUS NtImpersonateClientOfPort();
+W32API NTSTATUS ZwImpersonateThread();
+W32API NTSTATUS NtImpersonateThread();
+W32API NTSTATUS ZwInitializeEnclave();
+W32API NTSTATUS NtInitializeEnclave();
+W32API NTSTATUS ZwInitializeNlsFiles();
+W32API NTSTATUS NtInitializeNlsFiles();
+W32API NTSTATUS ZwInitializeRegistry();
+W32API NTSTATUS NtInitializeRegistry();
+W32API NTSTATUS ZwLoadEnclaveData();
+W32API NTSTATUS NtLoadEnclaveData();
+W32API NTSTATUS ZwLoadKey();
+W32API NTSTATUS NtLoadKey();
+W32API NTSTATUS ZwLoadKey2();
+W32API NTSTATUS NtLoadKey2();
+W32API NTSTATUS ZwLoadKey3();
+W32API NTSTATUS NtLoadKey3();
+W32API NTSTATUS ZwLoadKeyEx();
+W32API NTSTATUS NtLoadKeyEx();
+W32API NTSTATUS ZwMapCMFModule();
+W32API NTSTATUS NtMapCMFModule();
+W32API NTSTATUS ZwNotifyChangeDirectoryFile();
+W32API NTSTATUS NtNotifyChangeDirectoryFile();
+W32API NTSTATUS ZwNotifyChangeDirectoryFileEx();
+W32API NTSTATUS NtNotifyChangeDirectoryFileEx();
+W32API NTSTATUS ZwNotifyChangeKey();
+W32API NTSTATUS NtNotifyChangeKey();
+W32API NTSTATUS ZwNotifyChangeMultipleKeys();
+W32API NTSTATUS NtNotifyChangeMultipleKeys();
+W32API NTSTATUS ZwOpenCpuPartition();
+W32API NTSTATUS NtOpenCpuPartition();
+W32API NTSTATUS ZwOpenDirectoryObject();
+W32API NTSTATUS NtOpenDirectoryObject();
+W32API NTSTATUS ZwOpenEnlistment();
+W32API NTSTATUS NtOpenEnlistment();
+W32API NTSTATUS ZwOpenEventPair();
+W32API NTSTATUS NtOpenEventPair();
+W32API NTSTATUS ZwOpenIoCompletion();
+W32API NTSTATUS NtOpenIoCompletion();
+W32API NTSTATUS ZwOpenJobObject();
+W32API NTSTATUS NtOpenJobObject();
+W32API NTSTATUS ZwOpenKeyEx();
+W32API NTSTATUS NtOpenKeyEx();
+W32API NTSTATUS ZwOpenKeyTransacted();
+W32API NTSTATUS NtOpenKeyTransacted();
+W32API NTSTATUS ZwOpenKeyTransactedEx();
+W32API NTSTATUS NtOpenKeyTransactedEx();
+W32API NTSTATUS ZwOpenKeyedEvent();
+W32API NTSTATUS NtOpenKeyedEvent();
+W32API NTSTATUS ZwOpenMutant();
+W32API NTSTATUS NtOpenMutant();
+W32API NTSTATUS ZwOpenObjectAuditAlarm();
+W32API NTSTATUS NtOpenObjectAuditAlarm();
+W32API NTSTATUS ZwOpenPartition();
+W32API NTSTATUS NtOpenPartition();
+W32API NTSTATUS ZwOpenPrivateNamespace();
+W32API NTSTATUS NtOpenPrivateNamespace();
+W32API NTSTATUS ZwOpenProcessToken();
+W32API NTSTATUS NtOpenProcessToken();
+W32API NTSTATUS ZwOpenProcessTokenEx();
+W32API NTSTATUS NtOpenProcessTokenEx();
+W32API NTSTATUS ZwOpenRegistryTransaction();
+W32API NTSTATUS NtOpenRegistryTransaction();
+W32API NTSTATUS ZwOpenResourceManager();
+W32API NTSTATUS NtOpenResourceManager();
+W32API NTSTATUS ZwOpenSection();
+W32API NTSTATUS NtOpenSection();
+W32API NTSTATUS ZwOpenSession();
+W32API NTSTATUS NtOpenSession();
+W32API NTSTATUS ZwOpenSymbolicLinkObject();
+W32API NTSTATUS NtOpenSymbolicLinkObject();
+W32API NTSTATUS ZwOpenThreadToken();
+W32API NTSTATUS NtOpenThreadToken();
+W32API NTSTATUS ZwOpenThreadTokenEx();
+W32API NTSTATUS NtOpenThreadTokenEx();
+W32API NTSTATUS ZwOpenTransaction();
+W32API NTSTATUS NtOpenTransaction();
+W32API NTSTATUS ZwOpenTransactionManager();
+W32API NTSTATUS NtOpenTransactionManager();
+W32API NTSTATUS ZwPlugPlayControl();
+W32API NTSTATUS NtPlugPlayControl();
+W32API NTSTATUS ZwPrivilegeCheck();
+W32API NTSTATUS NtPrivilegeCheck();
+W32API NTSTATUS ZwPrivilegeObjectAuditAlarm();
+W32API NTSTATUS NtPrivilegeObjectAuditAlarm();
+W32API NTSTATUS ZwPrivilegedServiceAuditAlarm();
+W32API NTSTATUS NtPrivilegedServiceAuditAlarm();
+W32API NTSTATUS ZwPssCaptureVaSpaceBulk();
+W32API NTSTATUS NtPssCaptureVaSpaceBulk();
+W32API NTSTATUS ZwQueryAttributesFile();
+W32API NTSTATUS NtQueryAttributesFile();
+W32API NTSTATUS ZwQueryAuxiliaryCounterFrequency();
+W32API NTSTATUS NtQueryAuxiliaryCounterFrequency();
+W32API NTSTATUS ZwQueryDebugFilterState();
+W32API NTSTATUS NtQueryDebugFilterState();
+W32API NTSTATUS ZwQueryDefaultLocale();
+W32API NTSTATUS NtQueryDefaultLocale();
+W32API NTSTATUS ZwQueryDefaultUILanguage();
+W32API NTSTATUS NtQueryDefaultUILanguage();
+W32API NTSTATUS ZwQueryDirectoryFile();
+W32API NTSTATUS NtQueryDirectoryFile();
+W32API NTSTATUS ZwQueryDirectoryFileEx();
+W32API NTSTATUS NtQueryDirectoryFileEx();
+W32API NTSTATUS ZwQueryDirectoryObject();
+W32API NTSTATUS NtQueryDirectoryObject();
+W32API NTSTATUS ZwQueryDriverEntryOrder();
+W32API NTSTATUS NtQueryDriverEntryOrder();
+W32API NTSTATUS ZwQueryEaFile();
+W32API NTSTATUS NtQueryEaFile();
+W32API NTSTATUS ZwQueryFullAttributesFile();
+W32API NTSTATUS NtQueryFullAttributesFile();
+W32API NTSTATUS ZwQueryInformationAtom();
+W32API NTSTATUS NtQueryInformationAtom();
+W32API NTSTATUS ZwQueryInformationByName();
+W32API NTSTATUS NtQueryInformationByName();
+W32API NTSTATUS ZwQueryInformationCpuPartition();
+W32API NTSTATUS NtQueryInformationCpuPartition();
+W32API NTSTATUS ZwQueryInformationEnlistment();
+W32API NTSTATUS NtQueryInformationEnlistment();
+W32API NTSTATUS ZwQueryInformationJobObject();
+W32API NTSTATUS NtQueryInformationJobObject();
+W32API NTSTATUS ZwQueryInformationResourceManager();
+W32API NTSTATUS NtQueryInformationResourceManager();
+W32API NTSTATUS ZwQueryInformationToken();
+W32API NTSTATUS NtQueryInformationToken();
+W32API NTSTATUS ZwQueryInformationTransaction();
+W32API NTSTATUS NtQueryInformationTransaction();
+W32API NTSTATUS ZwQueryInformationTransactionManager();
+W32API NTSTATUS NtQueryInformationTransactionManager();
+W32API NTSTATUS ZwQueryInstallUILanguage();
+W32API NTSTATUS NtQueryInstallUILanguage();
+W32API NTSTATUS ZwQueryIoCompletion();
+W32API NTSTATUS NtQueryIoCompletion();
+W32API NTSTATUS ZwQueryIoRingCapabilities();
+W32API NTSTATUS NtQueryIoRingCapabilities();
+W32API NTSTATUS ZwQueryLicenseValue();
+W32API NTSTATUS NtQueryLicenseValue();
+W32API NTSTATUS ZwQueryMultipleValueKey();
+W32API NTSTATUS NtQueryMultipleValueKey();
+W32API NTSTATUS ZwQueryMutant();
+W32API NTSTATUS NtQueryMutant();
+W32API NTSTATUS ZwQueryObject();
+W32API NTSTATUS NtQueryObject();
+W32API NTSTATUS ZwQueryOpenSubKeys();
+W32API NTSTATUS NtQueryOpenSubKeys();
+W32API NTSTATUS ZwQueryOpenSubKeysEx();
+W32API NTSTATUS NtQueryOpenSubKeysEx();
+W32API NTSTATUS ZwQueryPortInformationProcess();
+W32API NTSTATUS NtQueryPortInformationProcess();
+W32API NTSTATUS ZwQueryQuotaInformationFile();
+W32API NTSTATUS NtQueryQuotaInformationFile();
+W32API NTSTATUS ZwQuerySection();
+W32API NTSTATUS NtQuerySection();
+W32API NTSTATUS ZwQuerySecurityAttributesToken();
+W32API NTSTATUS NtQuerySecurityAttributesToken();
+W32API NTSTATUS ZwQuerySecurityObject();
+W32API NTSTATUS NtQuerySecurityObject();
+W32API NTSTATUS ZwQuerySecurityPolicy();
+W32API NTSTATUS NtQuerySecurityPolicy();
+W32API NTSTATUS ZwQuerySymbolicLinkObject();
+W32API NTSTATUS NtQuerySymbolicLinkObject();
+W32API NTSTATUS ZwQuerySystemEnvironmentValue();
+W32API NTSTATUS NtQuerySystemEnvironmentValue();
+W32API NTSTATUS ZwQuerySystemEnvironmentValueEx();
+W32API NTSTATUS NtQuerySystemEnvironmentValueEx();
+W32API NTSTATUS ZwQuerySystemInformationEx();
+W32API NTSTATUS NtQuerySystemInformationEx();
+W32API NTSTATUS ZwQuerySystemTime();
+W32API NTSTATUS NtQuerySystemTime();
+W32API NTSTATUS ZwQueryTimer();
+W32API NTSTATUS NtQueryTimer();
+W32API NTSTATUS ZwQueryValueKey();
+W32API NTSTATUS NtQueryValueKey();
+W32API NTSTATUS ZwQueryVolumeInformationFile();
+W32API NTSTATUS NtQueryVolumeInformationFile();
+W32API NTSTATUS ZwQueryWnfStateData();
+W32API NTSTATUS NtQueryWnfStateData();
+W32API NTSTATUS ZwQueryWnfStateNameInformation();
+W32API NTSTATUS NtQueryWnfStateNameInformation();
+W32API NTSTATUS ZwQueueApcThread();
+W32API NTSTATUS NtQueueApcThread();
+W32API NTSTATUS ZwQueueApcThreadEx();
+W32API NTSTATUS NtQueueApcThreadEx();
+W32API NTSTATUS ZwQueueApcThreadEx2();
+W32API NTSTATUS NtQueueApcThreadEx2();
+W32API NTSTATUS ZwRaiseException();
+W32API NTSTATUS NtRaiseException();
+W32API NTSTATUS ZwRaiseHardError();
+W32API NTSTATUS NtRaiseHardError();
+W32API NTSTATUS ZwReadOnlyEnlistment();
+W32API NTSTATUS NtReadOnlyEnlistment();
+W32API NTSTATUS ZwReadRequestData();
+W32API NTSTATUS NtReadRequestData();
+W32API NTSTATUS ZwRegisterProtocolAddressInformation();
+W32API NTSTATUS NtRegisterProtocolAddressInformation();
+W32API NTSTATUS ZwRegisterThreadTerminatePort();
+W32API NTSTATUS NtRegisterThreadTerminatePort();
+W32API NTSTATUS ZwReleaseKeyedEvent();
+W32API NTSTATUS NtReleaseKeyedEvent();
+W32API NTSTATUS ZwReleaseMutant();
+W32API NTSTATUS NtReleaseMutant();
+W32API NTSTATUS ZwRemoveIoCompletion();
+W32API NTSTATUS NtRemoveIoCompletion();
+W32API NTSTATUS ZwRemoveIoCompletionEx();
+W32API NTSTATUS NtRemoveIoCompletionEx();
+W32API NTSTATUS ZwRemoveProcessDebug();
+W32API NTSTATUS NtRemoveProcessDebug();
+W32API NTSTATUS ZwRenameKey();
+W32API NTSTATUS NtRenameKey();
+W32API NTSTATUS ZwReplaceKey();
+W32API NTSTATUS NtReplaceKey();
+W32API NTSTATUS ZwReplacePartitionUnit();
+W32API NTSTATUS NtReplacePartitionUnit();
+W32API NTSTATUS ZwRequestWaitReplyPort();
+W32API NTSTATUS NtRequestWaitReplyPort();
+W32API NTSTATUS ZwResetWriteWatch();
+W32API NTSTATUS NtResetWriteWatch();
+W32API NTSTATUS ZwRestoreKey();
+W32API NTSTATUS NtRestoreKey();
+W32API NTSTATUS ZwResumeProcess();
+W32API NTSTATUS NtResumeProcess();
+W32API NTSTATUS ZwResumeThread();
+W32API NTSTATUS NtResumeThread();
+W32API NTSTATUS ZwRevertContainerImpersonation();
+W32API NTSTATUS NtRevertContainerImpersonation();
+W32API NTSTATUS ZwSaveKey();
+W32API NTSTATUS NtSaveKey();
+W32API NTSTATUS ZwSaveKeyEx();
+W32API NTSTATUS NtSaveKeyEx();
+W32API NTSTATUS ZwSaveMergedKeys();
+W32API NTSTATUS NtSaveMergedKeys();
+W32API NTSTATUS ZwSetCachedSigningLevel();
+W32API NTSTATUS NtSetCachedSigningLevel();
+W32API NTSTATUS ZwSetCachedSigningLevel2();
+W32API NTSTATUS NtSetCachedSigningLevel2();
+W32API NTSTATUS ZwSetContextThread();
+W32API NTSTATUS NtSetContextThread();
+W32API NTSTATUS ZwSetDebugFilterState();
+W32API NTSTATUS NtSetDebugFilterState();
+W32API NTSTATUS ZwSetDefaultHardErrorPort();
+W32API NTSTATUS NtSetDefaultHardErrorPort();
+W32API NTSTATUS ZwSetDefaultLocale();
+W32API NTSTATUS NtSetDefaultLocale();
+W32API NTSTATUS ZwSetDefaultUILanguage();
+W32API NTSTATUS NtSetDefaultUILanguage();
+W32API NTSTATUS ZwSetDriverEntryOrder();
+W32API NTSTATUS NtSetDriverEntryOrder();
+W32API NTSTATUS ZwSetEaFile();
+W32API NTSTATUS NtSetEaFile();
+W32API NTSTATUS ZwSetEventBoostPriority();
+W32API NTSTATUS NtSetEventBoostPriority();
+W32API NTSTATUS ZwSetEventEx();
+W32API NTSTATUS NtSetEventEx();
+W32API NTSTATUS ZwSetHighEventPair();
+W32API NTSTATUS NtSetHighEventPair();
+W32API NTSTATUS ZwSetHighWaitLowEventPair();
+W32API NTSTATUS NtSetHighWaitLowEventPair();
+W32API NTSTATUS ZwSetIRTimer();
+W32API NTSTATUS NtSetIRTimer();
+W32API NTSTATUS ZwSetInformationCpuPartition();
+W32API NTSTATUS NtSetInformationCpuPartition();
+W32API NTSTATUS ZwSetInformationDebugObject();
+W32API NTSTATUS NtSetInformationDebugObject();
+W32API NTSTATUS ZwSetInformationEnlistment();
+W32API NTSTATUS NtSetInformationEnlistment();
+W32API NTSTATUS ZwSetInformationIoRing();
+W32API NTSTATUS NtSetInformationIoRing();
+W32API NTSTATUS ZwSetInformationJobObject();
+W32API NTSTATUS NtSetInformationJobObject();
+W32API NTSTATUS ZwSetInformationKey();
+W32API NTSTATUS NtSetInformationKey();
+W32API NTSTATUS ZwSetInformationObject();
+W32API NTSTATUS NtSetInformationObject();
+W32API NTSTATUS ZwSetInformationProcess();
+W32API NTSTATUS NtSetInformationProcess();
+W32API NTSTATUS ZwSetInformationResourceManager();
+W32API NTSTATUS NtSetInformationResourceManager();
+W32API NTSTATUS ZwSetInformationSymbolicLink();
+W32API NTSTATUS NtSetInformationSymbolicLink();
+W32API NTSTATUS ZwSetInformationThread();
+W32API NTSTATUS NtSetInformationThread();
+W32API NTSTATUS ZwSetInformationToken();
+W32API NTSTATUS NtSetInformationToken();
+W32API NTSTATUS ZwSetInformationTransaction();
+W32API NTSTATUS NtSetInformationTransaction();
+W32API NTSTATUS ZwSetInformationTransactionManager();
+W32API NTSTATUS NtSetInformationTransactionManager();
+W32API NTSTATUS ZwSetInformationVirtualMemory();
+W32API NTSTATUS NtSetInformationVirtualMemory();
+W32API NTSTATUS ZwSetIoCompletion();
+W32API NTSTATUS NtSetIoCompletion();
+W32API NTSTATUS ZwSetIoCompletionEx();
+W32API NTSTATUS NtSetIoCompletionEx();
+W32API NTSTATUS ZwSetLdtEntries();
+W32API NTSTATUS NtSetLdtEntries();
+W32API NTSTATUS ZwSetLowEventPair();
+W32API NTSTATUS NtSetLowEventPair();
+W32API NTSTATUS ZwSetLowWaitHighEventPair();
+W32API NTSTATUS NtSetLowWaitHighEventPair();
+W32API NTSTATUS ZwSetQuotaInformationFile();
+W32API NTSTATUS NtSetQuotaInformationFile();
+W32API NTSTATUS ZwSetSecurityObject();
+W32API NTSTATUS NtSetSecurityObject();
+W32API NTSTATUS ZwSetSystemEnvironmentValue();
+W32API NTSTATUS NtSetSystemEnvironmentValue();
+W32API NTSTATUS ZwSetSystemEnvironmentValueEx();
+W32API NTSTATUS NtSetSystemEnvironmentValueEx();
+W32API NTSTATUS ZwSetSystemInformation();
+W32API NTSTATUS NtSetSystemInformation();
+W32API NTSTATUS ZwSetSystemPowerState();
+W32API NTSTATUS NtSetSystemPowerState();
+W32API NTSTATUS ZwSetThreadExecutionState();
+W32API NTSTATUS NtSetThreadExecutionState();
+W32API NTSTATUS ZwSetTimer2();
+W32API NTSTATUS NtSetTimer2();
+W32API NTSTATUS ZwSetTimerEx();
+W32API NTSTATUS NtSetTimerEx();
+W32API NTSTATUS ZwSetUuidSeed();
+W32API NTSTATUS NtSetUuidSeed();
+W32API NTSTATUS ZwSetValueKey();
+W32API NTSTATUS NtSetValueKey();
+W32API NTSTATUS ZwSetVolumeInformationFile();
+W32API NTSTATUS NtSetVolumeInformationFile();
+W32API NTSTATUS ZwSetWnfProcessNotificationEvent();
+W32API NTSTATUS NtSetWnfProcessNotificationEvent();
+W32API NTSTATUS ZwStartProfile();
+W32API NTSTATUS NtStartProfile();
+W32API NTSTATUS ZwStopProfile();
+W32API NTSTATUS NtStopProfile();
+W32API NTSTATUS ZwSubmitIoRing();
+W32API NTSTATUS NtSubmitIoRing();
+W32API NTSTATUS ZwSubscribeWnfStateChange();
+W32API NTSTATUS NtSubscribeWnfStateChange();
+W32API NTSTATUS ZwSuspendProcess();
+W32API NTSTATUS NtSuspendProcess();
+W32API NTSTATUS ZwSuspendThread();
+W32API NTSTATUS NtSuspendThread();
+W32API NTSTATUS ZwSystemDebugControl();
+W32API NTSTATUS NtSystemDebugControl();
+W32API NTSTATUS ZwTerminateEnclave();
+W32API NTSTATUS NtTerminateEnclave();
+W32API NTSTATUS ZwTerminateJobObject();
+W32API NTSTATUS NtTerminateJobObject();
+W32API NTSTATUS ZwTestAlert();
+W32API NTSTATUS NtTestAlert();
+W32API NTSTATUS ZwThawRegistry();
+W32API NTSTATUS NtThawRegistry();
+W32API NTSTATUS ZwThawTransactions();
+W32API NTSTATUS NtThawTransactions();
+W32API NTSTATUS ZwTraceEvent();
+W32API NTSTATUS NtTraceEvent();
+W32API NTSTATUS ZwTranslateFilePath();
+W32API NTSTATUS NtTranslateFilePath();
+W32API NTSTATUS ZwUmsThreadYield();
+W32API NTSTATUS NtUmsThreadYield();
+W32API NTSTATUS ZwUnloadDriver();
+W32API NTSTATUS NtUnloadDriver();
+W32API NTSTATUS ZwUnloadKey();
+W32API NTSTATUS NtUnloadKey();
+W32API NTSTATUS ZwUnloadKey2();
+W32API NTSTATUS NtUnloadKey2();
+W32API NTSTATUS ZwUnloadKeyEx();
+W32API NTSTATUS NtUnloadKeyEx();
+W32API NTSTATUS ZwUnsubscribeWnfStateChange();
+W32API NTSTATUS NtUnsubscribeWnfStateChange();
+W32API NTSTATUS ZwUpdateWnfStateData();
+W32API NTSTATUS NtUpdateWnfStateData();
+W32API NTSTATUS ZwVdmControl();
+W32API NTSTATUS NtVdmControl();
+W32API NTSTATUS ZwWaitForAlertByThreadId();
+W32API NTSTATUS NtWaitForAlertByThreadId();
+W32API NTSTATUS ZwWaitForDebugEvent();
+W32API NTSTATUS NtWaitForDebugEvent();
+W32API NTSTATUS ZwWaitForKeyedEvent();
+W32API NTSTATUS NtWaitForKeyedEvent();
+W32API NTSTATUS ZwWaitForWorkViaWorkerFactory();
+W32API NTSTATUS NtWaitForWorkViaWorkerFactory();
+W32API NTSTATUS ZwWaitHighEventPair();
+W32API NTSTATUS NtWaitHighEventPair();
+W32API NTSTATUS ZwWaitLowEventPair();
+W32API NTSTATUS NtWaitLowEventPair();
+W32API NTSTATUS ZwWriteRequestData();
+W32API NTSTATUS NtWriteRequestData();
 /* ---- batch M: power / utility / object-state syscalls ---- */
 
 NTSTATUS ZwYieldExecution() { return NtYieldExecution(); }
