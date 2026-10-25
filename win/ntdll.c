@@ -1146,6 +1146,43 @@ static long h_NtQueryInformationThread(const long *a) {
 static long h_NtCreateProcessEx(const long *a) { return h_NtCreateProcess(a); }
 static long h_NtCreateThreadEx(const long *a) { return h_NtCreateThread(a); }
 
+/* ---------------- virtual memory info / section-ex syscalls ------------- */
+
+static long h_NtQueryVirtualMemory(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  W32 kind = (W32)a[1];
+  PVOID base = (PVOID)a[2];
+  W32 len = (W32)a[3];
+  W32 *retlen = (W32 *)a[4];
+  (void)kind;
+  if (!h) { if (retlen) *retlen = 0; return STATUS_INVALID_HANDLE; }
+  W32Handle *mh = nt_mem_find(base);
+  size_t avail = 0;
+  if (mh) {
+    size_t off = (size_t)((char *)base - (char *)mh->ptr);
+    if (off < (size_t)mh->size) avail = (size_t)mh->size - off;
+  }
+  if (retlen) *retlen = (W32)((size_t)len < avail ? (size_t)len : avail);
+  return STATUS_SUCCESS;
+}
+
+static long h_NtUnmapViewOfSectionEx(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  PVOID base = (PVOID)a[1];
+  W32Handle *mh = nt_mem_for(base, h);
+  if (!mh) return STATUS_INVALID_HANDLE;
+  size_t sz = (size_t)mh->size;
+  if (munmap(mh->ptr, sz ? sz : 4096) != 0) return STATUS_ACCESS_DENIED;
+  nt_mem_unregister(mh);
+  free(mh->ptr);
+  mh->ptr = NULL; mh->magic = 0;
+  free(mh);
+  return STATUS_SUCCESS;
+}
+
+static long h_NtMapViewOfSectionEx(const long *a) { return h_NtMapViewOfSection(a); }
+static long h_NtCreateSectionEx(const long *a) { return h_NtCreateSection(a); }
+
 /* ---------------- dispatch table (numbers from windows-syscalls) -------- */
 /* ---------------- wait syscalls: multiple objects ---------------- */
 
@@ -1912,6 +1949,57 @@ NTSTATUS NtQueryInformationThread(HANDLE ThreadHandle, W32 InfoClass, PVOID Buff
   a[0] = (long)ThreadHandle; a[1] = (long)InfoClass; a[2] = (long)Buffer;
   a[3] = (long)BufferLen; a[4] = (long)ReturnLength;
   return (NTSTATUS)nt_dispatch(NR_NtQueryInformationThread, a);
+}
+
+/* ---- virtual memory info / section-ex syscalls ---- */
+
+NTSTATUS ZwQueryVirtualMemory(HANDLE h, W32 InfoClass, PVOID BaseAddress, W32 Length,
+                              W32 *ReturnLength) {
+  return NtQueryVirtualMemory(h, InfoClass, BaseAddress, Length, ReturnLength);
+}
+
+NTSTATUS NtQueryVirtualMemory(HANDLE h, W32 InfoClass, PVOID BaseAddress, W32 Length,
+                              W32 *ReturnLength) {
+  ARGV(5);
+  a[0] = (long)h; a[1] = (long)InfoClass; a[2] = (long)BaseAddress; a[3] = (long)Length;
+  a[4] = (long)ReturnLength;
+  return (NTSTATUS)nt_dispatch(NR_NtQueryVirtualMemory, a);
+}
+
+NTSTATUS ZwMapViewOfSectionEx(HANDLE SectionHandle, HANDLE hProcess, PVOID BaseAddress,
+                              ULONG ViewLength, PVOID *BaseOut) {
+  return NtMapViewOfSectionEx(SectionHandle, hProcess, BaseAddress, ViewLength, BaseOut);
+}
+
+NTSTATUS NtMapViewOfSectionEx(HANDLE SectionHandle, HANDLE hProcess, PVOID BaseAddress,
+                              ULONG ViewLength, PVOID *BaseOut) {
+  ARGV(5);
+  a[0] = (long)SectionHandle; a[1] = (long)hProcess; a[2] = (long)BaseAddress;
+  a[3] = (long)ViewLength; a[4] = (long)BaseOut;
+  return (NTSTATUS)nt_dispatch(NR_NtMapViewOfSectionEx, a);
+}
+
+NTSTATUS ZwUnmapViewOfSectionEx(HANDLE h, PVOID BaseAddress) {
+  return NtUnmapViewOfSectionEx(h, BaseAddress);
+}
+
+NTSTATUS NtUnmapViewOfSectionEx(HANDLE h, PVOID BaseAddress) {
+  ARGV(2);
+  a[0] = (long)h; a[1] = (long)BaseAddress;
+  return (NTSTATUS)nt_dispatch(NR_NtUnmapViewOfSectionEx, a);
+}
+
+NTSTATUS ZwCreateSectionEx(HANDLE *SectionHandle, W32 Class, PVOID Buffer, ULONG Size,
+                           ULONG SectionFlags, HANDLE Parent) {
+  return NtCreateSectionEx(SectionHandle, Class, Buffer, Size, SectionFlags, Parent);
+}
+
+NTSTATUS NtCreateSectionEx(HANDLE *SectionHandle, W32 Class, PVOID Buffer, ULONG Size,
+                           ULONG SectionFlags, HANDLE Parent) {
+  ARGV(6);
+  a[0] = (long)SectionHandle; a[1] = (long)Class; a[2] = (long)Buffer; a[3] = (long)Size;
+  a[4] = (long)SectionFlags; a[5] = (long)Parent;
+  return (NTSTATUS)nt_dispatch(NR_NtCreateSectionEx, a);
 }
 
 /* ---------------- registry syscalls: typed wrappers ---------------- */

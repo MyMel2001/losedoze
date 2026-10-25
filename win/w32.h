@@ -618,6 +618,15 @@ W32API NTSTATUS ZwTerminateThread(HANDLE ThreadHandle, W32 ExitStatus);
 W32API NTSTATUS ZwQueryInformationProcess(HANDLE ProcessHandle, W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength);
 W32API NTSTATUS ZwQueryInformationThread(HANDLE ThreadHandle, W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength);
 
+W32API NTSTATUS NtQueryVirtualMemory(HANDLE h, W32 InfoClass, PVOID BaseAddress, W32 Length, W32 *ReturnLength);
+W32API NTSTATUS ZwQueryVirtualMemory(HANDLE h, W32 InfoClass, PVOID BaseAddress, W32 Length, W32 *ReturnLength);
+W32API NTSTATUS NtMapViewOfSectionEx(HANDLE SectionHandle, HANDLE hProcess, PVOID BaseAddress, ULONG ViewLength, PVOID *BaseOut);
+W32API NTSTATUS ZwMapViewOfSectionEx(HANDLE SectionHandle, HANDLE hProcess, PVOID BaseAddress, ULONG ViewLength, PVOID *BaseOut);
+W32API NTSTATUS NtUnmapViewOfSectionEx(HANDLE h, PVOID BaseAddress);
+W32API NTSTATUS ZwUnmapViewOfSectionEx(HANDLE h, PVOID BaseAddress);
+W32API NTSTATUS NtCreateSectionEx(HANDLE *SectionHandle, W32 Class, PVOID Buffer, ULONG Size, ULONG SectionFlags, HANDLE Parent);
+W32API NTSTATUS ZwCreateSectionEx(HANDLE *SectionHandle, W32 Class, PVOID Buffer, ULONG Size, ULONG SectionFlags, HANDLE Parent);
+
 /* diagnostics */
 W32API const char *nt_name(W32 nr);
 
