@@ -44,6 +44,16 @@ IMPLEMENTED = {
     "NtQueryEvent", "NtQuerySemaphore", "NtClearEvent", "NtPulseEvent",
     "NtQueryPerformanceCounter", "NtGetCurrentProcessorNumber",
     "NtGetCurrentProcessorNumberEx",
+    # batch M: power / utility / object-state
+    "NtYieldExecution", "NtFlushInstructionCache", "NtFlushProcessWriteBuffers",
+    "NtGetDevicePowerState", "NtGetWriteWatch", "NtGetCachedSigningLevel",
+    "NtGetNlsSectionPtr", "NtIsProcessInJob", "NtIsSystemResumeAutomatic",
+    "NtIsUILanguageComitted", "NtInitiatePowerAction", "NtLoadDriver",
+    "NtLockProductActivationKeys", "NtLockRegistryKey", "NtMakeTemporaryObject",
+    "NtMakePermanentObject", "NtManageHotPatch", "NtManagePartition",
+    "NtMapUserPhysicalPages", "NtMapUserPhysicalPagesScatter",
+    "NtModifyBootEntry", "NtModifyDriverEntry", "NtNotifyChangeSession",
+    "NtPowerInformation",
 }
 # Zw-style alias entry: NtOpenFile is the same syscall as NtCreateFile
 ALIASES = {"NtOpenFile": "NtCreateFile"}

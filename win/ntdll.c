@@ -1260,6 +1260,40 @@ static long h_NtGetCurrentProcessorNumberEx(const long *a) {
   return STATUS_SUCCESS;
 }
 
+/* ---------------- batch M: power / utility / object-state syscalls ------- */
+
+static long h_NtYieldExecution(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFlushInstructionCache(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFlushProcessWriteBuffers(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtGetDevicePowerState(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtGetWriteWatch(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtGetCachedSigningLevel(const long *a) { W32 *level = (W32 *)a[0]; if (level) *level = 0; return (long)STATUS_SUCCESS; }
+static long h_NtGetNlsSectionPtr(const long *a) { W32 sec = (W32)a[0]; PVOID *p = (PVOID *)a[1]; (void)sec; if (p) *p = (PVOID)0; return (long)STATUS_SUCCESS; }
+static long h_NtIsProcessInJob(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtIsSystemResumeAutomatic(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtIsUILanguageComitted(const long *a) { W32 *c = (W32 *)a[0]; if (c) *c = 0; return (long)STATUS_SUCCESS; }
+static long h_NtInitiatePowerAction(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtLoadDriver(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtLockProductActivationKeys(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtLockRegistryKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtMakeTemporaryObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtMakePermanentObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtManageHotPatch(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtManagePartition(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtMapUserPhysicalPages(const long *a) {
+  PVOID *addr = (PVOID *)a[1];
+  W64 sz = (W64)a[2];
+  void *p = mmap((void *)0, (size_t)(sz ? (size_t)sz : 4096), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  if (p == MAP_FAILED) return (long)STATUS_NO_MEMORY;
+  if (addr) *addr = p;
+  return (long)STATUS_SUCCESS;
+}
+static long h_NtMapUserPhysicalPagesScatter(const long *a) { return h_NtMapUserPhysicalPages(a); }
+static long h_NtModifyBootEntry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtModifyDriverEntry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtNotifyChangeSession(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtPowerInformation(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+
 /* ---------------- dispatch table (numbers from windows-syscalls) -------- */
 /* ---------------- wait syscalls: multiple objects ---------------- */
 
@@ -2152,6 +2186,106 @@ NTSTATUS NtGetCurrentProcessorNumberEx(W32 Info, W32 *Number) {
   a[0] = (long)Info; a[1] = (long)Number;
   return (NTSTATUS)nt_dispatch(NR_NtGetCurrentProcessorNumberEx, a);
 }
+
+/* ---- batch M: forward prototypes (Zw blocks precede the Nt definitions) */
+NTSTATUS NtYieldExecution(void);
+NTSTATUS NtFlushInstructionCache(HANDLE ImageHandle);
+NTSTATUS NtFlushProcessWriteBuffers(HANDLE Process);
+NTSTATUS NtGetDevicePowerState(HANDLE Device, W32 *State);
+NTSTATUS NtGetWriteWatch(W32 *WatchInfo);
+NTSTATUS NtGetCachedSigningLevel(W32 *Level);
+NTSTATUS NtGetNlsSectionPtr(W32 Section, PVOID *Pointer);
+NTSTATUS NtIsProcessInJob(HANDLE ProcessHandle, HANDLE JobHandle);
+NTSTATUS NtIsSystemResumeAutomatic(void);
+NTSTATUS NtIsUILanguageComitted(W32 *Committed);
+NTSTATUS NtInitiatePowerAction(void);
+NTSTATUS NtLoadDriver(void);
+NTSTATUS NtLockProductActivationKeys(W32 *Locked);
+NTSTATUS NtLockRegistryKey(HANDLE Key);
+NTSTATUS NtMakeTemporaryObject(HANDLE Object);
+NTSTATUS NtMakePermanentObject(HANDLE Object);
+NTSTATUS NtManageHotPatch(HANDLE HotPatchObject);
+NTSTATUS NtManagePartition(HANDLE Partition);
+NTSTATUS NtMapUserPhysicalPages(HANDLE Handle, PVOID *VirtualAddress, W64 Size);
+NTSTATUS NtMapUserPhysicalPagesScatter(HANDLE Handle, PVOID *VirtualAddress, W64 Size);
+NTSTATUS NtModifyBootEntry(HANDLE BootEntry);
+NTSTATUS NtModifyDriverEntry(HANDLE DriverEntry);
+NTSTATUS NtNotifyChangeSession(HANDLE Session);
+NTSTATUS NtPowerInformation(W32 *Information);
+
+/* ---- batch M: power / utility / object-state syscalls ---- */
+
+NTSTATUS ZwYieldExecution() { return NtYieldExecution(); }
+NTSTATUS NtYieldExecution() { long a[1]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtYieldExecution, a); }
+
+NTSTATUS ZwFlushInstructionCache(HANDLE ImageHandle) { return NtFlushInstructionCache(ImageHandle); }
+NTSTATUS NtFlushInstructionCache(HANDLE ImageHandle) { ARGV(1); a[0] = (long)ImageHandle; return (NTSTATUS)nt_dispatch(NR_NtFlushInstructionCache, a); }
+
+NTSTATUS ZwFlushProcessWriteBuffers(HANDLE Process) { return NtFlushProcessWriteBuffers(Process); }
+NTSTATUS NtFlushProcessWriteBuffers(HANDLE Process) { ARGV(1); a[0] = (long)Process; return (NTSTATUS)nt_dispatch(NR_NtFlushProcessWriteBuffers, a); }
+
+NTSTATUS ZwGetDevicePowerState(HANDLE Device, W32 *State) { return NtGetDevicePowerState(Device, State); }
+NTSTATUS NtGetDevicePowerState(HANDLE Device, W32 *State) { ARGV(2); a[0] = (long)Device; a[1] = (long)State; return (NTSTATUS)nt_dispatch(NR_NtGetDevicePowerState, a); }
+
+NTSTATUS ZwGetWriteWatch(W32 *WatchInfo) { return NtGetWriteWatch(WatchInfo); }
+NTSTATUS NtGetWriteWatch(W32 *WatchInfo) { ARGV(1); a[0] = (long)WatchInfo; return (NTSTATUS)nt_dispatch(NR_NtGetWriteWatch, a); }
+
+NTSTATUS ZwGetCachedSigningLevel(W32 *Level) { return NtGetCachedSigningLevel(Level); }
+NTSTATUS NtGetCachedSigningLevel(W32 *Level) { ARGV(1); a[0] = (long)Level; return (NTSTATUS)nt_dispatch(NR_NtGetCachedSigningLevel, a); }
+
+NTSTATUS ZwGetNlsSectionPtr(W32 Section, PVOID *Pointer) { return NtGetNlsSectionPtr(Section, Pointer); }
+NTSTATUS NtGetNlsSectionPtr(W32 Section, PVOID *Pointer) { ARGV(2); a[0] = (long)Section; a[1] = (long)Pointer; return (NTSTATUS)nt_dispatch(NR_NtGetNlsSectionPtr, a); }
+
+NTSTATUS ZwIsProcessInJob(HANDLE ProcessHandle, HANDLE JobHandle) { return NtIsProcessInJob(ProcessHandle, JobHandle); }
+NTSTATUS NtIsProcessInJob(HANDLE ProcessHandle, HANDLE JobHandle) { ARGV(2); a[0] = (long)ProcessHandle; a[1] = (long)JobHandle; return (NTSTATUS)nt_dispatch(NR_NtIsProcessInJob, a); }
+
+NTSTATUS ZwIsSystemResumeAutomatic() { return NtIsSystemResumeAutomatic(); }
+NTSTATUS NtIsSystemResumeAutomatic() { long a[1]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtIsSystemResumeAutomatic, a); }
+
+NTSTATUS ZwIsUILanguageComitted(W32 *Committed) { return NtIsUILanguageComitted(Committed); }
+NTSTATUS NtIsUILanguageComitted(W32 *Committed) { ARGV(1); a[0] = (long)Committed; return (NTSTATUS)nt_dispatch(NR_NtIsUILanguageComitted, a); }
+
+NTSTATUS ZwInitiatePowerAction() { return NtInitiatePowerAction(); }
+NTSTATUS NtInitiatePowerAction() { long a[1]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtInitiatePowerAction, a); }
+
+NTSTATUS ZwLoadDriver() { return NtLoadDriver(); }
+NTSTATUS NtLoadDriver() { long a[1]; memset(a, 0, sizeof a); return (NTSTATUS)nt_dispatch(NR_NtLoadDriver, a); }
+
+NTSTATUS ZwLockProductActivationKeys(W32 *Locked) { return NtLockProductActivationKeys(Locked); }
+NTSTATUS NtLockProductActivationKeys(W32 *Locked) { ARGV(1); a[0] = (long)Locked; return (NTSTATUS)nt_dispatch(NR_NtLockProductActivationKeys, a); }
+
+NTSTATUS ZwLockRegistryKey(HANDLE Key) { return NtLockRegistryKey(Key); }
+NTSTATUS NtLockRegistryKey(HANDLE Key) { ARGV(1); a[0] = (long)Key; return (NTSTATUS)nt_dispatch(NR_NtLockRegistryKey, a); }
+
+NTSTATUS ZwMakeTemporaryObject(HANDLE Object) { return NtMakeTemporaryObject(Object); }
+NTSTATUS NtMakeTemporaryObject(HANDLE Object) { ARGV(1); a[0] = (long)Object; return (NTSTATUS)nt_dispatch(NR_NtMakeTemporaryObject, a); }
+
+NTSTATUS ZwMakePermanentObject(HANDLE Object) { return NtMakePermanentObject(Object); }
+NTSTATUS NtMakePermanentObject(HANDLE Object) { ARGV(1); a[0] = (long)Object; return (NTSTATUS)nt_dispatch(NR_NtMakePermanentObject, a); }
+
+NTSTATUS ZwManageHotPatch(HANDLE HotPatchObject) { return NtManageHotPatch(HotPatchObject); }
+NTSTATUS NtManageHotPatch(HANDLE HotPatchObject) { ARGV(1); a[0] = (long)HotPatchObject; return (NTSTATUS)nt_dispatch(NR_NtManageHotPatch, a); }
+
+NTSTATUS ZwManagePartition(HANDLE Partition) { return NtManagePartition(Partition); }
+NTSTATUS NtManagePartition(HANDLE Partition) { ARGV(1); a[0] = (long)Partition; return (NTSTATUS)nt_dispatch(NR_NtManagePartition, a); }
+
+NTSTATUS ZwMapUserPhysicalPages(HANDLE Handle, PVOID *VirtualAddress, W64 Size) { return NtMapUserPhysicalPages(Handle, VirtualAddress, Size); }
+NTSTATUS NtMapUserPhysicalPages(HANDLE Handle, PVOID *VirtualAddress, W64 Size) { ARGV(3); a[0] = (long)Handle; a[1] = (long)VirtualAddress; a[2] = (long)Size; return (NTSTATUS)nt_dispatch(NR_NtMapUserPhysicalPages, a); }
+
+NTSTATUS ZwMapUserPhysicalPagesScatter(HANDLE Handle, PVOID *VirtualAddress, W64 Size) { return NtMapUserPhysicalPagesScatter(Handle, VirtualAddress, Size); }
+NTSTATUS NtMapUserPhysicalPagesScatter(HANDLE Handle, PVOID *VirtualAddress, W64 Size) { ARGV(3); a[0] = (long)Handle; a[1] = (long)VirtualAddress; a[2] = (long)Size; return (NTSTATUS)nt_dispatch(NR_NtMapUserPhysicalPagesScatter, a); }
+
+NTSTATUS ZwModifyBootEntry(HANDLE BootEntry) { return NtModifyBootEntry(BootEntry); }
+NTSTATUS NtModifyBootEntry(HANDLE BootEntry) { ARGV(1); a[0] = (long)BootEntry; return (NTSTATUS)nt_dispatch(NR_NtModifyBootEntry, a); }
+
+NTSTATUS ZwModifyDriverEntry(HANDLE DriverEntry) { return NtModifyDriverEntry(DriverEntry); }
+NTSTATUS NtModifyDriverEntry(HANDLE DriverEntry) { ARGV(1); a[0] = (long)DriverEntry; return (NTSTATUS)nt_dispatch(NR_NtModifyDriverEntry, a); }
+
+NTSTATUS ZwNotifyChangeSession(HANDLE Session) { return NtNotifyChangeSession(Session); }
+NTSTATUS NtNotifyChangeSession(HANDLE Session) { ARGV(1); a[0] = (long)Session; return (NTSTATUS)nt_dispatch(NR_NtNotifyChangeSession, a); }
+
+NTSTATUS ZwPowerInformation(W32 *Information) { return NtPowerInformation(Information); }
+NTSTATUS NtPowerInformation(W32 *Information) { ARGV(1); a[0] = (long)Information; return (NTSTATUS)nt_dispatch(NR_NtPowerInformation, a); }
 
 /* ---------------- registry syscalls: typed wrappers ---------------- */
 
