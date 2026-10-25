@@ -588,6 +588,15 @@ W32API NTSTATUS ZwOpenKey(HANDLE *KeyHandle, ULONG DesiredAccess, OBJECT_ATTRIBU
 W32API NTSTATUS ZwQueryKey(HANDLE KeyHandle, W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength);
 W32API NTSTATUS ZwCloseKey(HANDLE KeyHandle);
 
+W32API NTSTATUS NtWaitForMultipleObjects(const HANDLE *Handles, W32 Count, BOOL WaitAll,
+                                      W64S *Timeout);
+W32API NTSTATUS NtWaitForMultipleObjects32(const HANDLE *Handles, W32 Count, BOOL WaitAll,
+                                        W64S *Timeout);
+W32API NTSTATUS ZwWaitForMultipleObjects(const HANDLE *Handles, W32 Count, BOOL WaitAll,
+                                      W64S *Timeout);
+W32API NTSTATUS ZwWaitForMultipleObjects32(const HANDLE *Handles, W32 Count, BOOL WaitAll,
+                                        W64S *Timeout);
+
 /* diagnostics */
 W32API const char *nt_name(W32 nr);
 

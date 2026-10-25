@@ -1029,6 +1029,88 @@ static long h_NtCloseKey(const long *a) {
 }
 
 /* ---------------- dispatch table (numbers from windows-syscalls) -------- */
+/* ---------------- wait syscalls: multiple objects ---------------- */
+
+static long h_NtWaitForMultipleObjects(const long *a) {
+  const long *handles = (const long *)a[0];
+  W32 count = (W32)a[1];
+  W32 waitall = (W32)a[2];
+  W64S *timeout = (W64S *)a[3];
+  if (!handles || count == 0 || count > NT_MAX_OBJS) return STATUS_INVALID_PARAMETER;
+  for (;;) {
+    W32 satisfied = 0;
+    int all = 1;
+    for (W32 i = 0; i < count; i++) {
+      W32Handle *h = w32_handle((HANDLE)handles[i]);
+      int ok = 0;
+      if (h) {
+        if (h->kind == HK_EVENT) ok = *(long *)h->ptr != 0;
+        else if (h->kind == HK_SEM) { long s = *(long *)h->ptr; if (s > 0) *(long *)h->ptr = s - 1; ok = s > 0; }
+        else if (h->kind == HK_MUTEX) { ok = *(long *)h->ptr == 0; if (ok) *(long *)h->ptr = 1; }
+        else if (h->kind == HK_TIMER) {
+          long due = *(long *)h->ptr;
+          if (due > 0) {
+            struct timespec ts;
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            long long now = (long long)ts.tv_sec * 10000000LL + (long long)ts.tv_nsec / 100;
+            if (now >= due) { *(long *)h->ptr = 0; ok = 1; }
+          } else ok = 1;
+        }
+      }
+      if (ok) satisfied++;
+      else { all = 0; if (!waitall) break; }
+    }
+    if (all || (satisfied > 0 && !waitall)) return STATUS_SUCCESS;
+    if (timeout && *timeout > 0) {
+      struct timespec ts;
+      W64S t = (W64S)*timeout;
+      ts.tv_sec = (time_t)(t / 10000000); ts.tv_nsec = (long)((t % 10000000) * 100);
+      while (nanosleep(&ts, &ts) != 0 && errno == EINTR) {}
+    }
+    return STATUS_PENDING;
+  }
+}
+
+static long h_NtWaitForMultipleObjects32(const long *a) {
+  const long *handles = (const long *)a[0];
+  W32 count = (W32)a[1];
+  W32 waitall = (W32)a[2];
+  W64S *timeout = (W64S *)a[3];
+  if (!handles || count == 0 || count > NT_MAX_OBJS) return STATUS_INVALID_PARAMETER;
+  for (;;) {
+    W32 satisfied = 0;
+    int all = 1;
+    for (W32 i = 0; i < count; i++) {
+      W32Handle *h = w32_handle((HANDLE)(W64)handles[i]);
+      int ok = 0;
+      if (h) {
+        if (h->kind == HK_EVENT) ok = *(long *)h->ptr != 0;
+        else if (h->kind == HK_SEM) { long s = *(long *)h->ptr; if (s > 0) *(long *)h->ptr = s - 1; ok = s > 0; }
+        else if (h->kind == HK_MUTEX) { ok = *(long *)h->ptr == 0; if (ok) *(long *)h->ptr = 1; }
+        else if (h->kind == HK_TIMER) {
+          long due = *(long *)h->ptr;
+          if (due > 0) {
+            struct timespec ts;
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            long long now = (long long)ts.tv_sec * 10000000LL + (long long)ts.tv_nsec / 100;
+            if (now >= due) { *(long *)h->ptr = 0; ok = 1; }
+          } else ok = 1;
+        }
+      }
+      if (ok) satisfied++;
+      else { all = 0; if (!waitall) break; }
+    }
+    if (all || (satisfied > 0 && !waitall)) return STATUS_SUCCESS;
+    if (timeout && *timeout > 0) {
+      struct timespec ts;
+      W64S t = (W64S)*timeout;
+      ts.tv_sec = (time_t)(t / 10000000); ts.tv_nsec = (long)((t % 10000000) * 100);
+      while (nanosleep(&ts, &ts) != 0 && errno == EINTR) {}
+    }
+    return STATUS_PENDING;
+  }
+}
+
 static ntfn nt_tab[NT_NR_MAX];
 static int nt_ready;
 
@@ -1578,6 +1660,32 @@ NTSTATUS NtQuerySystemInformation(W32 InfoClass, PVOID Buffer, W32 BufferLen, W3
   ARGV(4);
   a[0] = (long)InfoClass; a[1] = (long)Buffer; a[2] = (long)BufferLen; a[3] = (long)ReturnLength;
   return (NTSTATUS)nt_dispatch(NR_NtQuerySystemInformation, a);
+}
+
+/* ---- wait syscalls: multiple objects ---- */
+
+NTSTATUS ZwWaitForMultipleObjects(const HANDLE *Handles, W32 Count, BOOL WaitAll,
+                                 W64S *Timeout) {
+  return NtWaitForMultipleObjects(Handles, Count, WaitAll, Timeout);
+}
+
+NTSTATUS NtWaitForMultipleObjects(const HANDLE *Handles, W32 Count, BOOL WaitAll,
+                                 W64S *Timeout) {
+  ARGV(4);
+  a[0] = (long)Handles; a[1] = (long)Count; a[2] = (long)WaitAll; a[3] = (long)Timeout;
+  return (NTSTATUS)nt_dispatch(NR_NtWaitForMultipleObjects, a);
+}
+
+NTSTATUS ZwWaitForMultipleObjects32(const HANDLE *Handles, W32 Count, BOOL WaitAll,
+                                   W64S *Timeout) {
+  return NtWaitForMultipleObjects32(Handles, Count, WaitAll, Timeout);
+}
+
+NTSTATUS NtWaitForMultipleObjects32(const HANDLE *Handles, W32 Count, BOOL WaitAll,
+                                   W64S *Timeout) {
+  ARGV(4);
+  a[0] = (long)Handles; a[1] = (long)Count; a[2] = (long)WaitAll; a[3] = (long)Timeout;
+  return (NTSTATUS)nt_dispatch(NR_NtWaitForMultipleObjects32, a);
 }
 
 /* ---------------- registry syscalls: typed wrappers ---------------- */
