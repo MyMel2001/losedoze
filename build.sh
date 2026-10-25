@@ -247,7 +247,7 @@ python3 tools/gen_pe32.py build/winapps/pe32parse.exe
 gcc -O2 -Wall -Wno-unused-function -o build/w32host \
     win/pe.c win/ntdll.c win/kernel32.c win/user32.c win/gdi32.c win/gl32.c \
     win/wsprintf.c win/wlclient.c win/w32host.c shell/input.c \
-    -Iwin -Ishell -Ibuild -lm -ldl
+    -Iwin -Ishell -Ibuild -lm -ldl -lpthread
 # w32host32 + PE32 apps: zig ships a static musl for i386 (no i386 glibc
 # devel needed) and an LLD that links PE32. -mstackrealign because mingw
 # callers hand the host a 16-byte-aligned stack that plain GCC i386 code

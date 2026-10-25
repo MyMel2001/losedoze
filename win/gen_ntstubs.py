@@ -35,6 +35,10 @@ IMPLEMENTED = {
     "NtQuerySystemInformation",
     "NtCreateKey", "NtOpenKey", "NtQueryKey", "NtCloseKey",
     "NtWaitForMultipleObjects", "NtWaitForMultipleObjects32",
+    "NtCreateProcess", "NtCreateProcessEx", "NtCreateThread", "NtCreateThreadEx",
+    "NtOpenProcess", "NtOpenThread",
+    "NtTerminateProcess", "NtTerminateThread",
+    "NtQueryInformationProcess", "NtQueryInformationThread",
 }
 # Zw-style alias entry: NtOpenFile is the same syscall as NtCreateFile
 ALIASES = {"NtOpenFile": "NtCreateFile"}

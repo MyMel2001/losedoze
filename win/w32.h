@@ -597,6 +597,27 @@ W32API NTSTATUS ZwWaitForMultipleObjects(const HANDLE *Handles, W32 Count, BOOL 
 W32API NTSTATUS ZwWaitForMultipleObjects32(const HANDLE *Handles, W32 Count, BOOL WaitAll,
                                         W64S *Timeout);
 
+W32API NTSTATUS NtCreateProcess(HANDLE *ProcessHandle, PVOID StartInfo);
+W32API NTSTATUS NtCreateProcessEx(HANDLE *ProcessHandle, PVOID StartInfo);
+W32API NTSTATUS NtCreateThread(HANDLE *ThreadHandle, void *Arg, long (*Start)(const long *));
+W32API NTSTATUS NtCreateThreadEx(HANDLE *ThreadHandle, void *Arg, long (*Start)(const long *));
+W32API NTSTATUS NtOpenProcess(HANDLE *ProcessHandle, W32 Access, OBJECT_ATTRIBUTES *ObjectAttributes);
+W32API NTSTATUS NtOpenThread(HANDLE *ThreadHandle, W32 Access, OBJECT_ATTRIBUTES *ObjectAttributes);
+W32API NTSTATUS NtTerminateProcess(HANDLE ProcessHandle, W32 ExitStatus);
+W32API NTSTATUS NtTerminateThread(HANDLE ThreadHandle, W32 ExitStatus);
+W32API NTSTATUS NtQueryInformationProcess(HANDLE ProcessHandle, W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength);
+W32API NTSTATUS NtQueryInformationThread(HANDLE ThreadHandle, W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength);
+W32API NTSTATUS ZwCreateProcess(HANDLE *ProcessHandle, PVOID StartInfo);
+W32API NTSTATUS ZwCreateProcessEx(HANDLE *ProcessHandle, PVOID StartInfo);
+W32API NTSTATUS ZwCreateThread(HANDLE *ThreadHandle, void *Arg, long (*Start)(const long *));
+W32API NTSTATUS ZwCreateThreadEx(HANDLE *ThreadHandle, void *Arg, long (*Start)(const long *));
+W32API NTSTATUS ZwOpenProcess(HANDLE *ProcessHandle, W32 Access, OBJECT_ATTRIBUTES *ObjectAttributes);
+W32API NTSTATUS ZwOpenThread(HANDLE *ThreadHandle, W32 Access, OBJECT_ATTRIBUTES *ObjectAttributes);
+W32API NTSTATUS ZwTerminateProcess(HANDLE ProcessHandle, W32 ExitStatus);
+W32API NTSTATUS ZwTerminateThread(HANDLE ThreadHandle, W32 ExitStatus);
+W32API NTSTATUS ZwQueryInformationProcess(HANDLE ProcessHandle, W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength);
+W32API NTSTATUS ZwQueryInformationThread(HANDLE ThreadHandle, W32 InfoClass, PVOID Buffer, W32 BufferLen, W32 *ReturnLength);
+
 /* diagnostics */
 W32API const char *nt_name(W32 nr);
 

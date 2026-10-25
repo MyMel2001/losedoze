@@ -14,6 +14,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 #include "host.h"
 #include "ntsyscalls.inc"
@@ -1028,6 +1029,123 @@ static long h_NtCloseKey(const long *a) {
   return STATUS_SUCCESS;
 }
 
+/* ---------------- process / thread syscalls: create / open / terminate --- */
+
+typedef struct { void *arg; long (*fn)(const long *); const long *a; } NtThreadCtx;
+static NtThreadCtx g_nt_thread_ctx;
+static void *nt_thread_trampoline(void *p) {
+  NtThreadCtx *c = (NtThreadCtx *)p;
+  long r = c->fn(c->a);
+  return NULL;
+}
+
+static long h_NtCreateThread(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  void *arg = (void *)a[1];
+  long (*fn)(const long *) = (long (*)(const long *))a[2];
+  if (!out) return STATUS_INVALID_HANDLE;
+  g_nt_thread_ctx.arg = arg; g_nt_thread_ctx.fn = fn; g_nt_thread_ctx.a = a;
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+  pthread_t t;
+  int rc = pthread_create(&t, &attr, nt_thread_trampoline, &g_nt_thread_ctx);
+  pthread_attr_destroy(&attr);
+  if (rc != 0) return STATUS_NO_MEMORY;
+  W32Handle *h = w32_handle_new(HK_THREAD, -1);
+  if (!h) return STATUS_NO_MEMORY;
+  h->kind = HK_THREAD; h->fd = -1; h->ptr = NULL; h->size = 0;
+  *out = h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtCreateProcess(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  const char *img = (const char *)a[1];
+  if (!out) return STATUS_INVALID_HANDLE;
+  pid_t pid = fork();
+  if (pid < 0) return STATUS_NO_MEMORY;
+  if (pid == 0) { /* child: exec the target image */
+    execl(img ? img : "/bin/true", "ntcreateprocess", "", (char *)NULL);
+    _exit(127);
+  }
+  W32Handle *h = w32_handle_new(HK_PROC, -1);
+  if (!h) return STATUS_NO_MEMORY;
+  h->kind = HK_PROC; h->fd = -1; h->ptr = NULL; h->size = 0;
+  *out = h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtOpenProcess(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  W32 access = (W32)a[1];
+  OBJECT_ATTRIBUTES *oa = (OBJECT_ATTRIBUTES *)a[2];
+  (void)oa; (void)access;
+  if (!out) return STATUS_INVALID_HANDLE;
+  W32Handle *h = w32_handle_new(HK_PROC, -1);
+  if (!h) return STATUS_NO_MEMORY;
+  h->kind = HK_PROC; h->fd = -1; h->ptr = NULL; h->size = 0;
+  *out = h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtOpenThread(const long *a) {
+  HANDLE *out = (HANDLE *)a[0];
+  W32 access = (W32)a[1];
+  OBJECT_ATTRIBUTES *oa = (OBJECT_ATTRIBUTES *)a[2];
+  (void)oa; (void)access;
+  if (!out) return STATUS_INVALID_HANDLE;
+  W32Handle *h = w32_handle_new(HK_THREAD, -1);
+  if (!h) return STATUS_NO_MEMORY;
+  h->kind = HK_THREAD; h->fd = -1; h->ptr = NULL; h->size = 0;
+  *out = h;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtTerminateProcess(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  W32 code = (W32)a[1];
+  if (!h) return STATUS_INVALID_HANDLE;
+  if (h->kind == HK_PROC) exit((int)code);
+  return STATUS_SUCCESS;
+}
+
+static long h_NtTerminateThread(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  if (!h) return STATUS_INVALID_HANDLE;
+  if (h->kind == HK_THREAD) { h->ptr = NULL; h->magic = 0; free(h); }
+  return STATUS_SUCCESS;
+}
+
+static long h_NtQueryInformationProcess(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  W32 cls = (W32)a[1];
+  PVOID buf = (PVOID)a[2];
+  W32 len = (W32)a[3];
+  W32 *retlen = (W32 *)a[4];
+  (void)cls;
+  if (!h) return STATUS_INVALID_HANDLE;
+  if (retlen) *retlen = 0;
+  if (buf && len > 0) { W64 *p = (W64 *)buf; p[0] = 0; }
+  return STATUS_SUCCESS;
+}
+
+static long h_NtQueryInformationThread(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  W32 cls = (W32)a[1];
+  PVOID buf = (PVOID)a[2];
+  W32 len = (W32)a[3];
+  W32 *retlen = (W32 *)a[4];
+  (void)cls;
+  if (!h) return STATUS_INVALID_HANDLE;
+  if (retlen) *retlen = 0;
+  if (buf && len > 0) { W64 *p = (W64 *)buf; p[0] = 0; }
+  return STATUS_SUCCESS;
+}
+
+static long h_NtCreateProcessEx(const long *a) { return h_NtCreateProcess(a); }
+static long h_NtCreateThreadEx(const long *a) { return h_NtCreateThread(a); }
+
 /* ---------------- dispatch table (numbers from windows-syscalls) -------- */
 /* ---------------- wait syscalls: multiple objects ---------------- */
 
@@ -1686,6 +1804,114 @@ NTSTATUS NtWaitForMultipleObjects32(const HANDLE *Handles, W32 Count, BOOL WaitA
   ARGV(4);
   a[0] = (long)Handles; a[1] = (long)Count; a[2] = (long)WaitAll; a[3] = (long)Timeout;
   return (NTSTATUS)nt_dispatch(NR_NtWaitForMultipleObjects32, a);
+}
+
+/* ---- process / thread syscalls: create / open / terminate ---- */
+
+NTSTATUS ZwCreateProcess(HANDLE *ProcessHandle, PVOID StartInfo) {
+  return NtCreateProcess(ProcessHandle, StartInfo);
+}
+
+NTSTATUS NtCreateProcess(HANDLE *ProcessHandle, PVOID StartInfo) {
+  ARGV(2);
+  a[0] = (long)ProcessHandle; a[1] = (long)StartInfo;
+  return (NTSTATUS)nt_dispatch(NR_NtCreateProcess, a);
+}
+
+NTSTATUS ZwCreateProcessEx(HANDLE *ProcessHandle, PVOID StartInfo) {
+  return NtCreateProcessEx(ProcessHandle, StartInfo);
+}
+
+NTSTATUS NtCreateProcessEx(HANDLE *ProcessHandle, PVOID StartInfo) {
+  ARGV(2);
+  a[0] = (long)ProcessHandle; a[1] = (long)StartInfo;
+  return (NTSTATUS)nt_dispatch(NR_NtCreateProcessEx, a);
+}
+
+NTSTATUS ZwCreateThread(HANDLE *ThreadHandle, void *Arg, long (*Start)(const long *)) {
+  return NtCreateThread(ThreadHandle, Arg, Start);
+}
+
+NTSTATUS NtCreateThread(HANDLE *ThreadHandle, void *Arg, long (*Start)(const long *)) {
+  ARGV(3);
+  a[0] = (long)ThreadHandle; a[1] = (long)Arg; a[2] = (long)Start;
+  return (NTSTATUS)nt_dispatch(NR_NtCreateThread, a);
+}
+
+NTSTATUS ZwCreateThreadEx(HANDLE *ThreadHandle, void *Arg, long (*Start)(const long *)) {
+  return NtCreateThreadEx(ThreadHandle, Arg, Start);
+}
+
+NTSTATUS NtCreateThreadEx(HANDLE *ThreadHandle, void *Arg, long (*Start)(const long *)) {
+  ARGV(3);
+  a[0] = (long)ThreadHandle; a[1] = (long)Arg; a[2] = (long)Start;
+  return (NTSTATUS)nt_dispatch(NR_NtCreateThreadEx, a);
+}
+
+NTSTATUS ZwOpenProcess(HANDLE *ProcessHandle, W32 Access, OBJECT_ATTRIBUTES *ObjectAttributes) {
+  return NtOpenProcess(ProcessHandle, Access, ObjectAttributes);
+}
+
+NTSTATUS NtOpenProcess(HANDLE *ProcessHandle, W32 Access, OBJECT_ATTRIBUTES *ObjectAttributes) {
+  ARGV(3);
+  a[0] = (long)ProcessHandle; a[1] = (long)Access; a[2] = (long)ObjectAttributes;
+  return (NTSTATUS)nt_dispatch(NR_NtOpenProcess, a);
+}
+
+NTSTATUS ZwOpenThread(HANDLE *ThreadHandle, W32 Access, OBJECT_ATTRIBUTES *ObjectAttributes) {
+  return NtOpenThread(ThreadHandle, Access, ObjectAttributes);
+}
+
+NTSTATUS NtOpenThread(HANDLE *ThreadHandle, W32 Access, OBJECT_ATTRIBUTES *ObjectAttributes) {
+  ARGV(3);
+  a[0] = (long)ThreadHandle; a[1] = (long)Access; a[2] = (long)ObjectAttributes;
+  return (NTSTATUS)nt_dispatch(NR_NtOpenThread, a);
+}
+
+NTSTATUS ZwTerminateProcess(HANDLE ProcessHandle, W32 ExitStatus) {
+  return NtTerminateProcess(ProcessHandle, ExitStatus);
+}
+
+NTSTATUS NtTerminateProcess(HANDLE ProcessHandle, W32 ExitStatus) {
+  ARGV(2);
+  a[0] = (long)ProcessHandle; a[1] = (long)ExitStatus;
+  return (NTSTATUS)nt_dispatch(NR_NtTerminateProcess, a);
+}
+
+NTSTATUS ZwTerminateThread(HANDLE ThreadHandle, W32 ExitStatus) {
+  return NtTerminateThread(ThreadHandle, ExitStatus);
+}
+
+NTSTATUS NtTerminateThread(HANDLE ThreadHandle, W32 ExitStatus) {
+  ARGV(2);
+  a[0] = (long)ThreadHandle; a[1] = (long)ExitStatus;
+  return (NTSTATUS)nt_dispatch(NR_NtTerminateThread, a);
+}
+
+NTSTATUS ZwQueryInformationProcess(HANDLE ProcessHandle, W32 InfoClass, PVOID Buffer,
+                                  W32 BufferLen, W32 *ReturnLength) {
+  return NtQueryInformationProcess(ProcessHandle, InfoClass, Buffer, BufferLen, ReturnLength);
+}
+
+NTSTATUS NtQueryInformationProcess(HANDLE ProcessHandle, W32 InfoClass, PVOID Buffer,
+                                  W32 BufferLen, W32 *ReturnLength) {
+  ARGV(5);
+  a[0] = (long)ProcessHandle; a[1] = (long)InfoClass; a[2] = (long)Buffer;
+  a[3] = (long)BufferLen; a[4] = (long)ReturnLength;
+  return (NTSTATUS)nt_dispatch(NR_NtQueryInformationProcess, a);
+}
+
+NTSTATUS ZwQueryInformationThread(HANDLE ThreadHandle, W32 InfoClass, PVOID Buffer,
+                                 W32 BufferLen, W32 *ReturnLength) {
+  return NtQueryInformationThread(ThreadHandle, InfoClass, Buffer, BufferLen, ReturnLength);
+}
+
+NTSTATUS NtQueryInformationThread(HANDLE ThreadHandle, W32 InfoClass, PVOID Buffer,
+                                 W32 BufferLen, W32 *ReturnLength) {
+  ARGV(5);
+  a[0] = (long)ThreadHandle; a[1] = (long)InfoClass; a[2] = (long)Buffer;
+  a[3] = (long)BufferLen; a[4] = (long)ReturnLength;
+  return (NTSTATUS)nt_dispatch(NR_NtQueryInformationThread, a);
 }
 
 /* ---------------- registry syscalls: typed wrappers ---------------- */
