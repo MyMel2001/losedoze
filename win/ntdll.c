@@ -11,6 +11,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 
@@ -747,6 +748,133 @@ static long h_NtWriteVirtualMemoryEx(const long *a) {
   return STATUS_SUCCESS;
 }
 
+/* ---------------- I/O syscalls: flush / lock / io-control / scatter-gather -- */
+
+static long h_NtFlushBuffersFile(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  IO_STATUS_BLOCK *iosb = (IO_STATUS_BLOCK *)a[1];
+  if (!h || h->fd < 0) return STATUS_INVALID_HANDLE;
+  if (iosb) { iosb->u.Status = STATUS_SUCCESS; iosb->Information = 0; }
+  return STATUS_SUCCESS;
+}
+
+static long h_NtFlushBuffersFileEx(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  IO_STATUS_BLOCK *iosb = (IO_STATUS_BLOCK *)a[1];
+  W32 unused = (W32)a[2];
+  (void)unused;
+  if (!h || h->fd < 0) return STATUS_INVALID_HANDLE;
+  if (iosb) { iosb->u.Status = STATUS_SUCCESS; iosb->Information = 0; }
+  return STATUS_SUCCESS;
+}
+
+static long h_NtLockFile(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  IO_STATUS_BLOCK *iosb = (IO_STATUS_BLOCK *)a[1];
+  W32 lockflags = (W32)a[2];
+  W32 exclusive = (W32)a[3];
+  W64 off = (W64)a[4];
+  W64 timeout = (W64)a[5];
+  (void)timeout;
+  if (!h || h->fd < 0) return STATUS_INVALID_HANDLE;
+  struct flock lk;
+  memset(&lk, 0, sizeof lk);
+  lk.l_type = exclusive ? F_WRLCK : F_RDLCK;
+  lk.l_start = (off_t)off;
+  lk.l_len = (off_t)-1; /* whole file */
+  if (fcntl(h->fd, F_SETLK, &lk) != 0) return STATUS_ACCESS_DENIED; /* F_SETLK = 6 blocking */
+  if (iosb) { iosb->u.Status = STATUS_SUCCESS; iosb->Information = 0; }
+  return STATUS_SUCCESS;
+}
+
+static long h_NtUnlockFile(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  IO_STATUS_BLOCK *iosb = (IO_STATUS_BLOCK *)a[1];
+  if (!h || h->fd < 0) return STATUS_INVALID_HANDLE;
+  struct flock lk;
+  memset(&lk, 0, sizeof lk);
+  lk.l_type = F_UNLCK;
+  lk.l_start = 0;
+  lk.l_len = 0;
+  if (fcntl(h->fd, F_SETLK, &lk) != 0) return STATUS_ACCESS_DENIED;
+  if (iosb) { iosb->u.Status = STATUS_SUCCESS; iosb->Information = 0; }
+  return STATUS_SUCCESS;
+}
+
+static long h_NtDeviceIoControlFile(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  IO_STATUS_BLOCK *iosb = (IO_STATUS_BLOCK *)a[1];
+  ULONG code = (ULONG)a[2];
+  PVOID in = (PVOID)a[3];
+  ULONG inlen = (ULONG)a[4];
+  PVOID out = (PVOID)a[5];
+  ULONG outlen = (ULONG)a[6];
+  ULONG *br = (ULONG *)a[7];
+  (void)inlen; (void)outlen;
+  if (!h || h->fd < 0) return STATUS_INVALID_HANDLE;
+  int r = ioctl(h->fd, (unsigned long)code, in, out);
+  if (iosb) { iosb->u.Status = r < 0 ? STATUS_ACCESS_DENIED : STATUS_SUCCESS; iosb->Information = 0; }
+  if (br) *br = (ULONG)(r < 0 ? 0 : 1);
+  return r < 0 ? STATUS_ACCESS_DENIED : STATUS_SUCCESS;
+}
+
+static long h_NtFsControlFile(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  IO_STATUS_BLOCK *iosb = (IO_STATUS_BLOCK *)a[1];
+  ULONG code = (ULONG)a[2];
+  PVOID in = (PVOID)a[3];
+  ULONG inlen = (ULONG)a[4];
+  PVOID out = (PVOID)a[5];
+  ULONG outlen = (ULONG)a[6];
+  ULONG *br = (ULONG *)a[7];
+  (void)inlen; (void)outlen;
+  if (!h || h->fd < 0) return STATUS_INVALID_HANDLE;
+  int r = ioctl(h->fd, (unsigned long)code, in, out);
+  if (iosb) { iosb->u.Status = r < 0 ? STATUS_ACCESS_DENIED : STATUS_SUCCESS; iosb->Information = 0; }
+  if (br) *br = (ULONG)(r < 0 ? 0 : 1);
+  return r < 0 ? STATUS_ACCESS_DENIED : STATUS_SUCCESS;
+}
+
+typedef struct { void *Pointer; W32 Length; } NtSegment;
+
+static long h_NtReadFileScatter(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  IO_STATUS_BLOCK *iosb = (IO_STATUS_BLOCK *)a[4];
+  NtSegment *segs = (NtSegment *)a[5];
+  ULONG count = (ULONG)a[6];
+  ULONG len = (ULONG)a[7];
+  if (!h || h->fd < 0) return STATUS_INVALID_HANDLE;
+  ULONG done = 0;
+  for (ULONG i = 0; i < count && done < len; i++) {
+    ULONG want = segs[i].Length;
+    if (want > len - done) want = len - done;
+    ssize_t n = read(h->fd, segs[i].Pointer, want);
+    if (n < 0) { if (iosb) { iosb->u.Status = STATUS_ACCESS_DENIED; iosb->Information = 0; } return STATUS_ACCESS_DENIED; }
+    done += (ULONG)n;
+  }
+  if (iosb) { iosb->u.Status = STATUS_SUCCESS; iosb->Information = done; }
+  return STATUS_SUCCESS;
+}
+
+static long h_NtWriteFileGather(const long *a) {
+  W32Handle *h = w32_handle((HANDLE)a[0]);
+  IO_STATUS_BLOCK *iosb = (IO_STATUS_BLOCK *)a[4];
+  NtSegment *segs = (NtSegment *)a[5];
+  ULONG count = (ULONG)a[6];
+  ULONG len = (ULONG)a[7];
+  if (!h || h->fd < 0) return STATUS_INVALID_HANDLE;
+  ULONG done = 0;
+  for (ULONG i = 0; i < count && done < len; i++) {
+    ULONG want = segs[i].Length;
+    if (want > len - done) want = len - done;
+    ssize_t n = write(h->fd, segs[i].Pointer, want);
+    if (n < 0) { if (iosb) { iosb->u.Status = STATUS_ACCESS_DENIED; iosb->Information = 0; } return STATUS_ACCESS_DENIED; }
+    done += (ULONG)n;
+  }
+  if (iosb) { iosb->u.Status = STATUS_SUCCESS; iosb->Information = done; }
+  return STATUS_SUCCESS;
+}
+
 /* ---------------- dispatch table (numbers from windows-syscalls) -------- */
 static ntfn nt_tab[NT_NR_MAX];
 static int nt_ready;
@@ -1119,6 +1247,103 @@ NTSTATUS NtAllocateVirtualMemoryEx(HANDLE h, PVOID *BaseAddress, ULONG AllocType
   a[0] = (long)h; a[1] = (long)BaseAddress; a[2] = (long)AllocType; a[3] = (long)Protect;
   a[4] = (long)Size;
   return (NTSTATUS)nt_dispatch(NR_NtAllocateVirtualMemoryEx, a);
+}
+
+/* ---- I/O syscalls: flush / lock / io-control / scatter-gather ---- */
+
+NTSTATUS ZwFlushBuffersFile(HANDLE h, IO_STATUS_BLOCK *iosb) {
+  return NtFlushBuffersFile(h, iosb);
+}
+
+NTSTATUS ZwFlushBuffersFileEx(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG flags) {
+  return NtFlushBuffersFileEx(h, iosb, flags);
+}
+
+NTSTATUS ZwLockFile(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG lockflags, BOOL exclusive,
+                    W64 off, W64 timeout) {
+  return NtLockFile(h, iosb, lockflags, exclusive, off, timeout);
+}
+
+NTSTATUS ZwUnlockFile(HANDLE h, IO_STATUS_BLOCK *iosb) {
+  return NtUnlockFile(h, iosb);
+}
+
+NTSTATUS ZwDeviceIoControlFile(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG code, PVOID in,
+                               ULONG inlen, PVOID out, ULONG outlen, ULONG *br) {
+  return NtDeviceIoControlFile(h, iosb, code, in, inlen, out, outlen, br);
+}
+
+NTSTATUS ZwFsControlFile(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG code, PVOID in,
+                         ULONG inlen, PVOID out, ULONG outlen, ULONG *br) {
+  return NtFsControlFile(h, iosb, code, in, inlen, out, outlen, br);
+}
+
+NTSTATUS ZwReadFileScatter(HANDLE h, HANDLE ev, PVOID apc, PVOID apcctx, IO_STATUS_BLOCK *iosb,
+                           PVOID buf, ULONG count, ULONG len) {
+  return NtReadFileScatter(h, ev, apc, apcctx, iosb, buf, count, len);
+}
+
+NTSTATUS ZwWriteFileGather(HANDLE h, HANDLE ev, PVOID apc, PVOID apcctx, IO_STATUS_BLOCK *iosb,
+                           PVOID buf, ULONG count, ULONG len) {
+  return NtWriteFileGather(h, ev, apc, apcctx, iosb, buf, count, len);
+}
+
+NTSTATUS NtFlushBuffersFile(HANDLE h, IO_STATUS_BLOCK *iosb) {
+  ARGV(2);
+  a[0] = (long)h; a[1] = (long)iosb;
+  return (NTSTATUS)nt_dispatch(NR_NtFlushBuffersFile, a);
+}
+
+NTSTATUS NtFlushBuffersFileEx(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG flags) {
+  ARGV(3);
+  a[0] = (long)h; a[1] = (long)iosb; a[2] = (long)flags;
+  return (NTSTATUS)nt_dispatch(NR_NtFlushBuffersFileEx, a);
+}
+
+NTSTATUS NtLockFile(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG lockflags, BOOL exclusive,
+                    W64 off, W64 timeout) {
+  ARGV(6);
+  a[0] = (long)h; a[1] = (long)iosb; a[2] = (long)lockflags; a[3] = (long)exclusive;
+  a[4] = (long)off; a[5] = (long)timeout;
+  return (NTSTATUS)nt_dispatch(NR_NtLockFile, a);
+}
+
+NTSTATUS NtUnlockFile(HANDLE h, IO_STATUS_BLOCK *iosb) {
+  ARGV(2);
+  a[0] = (long)h; a[1] = (long)iosb;
+  return (NTSTATUS)nt_dispatch(NR_NtUnlockFile, a);
+}
+
+NTSTATUS NtDeviceIoControlFile(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG code, PVOID in,
+                               ULONG inlen, PVOID out, ULONG outlen, ULONG *br) {
+  ARGV(8);
+  a[0] = (long)h; a[1] = (long)iosb; a[2] = (long)code; a[3] = (long)in;
+  a[4] = (long)inlen; a[5] = (long)out; a[6] = (long)outlen; a[7] = (long)br;
+  return (NTSTATUS)nt_dispatch(NR_NtDeviceIoControlFile, a);
+}
+
+NTSTATUS NtFsControlFile(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG code, PVOID in,
+                         ULONG inlen, PVOID out, ULONG outlen, ULONG *br) {
+  ARGV(8);
+  a[0] = (long)h; a[1] = (long)iosb; a[2] = (long)code; a[3] = (long)in;
+  a[4] = (long)inlen; a[5] = (long)out; a[6] = (long)outlen; a[7] = (long)br;
+  return (NTSTATUS)nt_dispatch(NR_NtFsControlFile, a);
+}
+
+NTSTATUS NtReadFileScatter(HANDLE h, HANDLE ev, PVOID apc, PVOID apcctx, IO_STATUS_BLOCK *iosb,
+                           PVOID buf, ULONG count, ULONG len) {
+  ARGV(8);
+  a[0] = (long)h; a[1] = (long)ev; a[2] = (long)apc; a[3] = (long)apcctx;
+  a[4] = (long)iosb; a[5] = (long)buf; a[6] = (long)count; a[7] = (long)len;
+  return (NTSTATUS)nt_dispatch(NR_NtReadFileScatter, a);
+}
+
+NTSTATUS NtWriteFileGather(HANDLE h, HANDLE ev, PVOID apc, PVOID apcctx, IO_STATUS_BLOCK *iosb,
+                           PVOID buf, ULONG count, ULONG len) {
+  ARGV(8);
+  a[0] = (long)h; a[1] = (long)ev; a[2] = (long)apc; a[3] = (long)apcctx;
+  a[4] = (long)iosb; a[5] = (long)buf; a[6] = (long)count; a[7] = (long)len;
+  return (NTSTATUS)nt_dispatch(NR_NtWriteFileGather, a);
 }
 
 NTSTATUS NtCreateFile(HANDLE *FileHandle, ULONG Access, OBJECT_ATTRIBUTES *Obj,

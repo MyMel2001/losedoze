@@ -535,6 +535,32 @@ W32API NTSTATUS ZwWriteVirtualMemoryEx(HANDLE h, HANDLE section, PVOID BaseAddre
                                     PVOID Buffer, ULONG Len, ULONG *ReturnLength);
 W32API NTSTATUS ZwAllocateVirtualMemoryEx(HANDLE h, PVOID *BaseAddress, ULONG AllocType,
                                         ULONG Protect, ULONG_PTR *Size);
+W32API NTSTATUS NtFlushBuffersFile(HANDLE h, IO_STATUS_BLOCK *iosb);
+W32API NTSTATUS NtFlushBuffersFileEx(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG flags);
+W32API NTSTATUS NtLockFile(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG lockflags, BOOL exclusive,
+                           W64 off, W64 timeout);
+W32API NTSTATUS NtUnlockFile(HANDLE h, IO_STATUS_BLOCK *iosb);
+W32API NTSTATUS NtDeviceIoControlFile(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG code, PVOID in,
+                                    ULONG inlen, PVOID out, ULONG outlen, ULONG *br);
+W32API NTSTATUS NtFsControlFile(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG code, PVOID in,
+                               ULONG inlen, PVOID out, ULONG outlen, ULONG *br);
+W32API NTSTATUS NtReadFileScatter(HANDLE h, HANDLE ev, PVOID apc, PVOID apcctx,
+                                 IO_STATUS_BLOCK *iosb, PVOID buf, ULONG count, ULONG len);
+W32API NTSTATUS NtWriteFileGather(HANDLE h, HANDLE ev, PVOID apc, PVOID apcctx,
+                                 IO_STATUS_BLOCK *iosb, PVOID buf, ULONG count, ULONG len);
+W32API NTSTATUS ZwFlushBuffersFile(HANDLE h, IO_STATUS_BLOCK *iosb);
+W32API NTSTATUS ZwFlushBuffersFileEx(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG flags);
+W32API NTSTATUS ZwLockFile(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG lockflags, BOOL exclusive,
+                           W64 off, W64 timeout);
+W32API NTSTATUS ZwUnlockFile(HANDLE h, IO_STATUS_BLOCK *iosb);
+W32API NTSTATUS ZwDeviceIoControlFile(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG code, PVOID in,
+                                    ULONG inlen, PVOID out, ULONG outlen, ULONG *br);
+W32API NTSTATUS ZwFsControlFile(HANDLE h, IO_STATUS_BLOCK *iosb, ULONG code, PVOID in,
+                               ULONG inlen, PVOID out, ULONG outlen, ULONG *br);
+W32API NTSTATUS ZwReadFileScatter(HANDLE h, HANDLE ev, PVOID apc, PVOID apcctx,
+                                 IO_STATUS_BLOCK *iosb, PVOID buf, ULONG count, ULONG len);
+W32API NTSTATUS ZwWriteFileGather(HANDLE h, HANDLE ev, PVOID apc, PVOID apcctx,
+                                 IO_STATUS_BLOCK *iosb, PVOID buf, ULONG count, ULONG len);
 
 /* diagnostics */
 W32API const char *nt_name(W32 nr);

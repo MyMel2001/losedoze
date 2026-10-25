@@ -28,6 +28,8 @@ IMPLEMENTED = {
     "NtProtectVirtualMemory", "NtFlushVirtualMemory", "NtLockVirtualMemory",
     "NtUnlockVirtualMemory", "NtReadVirtualMemoryEx", "NtWriteVirtualMemoryEx",
     "NtAllocateVirtualMemoryEx",
+    "NtFlushBuffersFile", "NtFlushBuffersFileEx", "NtLockFile", "NtUnlockFile",
+    "NtDeviceIoControlFile", "NtFsControlFile", "NtReadFileScatter", "NtWriteFileGather",
 }
 # Zw-style alias entry: NtOpenFile is the same syscall as NtCreateFile
 ALIASES = {"NtOpenFile": "NtCreateFile"}
