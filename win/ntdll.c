@@ -1215,6 +1215,32 @@ static long h_NtPulseEvent(const long *a) {
   return STATUS_SUCCESS;
 }
 
+/* ---------------- performance / cpu syscalls ----------------------------- */
+
+static long h_NtQueryPerformanceCounter(const long *a) {
+  W64 *Frequency = (W64 *)a[0];
+  W64 *Counter = (W64 *)a[1];
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  if (Frequency) *Frequency = 10000000; /* 100ns units */
+  if (Counter) *Counter = (W64)ts.tv_sec * 10000000LL + (W64)ts.tv_nsec / 100;
+  return STATUS_SUCCESS;
+}
+
+static long h_NtGetCurrentProcessorNumber(const long *a) {
+  W32 *Number = (W32 *)a[0];
+  if (Number) *Number = (W32)sysconf(_SC_NPROCESSORS_ONLN);
+  return STATUS_SUCCESS;
+}
+
+static long h_NtGetCurrentProcessorNumberEx(const long *a) {
+  W32 Info = (W32)a[0];
+  W32 *Number = (W32 *)a[1];
+  if (Number) *Number = (W32)sysconf(_SC_NPROCESSORS_ONLN);
+  (void)Info;
+  return STATUS_SUCCESS;
+}
+
 /* ---------------- dispatch table (numbers from windows-syscalls) -------- */
 /* ---------------- wait syscalls: multiple objects ---------------- */
 
@@ -2074,6 +2100,38 @@ NTSTATUS NtPulseEvent(HANDLE h) {
   ARGV(1);
   a[0] = (long)h;
   return (NTSTATUS)nt_dispatch(NR_NtPulseEvent, a);
+}
+
+/* ---- performance / cpu syscalls ---- */
+
+NTSTATUS ZwQueryPerformanceCounter(W64 *Frequency, W64 *Counter) {
+  return NtQueryPerformanceCounter(Frequency, Counter);
+}
+
+NTSTATUS NtQueryPerformanceCounter(W64 *Frequency, W64 *Counter) {
+  ARGV(2);
+  a[0] = (long)Frequency; a[1] = (long)Counter;
+  return (NTSTATUS)nt_dispatch(NR_NtQueryPerformanceCounter, a);
+}
+
+NTSTATUS ZwGetCurrentProcessorNumber(W32 *Number) {
+  return NtGetCurrentProcessorNumber(Number);
+}
+
+NTSTATUS NtGetCurrentProcessorNumber(W32 *Number) {
+  ARGV(1);
+  a[0] = (long)Number;
+  return (NTSTATUS)nt_dispatch(NR_NtGetCurrentProcessorNumber, a);
+}
+
+NTSTATUS ZwGetCurrentProcessorNumberEx(W32 Info, W32 *Number) {
+  return NtGetCurrentProcessorNumberEx(Info, Number);
+}
+
+NTSTATUS NtGetCurrentProcessorNumberEx(W32 Info, W32 *Number) {
+  ARGV(2);
+  a[0] = (long)Info; a[1] = (long)Number;
+  return (NTSTATUS)nt_dispatch(NR_NtGetCurrentProcessorNumberEx, a);
 }
 
 /* ---------------- registry syscalls: typed wrappers ---------------- */

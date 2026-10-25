@@ -42,6 +42,8 @@ IMPLEMENTED = {
     "NtQueryVirtualMemory", "NtMapViewOfSectionEx", "NtUnmapViewOfSectionEx",
     "NtCreateSectionEx",
     "NtQueryEvent", "NtQuerySemaphore", "NtClearEvent", "NtPulseEvent",
+    "NtQueryPerformanceCounter", "NtGetCurrentProcessorNumber",
+    "NtGetCurrentProcessorNumberEx",
 }
 # Zw-style alias entry: NtOpenFile is the same syscall as NtCreateFile
 ALIASES = {"NtOpenFile": "NtCreateFile"}

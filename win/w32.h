@@ -636,6 +636,13 @@ W32API NTSTATUS ZwClearEvent(HANDLE h);
 W32API NTSTATUS NtPulseEvent(HANDLE h);
 W32API NTSTATUS ZwPulseEvent(HANDLE h);
 
+W32API NTSTATUS NtQueryPerformanceCounter(W64 *Frequency, W64 *Counter);
+W32API NTSTATUS ZwQueryPerformanceCounter(W64 *Frequency, W64 *Counter);
+W32API NTSTATUS NtGetCurrentProcessorNumber(W32 *Number);
+W32API NTSTATUS ZwGetCurrentProcessorNumber(W32 *Number);
+W32API NTSTATUS NtGetCurrentProcessorNumberEx(W32 Info, W32 *Number);
+W32API NTSTATUS ZwGetCurrentProcessorNumberEx(W32 Info, W32 *Number);
+
 /* diagnostics */
 W32API const char *nt_name(W32 nr);
 
