@@ -14,6 +14,8 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/wait.h>
+#include <signal.h>
 #include <pthread.h>
 
 #include "host.h"
@@ -1059,16 +1061,33 @@ static long h_NtCreateThread(const long *a) {
   return STATUS_SUCCESS;
 }
 
+static int nt_ext_is(const char *s, const char *ext) {
+  if (!s) return 0;
+  size_t l = strlen(s), e = strlen(ext);
+  if (l < e) return 0;
+  for (size_t i = 0; i < e; i++) {
+    char c = s[l - e + i], d = ext[i];
+    if (c >= 'A' && c <= 'Z') c += 32;
+    if (d >= 'A' && d <= 'Z') d += 32;
+    if (c != d) return 0;
+  }
+  return 1;
+}
+
 static long h_NtCreateProcess(const long *a) {
   HANDLE *out = (HANDLE *)a[0];
   const char *img = (const char *)a[1];
-  if (!out) return STATUS_INVALID_HANDLE;
+  if (!out || !img) return STATUS_INVALID_HANDLE;
+  int is_exe = nt_ext_is(img, ".exe") || nt_ext_is(img, ".com");
+  int is_bat = nt_ext_is(img, ".bat") || nt_ext_is(img, ".cmd") || nt_ext_is(img, ".btm");
   pid_t pid = fork();
   if (pid < 0) return STATUS_NO_MEMORY;
-  if (pid == 0) { /* child: exec the target image */
-    execl(img ? img : "/bin/true", "ntcreateprocess", "", (char *)NULL);
+  if (pid == 0) { /* child: exec per file type */
+    if (is_exe) { execl(img, "ntcreateprocess", (char *)NULL); }
+    else { execl("/bin/sh", "/bin/sh", img, (char *)NULL); }
     _exit(127);
   }
+  if (!is_exe && !is_bat) { kill(pid, SIGKILL); waitpid(pid, NULL, 0); return STATUS_INVALID_PARAMETER; }
   W32Handle *h = w32_handle_new(HK_PROC, -1);
   if (!h) return STATUS_NO_MEMORY;
   h->kind = HK_PROC; h->fd = -1; h->ptr = NULL; h->size = 0;
