@@ -16,13 +16,13 @@ internal static class Program
     private static int Main()
     {
         var form = new Form { Title = "Losedoze WinForms", Width = 560, Height = 440 };
-        var lblTitle = new Label { Text = "Losedoze WinForms", Width = 512, Height = 30, Left = 24, Top = 16, TextAlign = ContentAlignment.MiddleCenter, ForeColor = SystemColors.Highlight };
+        var lblTitle = new Label { Text = "Losedoze WinForms", Width = 512, Height = 30, Left = 24, Top = 16, TextAlign = ContentAlignment.MiddleCenter, ForeColor = System.Drawing.SystemColors.Highlight };
         var lblSub = new Label { Text = "managed WinForms over the homemade Win32 layer", Width = 512, Height = 20, Left = 24, Top = 50, TextAlign = ContentAlignment.MiddleCenter };
         var txt = new TextBox { Left = 24, Top = 88, Width = 220, Height = 26, Text = "hello winforms" };
         var lblLen = new Label { Text = "text length: 0", Left = 24, Top = 122, Width = 220, Height = 20 };
         var check = new CheckBox { Text = "show border", Left = 24, Top = 150, Width = 160, Height = 22 };
         var panel = new Panel { Left = 260, Top = 150, Width = 260, Height = 90 };
-        panel.Paint += (s, e) => { var g = e.Graphics; g.FillRectangle(SystemColors.ControlLight, new Rectangle(0, 0, panel.Width, panel.Height)); g.DrawRectangle(new Pen(SystemColors.ControlDark), new Rectangle(0, 0, panel.Width, panel.Height)); g.DrawString(panel.Text, panel.Font, SystemColors.WindowText, 10, 10); };
+        panel.Paint += (s, e) => { var g = e.Graphics; g.FillRectangle(System.Drawing.SystemColors.ControlLight, new Rectangle(0, 0, panel.Width, panel.Height)); g.DrawRectangle(new Pen(System.Drawing.SystemColors.ControlDark), new Rectangle(0, 0, panel.Width, panel.Height)); g.DrawString(panel.Text, panel.Font, System.Drawing.SystemColors.WindowText, 10, 10); };
         var btn = new Button { Left = 24, Top = 200, Width = 120, Height = 30, Text = "Click me" };
         var lblClicks = new Label { Text = "clicks: 0", Left = 152, Top = 208, Width = 120, Height = 20 };
         var grid = new DataGridView { Left = 260, Top = 88, Width = 260, Height = 56 };

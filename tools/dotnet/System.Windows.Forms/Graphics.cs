@@ -19,7 +19,7 @@ public class Font
 
 public enum FontStyle { Regular = 0, Bold = 1, Italic = 2, Underline = 4, Strikeout = 8 }
 
-public abstract class Brush { public System.Drawing.Color Color { get; } = System.Drawing.Color.White; }
+public abstract class Brush { public System.Drawing.Color Color { get; set; } = System.Drawing.Color.White; }
 public sealed class SolidBrush : Brush { public SolidBrush(System.Drawing.Color c) { Color = c; } }
 
 public class Pen
@@ -53,7 +53,7 @@ public sealed class Graphics
             bottom = (int)(r.Bottom + Oy),
         };
         IntPtr handle = System.Windows.Forms.Native.CreateSolidBrush(
-            (int)((b.Color.B << 16) | (b.Color.G << 8) | b.Color.R));
+            (uint)((b.Color.B << 16) | (b.Color.G << 8) | b.Color.R));
         System.Windows.Forms.Native.FillRect(_dc, ref nr, handle);
         System.Windows.Forms.Native.DeleteObject(handle);
     }
@@ -61,7 +61,7 @@ public sealed class Graphics
     public void DrawRectangle(Pen p, Rectangle r)
     {
         var size = new Rectangle((int)(r.Left + Ox), (int)(r.Top + Oy), (int)r.Width, (int)r.Height);
-        IntPtr pen = System.Windows.Forms.Native.CreatePen(0, p.Width, (int)((p.Color.B << 16) | (p.Color.G << 8) | p.Color.R));
+        IntPtr pen = System.Windows.Forms.Native.CreatePen(0, p.Width, (uint)((p.Color.B << 16) | (p.Color.G << 8) | p.Color.R));
         IntPtr old = System.Windows.Forms.Native.SelectObject(_dc, pen);
         System.Windows.Forms.Native.Rectangle(_dc, size.Left, size.Top, size.Left + size.Width, size.Top + size.Height);
         System.Windows.Forms.Native.DeleteObject(pen);
@@ -71,7 +71,7 @@ public sealed class Graphics
     public void DrawRectangle(Pen p, int l, int t, int r, int b)
     {
         var size = new Rectangle((int)(l + Ox), (int)(t + Oy), (int)(r - l), (int)(b - t));
-        IntPtr pen = System.Windows.Forms.Native.CreatePen(0, p.Width, (int)((p.Color.B << 16) | (p.Color.G << 8) | p.Color.R));
+        IntPtr pen = System.Windows.Forms.Native.CreatePen(0, p.Width, (uint)((p.Color.B << 16) | (p.Color.G << 8) | p.Color.R));
         IntPtr old = System.Windows.Forms.Native.SelectObject(_dc, pen);
         System.Windows.Forms.Native.Rectangle(_dc, size.Left, size.Top, size.Left + size.Width, size.Top + size.Height);
         System.Windows.Forms.Native.DeleteObject(pen);
@@ -80,7 +80,7 @@ public sealed class Graphics
 
     public void DrawLine(Pen p, int x1, int y1, int x2, int y2)
     {
-        IntPtr pen = System.Windows.Forms.Native.CreatePen(0, p.Width, (int)((p.Color.B << 16) | (p.Color.G << 8) | p.Color.R));
+        IntPtr pen = System.Windows.Forms.Native.CreatePen(0, p.Width, (uint)((p.Color.B << 16) | (p.Color.G << 8) | p.Color.R));
         IntPtr old = System.Windows.Forms.Native.SelectObject(_dc, pen);
         var pt = new System.Windows.Forms.Native.POINT();
         System.Windows.Forms.Native.MoveToEx(_dc, x1 + Ox, y1 + Oy, ref pt);
@@ -93,7 +93,7 @@ public sealed class Graphics
     {
         var col = (int)((c.B << 16) | (c.G << 8) | c.R);
         System.Windows.Forms.Native.SetFontSize(_dc, f?.Size ?? 12f);
-        System.Windows.Forms.Native.SetTextColor(_dc, col);
+        System.Windows.Forms.Native.SetTextColor(_dc, (uint)col);
         System.Windows.Forms.Native.SetBkMode(_dc, System.Windows.Forms.Native.TRANSPARENT);
         System.Windows.Forms.Native.TextOutW(_dc, (int)(x + Ox), (int)(y + Oy), s, -1);
     }
@@ -104,8 +104,8 @@ public sealed class Graphics
     {
         System.Windows.Forms.Native.SetFontSize(_dc, f?.Size ?? 12f);
         var size = new System.Windows.Forms.Native.SIZE();
-        bool ok = System.Windows.Forms.Native.GetTextExtentPoint32W(_dc, s, -1, ref size);
-        if (!ok) return new SizeF(8f * (s?.Length ?? 0), f?.Size ?? 12f);
+        int ok = System.Windows.Forms.Native.GetTextExtentPoint32W(_dc, s, -1, ref size);
+        if (ok == 0) return new SizeF(8f * (s?.Length ?? 0), f?.Size ?? 12f);
         return new SizeF(size.cx, size.cy);
     }
 }

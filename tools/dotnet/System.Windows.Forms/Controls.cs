@@ -63,13 +63,14 @@ public delegate void KeyPressEventHandler(object? sender, KeyPressEventArgs e);
 public class Control
 {
     private Control? _parent;
-    private readonly ControlCollection _children = new ControlCollection();
+    private ControlCollection _children;
     private string _text = "";
 
     internal Form? Owner;
 
     public Control()
     {
+        _children = new ControlCollection(this);
         Visible = true;
         Enabled = true;
         Width = 100;
@@ -201,7 +202,7 @@ public class Control
     }
 }
 
-public class ControlCollection : IEnumerable
+public class ControlCollection : IEnumerable<Control>
 {
     private readonly Control _owner;
     private readonly List<Control> _items = new List<Control>();
@@ -212,7 +213,8 @@ public class ControlCollection : IEnumerable
     public void AddRange(params Control[] controls) { foreach (var c in controls) Add(c); }
     public void Remove(Control c) { _items.Remove(c); }
     public void Clear() { foreach (var c in _items) c.SetParent(null); _items.Clear(); }
-    public IEnumerator GetEnumerator() => _items.GetEnumerator();
+    public IEnumerator<Control> GetEnumerator() => _items.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => _items.GetEnumerator();
 }
 
 // ---------------------------------------------------------------- Form
