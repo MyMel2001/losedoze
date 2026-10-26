@@ -1425,48 +1425,48 @@ static long h_NtCompareSigningLevels(const long *a) { if (!a) return (long)STATU
 static long h_NtCompareTokens(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtCompressKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtContinue(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtContinueEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtContinueEx(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtConvertBetweenAuxiliaryCounterAndPerformanceCounter(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtCopyFileChunk(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtCreateCpuPartition(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtCreateCrossVmEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtCreateCrossVmMutant(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateDebugObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateDirectoryObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateDirectoryObjectEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateDebugObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *d = w32_handle_new(HK_DEBUG, -1); if (!d) return STATUS_NO_MEMORY; d->kind = HK_DEBUG; *o = d; return (long)STATUS_SUCCESS; }
+static long h_NtCreateDirectoryObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *d = w32_handle_new(HK_SEC, -1); if (!d) return STATUS_NO_MEMORY; d->kind = HK_SEC; *o = d; return (long)STATUS_SUCCESS; }
+static long h_NtCreateDirectoryObjectEx(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtCreateEnclave(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtCreateEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateEventPair(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateIRTimer(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateIoCompletion(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateIoRing(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateEnlistment(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtCreateEventPair(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *e = w32_handle_new(HK_EVENT, -1); if (!e) return STATUS_NO_MEMORY; e->kind = HK_EVENT; *o = e; return (long)STATUS_SUCCESS; }
+static long h_NtCreateIRTimer(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *t = w32_handle_new(HK_TIMER, -1); if (!t) return STATUS_NO_MEMORY; t->kind = HK_TIMER; *o = t; return (long)STATUS_SUCCESS; }
+static long h_NtCreateIoCompletion(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *i = w32_handle_new(HK_SEC, -1); if (!i) return STATUS_NO_MEMORY; i->kind = HK_SEC; *o = i; return (long)STATUS_SUCCESS; }
+static long h_NtCreateIoRing(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *i = w32_handle_new(HK_SEC, -1); if (!i) return STATUS_NO_MEMORY; i->kind = HK_SEC; *o = i; return (long)STATUS_SUCCESS; }
 static long h_NtCreateJobObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtCreateJobSet(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtCreateKeyTransacted(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtCreateKeyedEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateLowBoxToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateMailslotFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateKeyedEvent(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *e = w32_handle_new(HK_EVENT, -1); if (!e) return STATUS_NO_MEMORY; e->kind = HK_EVENT; *o = e; return (long)STATUS_SUCCESS; }
+static long h_NtCreateLowBoxToken(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *t = w32_handle_new(HK_TOKEN, -1); if (!t) return STATUS_NO_MEMORY; t->kind = HK_TOKEN; *o = t; return (long)STATUS_SUCCESS; }
+static long h_NtCreateMailslotFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *f = w32_handle_new(HK_FD, -2); if (!f) return STATUS_NO_MEMORY; f->kind = HK_FD; *o = f; return (long)STATUS_SUCCESS; }
 static long h_NtCreateMutant(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return (long)STATUS_INVALID_HANDLE; *o = (HANDLE)1; return (long)STATUS_SUCCESS; }
-static long h_NtCreateNamedPipeFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreatePagingFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreatePartition(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreatePrivateNamespace(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateProcessStateChange(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateNamedPipeFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *f = w32_handle_new(HK_FD, -3); if (!f) return STATUS_NO_MEMORY; f->kind = HK_FD; *o = f; return (long)STATUS_SUCCESS; }
+static long h_NtCreatePagingFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *f = w32_handle_new(HK_FD, -4); if (!f) return STATUS_NO_MEMORY; f->kind = HK_FD; *o = f; return (long)STATUS_SUCCESS; }
+static long h_NtCreatePartition(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *p = w32_handle_new(HK_SEC, -1); if (!p) return STATUS_NO_MEMORY; p->kind = HK_SEC; *o = p; return (long)STATUS_SUCCESS; }
+static long h_NtCreatePrivateNamespace(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *n = w32_handle_new(HK_SEC, -1); if (!n) return STATUS_NO_MEMORY; n->kind = HK_SEC; *o = n; return (long)STATUS_SUCCESS; }
+static long h_NtCreateProcessStateChange(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtCreateProfile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtCreateProfileEx(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtCreateRegistryTransaction(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateRegistryTransaction(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtCreateResourceManager(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtCreateSymbolicLinkObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateThreadStateChange(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateTimer2(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateTokenEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateSymbolicLinkObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *s = w32_handle_new(HK_SEC, -1); if (!s) return STATUS_NO_MEMORY; s->kind = HK_SEC; *o = s; return (long)STATUS_SUCCESS; }
+static long h_NtCreateThreadStateChange(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtCreateTimer2(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *t = w32_handle_new(HK_TIMER, -1); if (!t) return STATUS_NO_MEMORY; t->kind = HK_TIMER; *o = t; return (long)STATUS_SUCCESS; }
+static long h_NtCreateToken(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *t = w32_handle_new(HK_TOKEN, -1); if (!t) return STATUS_NO_MEMORY; t->kind = HK_TOKEN; *o = t; return (long)STATUS_SUCCESS; }
+static long h_NtCreateTokenEx(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *t = w32_handle_new(HK_TOKEN, -1); if (!t) return STATUS_NO_MEMORY; t->kind = HK_TOKEN; *o = t; return (long)STATUS_SUCCESS; }
 static long h_NtCreateTransaction(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtCreateTransactionManager(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtCreateUserProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateWnfStateName(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtDebugActiveProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtDebugContinue(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateUserProcess(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *h = w32_handle_new(HK_PROC, -1); if (!h) return STATUS_NO_MEMORY; h->kind = HK_PROC; h->fd = -1; h->ptr = NULL; h->size = 0; *o = h; return (long)STATUS_SUCCESS; }
+static long h_NtCreateWnfStateName(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return STATUS_INVALID_HANDLE; W32Handle *w = w32_handle_new(HK_WNF, -1); if (!w) return STATUS_NO_MEMORY; w->kind = HK_WNF; *o = w; return (long)STATUS_SUCCESS; }
+static long h_NtDebugActiveProcess(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtDebugContinue(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtDeleteAtom(const long *a) { for (long i = 0; i < 256; i++) if (atom_tab[i]) { atom_tab[i] = 0; break; } return (long)STATUS_SUCCESS; }
 static long h_NtDeleteFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtDeleteKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1475,9 +1475,9 @@ static long h_NtDeletePrivateNamespace(const long *a) { (void)a; return (long)ST
 static long h_NtDeleteValueKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtDeleteWnfStateData(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtDeleteWnfStateName(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtDirectGraphicsCall(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtDisplayString(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtDrawText(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDirectGraphicsCall(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtDisplayString(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtDrawText(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtDuplicateObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *out = (HANDLE *)a[0]; W32Handle *h = w32_handle((HANDLE)a[1]); if (!out || !h) return STATUS_INVALID_HANDLE; W32Handle *d = w32_handle_new(h->kind, h->fd); if (!d) return STATUS_NO_MEMORY; d->kind = h->kind; d->fd = h->fd; d->ptr = h->ptr; d->size = h->size; *out = d; return (long)STATUS_SUCCESS; }
 static long h_NtDuplicateToken(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *out = (HANDLE *)a[0]; if (!out) return STATUS_INVALID_HANDLE; W32Handle *t = w32_handle_new(HK_TOKEN, -1); if (!t) return STATUS_NO_MEMORY; t->kind = HK_TOKEN; *out = t; return (long)STATUS_SUCCESS; }
 static long h_NtEnumerateKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1548,7 +1548,7 @@ static long h_NtPrivilegedServiceAuditAlarm(const long *a) { if (!a) return (lon
 static long h_NtPssCaptureVaSpaceBulk(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryAttributesFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryAuxiliaryCounterFrequency(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtQueryDebugFilterState(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryDebugFilterState(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryDefaultLocale(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryDefaultUILanguage(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryDirectoryFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
@@ -1594,8 +1594,8 @@ static long h_NtQueryWnfStateNameInformation(const long *a) { (void)a; return (l
 static long h_NtQueueApcThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueueApcThreadEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueueApcThreadEx2(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtRaiseException(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtRaiseHardError(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRaiseException(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtRaiseHardError(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtReadOnlyEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtReadRequestData(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtRegisterProtocolAddressInformation(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1604,7 +1604,7 @@ static long h_NtReleaseKeyedEvent(const long *a) { (void)a; return (long)STATUS_
 static long h_NtReleaseMutant(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtRemoveIoCompletion(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtRemoveIoCompletionEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtRemoveProcessDebug(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRemoveProcessDebug(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtRenameKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtReplaceKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtReplacePartitionUnit(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1620,7 +1620,7 @@ static long h_NtSaveMergedKeys(const long *a) { if (!a) return (long)STATUS_INVA
 static long h_NtSetCachedSigningLevel(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetCachedSigningLevel2(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetContextThread(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtSetDebugFilterState(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetDebugFilterState(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSetDefaultHardErrorPort(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSetDefaultLocale(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSetDefaultUILanguage(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
@@ -1632,7 +1632,7 @@ static long h_NtSetHighEventPair(const long *a) { (void)a; return (long)STATUS_S
 static long h_NtSetHighWaitLowEventPair(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetIRTimer(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetInformationCpuPartition(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtSetInformationDebugObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationDebugObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSetInformationEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetInformationIoRing(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetInformationJobObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
@@ -1670,7 +1670,7 @@ static long h_NtSubmitIoRing(const long *a) { (void)a; return (long)STATUS_SUCCE
 static long h_NtSubscribeWnfStateChange(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSuspendProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSuspendThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtSystemDebugControl(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSystemDebugControl(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtTerminateEnclave(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtTerminateJobObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtTestAlert(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1685,9 +1685,9 @@ static long h_NtUnloadKey2(const long *a) { (void)a; return (long)STATUS_SUCCESS
 static long h_NtUnloadKeyEx(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtUnsubscribeWnfStateChange(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtUpdateWnfStateData(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtVdmControl(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtVdmControl(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtWaitForAlertByThreadId(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtWaitForDebugEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtWaitForDebugEvent(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtWaitForKeyedEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtWaitForWorkViaWorkerFactory(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtWaitHighEventPair(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
