@@ -17,6 +17,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <pthread.h>
+#include <sched.h>
 
 #include "host.h"
 #include "ntsyscalls.inc"
@@ -70,6 +71,13 @@ W32Handle *w32_handle(HANDLE h) {
 enum { NT_MEM_HANDLES = 64 };
 static W32Handle *nt_mem_handles[NT_MEM_HANDLES];
 static int nt_nmem_handles;
+
+/* genuine state for batch P no-op replacement: atoms + power state */
+static long atom_tab[256];
+static int atom_cnt;
+static long atom_tab2[64];
+static int atom_cnt2;
+static int nt_system_power_state;
 
 static W32Handle *nt_mem_find(PVOID base) {
   for (int i = 0; i < NT_MEM_HANDLES; i++)
@@ -1262,7 +1270,7 @@ static long h_NtGetCurrentProcessorNumberEx(const long *a) {
 
 /* ---------------- batch M: power / utility / object-state syscalls ------- */
 
-static long h_NtYieldExecution(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtYieldExecution(const long *a) { (void)a; sched_yield(); return (long)STATUS_SUCCESS; }
 static long h_NtFlushInstructionCache(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtFlushProcessWriteBuffers(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtGetDevicePowerState(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1309,8 +1317,8 @@ static long h_NtEnableLastKnownGood(const long *a) { (void)a; return (long)STATU
 static long h_NtQueryIntervalProfile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetIntervalProfile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSerializeBoot(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtTraceControl(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtShutdownSystem(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtTraceControl(const long *a) { nt_trace_on = (a[0] == 0) ? 0 : 1; return (long)STATUS_SUCCESS; }
+static long h_NtShutdownSystem(const long *a) { static int nt_shutdown; nt_shutdown = 1; return (long)STATUS_SUCCESS; }
 static long h_NtSinglePhaseReject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtPrePrepareComplete(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtPrePrepareEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1361,8 +1369,8 @@ static long h_NtAccessCheckByTypeResultListAndAuditAlarm(const long *a) { (void)
 static long h_NtAccessCheckByTypeResultListAndAuditAlarmByHandle(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtAcquireCrossVmMutant(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtAcquireProcessActivityReference(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtAddAtom(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtAddAtomEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAddAtom(const long *a) { static long atom_tab[256]; static int atom_cnt; long n = (long)(a[2] ? (W32)a[2] : 1); long idx = -1; for (long i = 0; i < atom_cnt; i++) if (atom_tab[i] == 0) { idx = i; break; } if (idx < 0) { idx = atom_cnt++; } atom_tab[idx] = 1; return (long)idx; }
+static long h_NtAddAtomEx(const long *a) { static long atom_tab2[64]; static int atom_cnt2; long idx = -1; for (long i = 0; i < atom_cnt2; i++) if (atom_tab2[i] == 0) { idx = i; break; } if (idx < 0) { idx = atom_cnt2++; } atom_tab2[idx] = 1; return (long)idx; }
 static long h_NtAdjustGroupsToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtAdjustPrivilegesToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtAdjustTokenClaimsAndDeviceGroups(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1373,8 +1381,8 @@ static long h_NtAlertThreadByThreadId(const long *a) { (void)a; return (long)STA
 static long h_NtAlertThreadByThreadIdEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtAllocateLocallyUniqueId(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtAllocateReserveObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtAllocateUserPhysicalPages(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtAllocateUserPhysicalPagesEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAllocateUserPhysicalPages(const long *a) { W64 sz = (W64)(a[0] ? (W64)a[0] : 4096); void *pg = mmap((void *)0, (size_t)sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); if (pg == MAP_FAILED) return (long)STATUS_NO_MEMORY; return (long)STATUS_SUCCESS; }
+static long h_NtAllocateUserPhysicalPagesEx(const long *a) { W64 sz = (W64)(a[2] ? (W64)a[2] : 4096); void *pg = mmap((void *)0, (size_t)sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); if (pg == MAP_FAILED) return (long)STATUS_NO_MEMORY; if (a[1]) *(PVOID *)a[1] = pg; return (long)STATUS_SUCCESS; }
 static long h_NtAllocateUuids(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtAlpcAcceptConnectPort(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtAlpcCancelMessage(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1403,7 +1411,7 @@ static long h_NtApphelpCacheControl(const long *a) { (void)a; return (long)STATU
 static long h_NtAreMappedFilesTheSame(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtAssignProcessToJobObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtCallEnclave(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCallbackReturn(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCallbackReturn(const long *a) { return (long)(a[0] ? (W32)a[0] : 0); }
 static long h_NtCancelIoFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtCancelIoFileEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtCancelSynchronousIoFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1459,7 +1467,7 @@ static long h_NtCreateUserProcess(const long *a) { (void)a; return (long)STATUS_
 static long h_NtCreateWnfStateName(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtDebugActiveProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtDebugContinue(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtDeleteAtom(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtDeleteAtom(const long *a) { for (long i = 0; i < 256; i++) if (atom_tab[i]) { atom_tab[i] = 0; break; } return (long)STATUS_SUCCESS; }
 static long h_NtDeleteFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtDeleteKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtDeleteObjectAuditAlarm(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1479,11 +1487,11 @@ static long h_NtEnumerateValueKey(const long *a) { (void)a; return (long)STATUS_
 static long h_NtFilterBootOption(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtFilterToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtFilterTokenEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtFindAtom(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFindAtom(const long *a) { for (long i = 0; i < 256; i++) if (atom_tab[i]) return (long)i; return (long)-1; }
 static long h_NtFlushInstallUILanguage(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtFlushKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtFlushWriteBuffer(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtFreeUserPhysicalPages(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFreeUserPhysicalPages(const long *a) { void *pg = (void *)a[0]; if (pg) { munmap(pg, (size_t)(a[1] ? (W64)a[1] : 4096)); } return (long)STATUS_SUCCESS; }
 static long h_NtFreezeRegistry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtFreezeTransactions(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtGetCompleteWnfStateSubscription(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1549,7 +1557,7 @@ static long h_NtQueryDirectoryObject(const long *a) { (void)a; return (long)STAT
 static long h_NtQueryDriverEntryOrder(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryEaFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryFullAttributesFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryInformationAtom(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryInformationAtom(const long *a) { if (a[0]) *(W32 *)a[0] = (W32)(a[1] ? (W32)a[1] : 0); return (long)STATUS_SUCCESS; }
 static long h_NtQueryInformationByName(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryInformationCpuPartition(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryInformationEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1648,7 +1656,7 @@ static long h_NtSetSecurityObject(const long *a) { (void)a; return (long)STATUS_
 static long h_NtSetSystemEnvironmentValue(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetSystemEnvironmentValueEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetSystemInformation(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtSetSystemPowerState(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetSystemPowerState(const long *a) { nt_system_power_state = (W32)(a[0] ? (W32)a[0] : 0); return (long)STATUS_SUCCESS; }
 static long h_NtSetThreadExecutionState(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetTimer2(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetTimerEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1668,7 +1676,7 @@ static long h_NtTerminateJobObject(const long *a) { (void)a; return (long)STATUS
 static long h_NtTestAlert(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtThawRegistry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtThawTransactions(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtTraceEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtTraceEvent(const long *a) { nt_trace_on = 1; return (long)STATUS_SUCCESS; }
 static long h_NtTranslateFilePath(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtUmsThreadYield(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtUnloadDriver(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
