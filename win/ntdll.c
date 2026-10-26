@@ -1299,7 +1299,7 @@ static long h_NtMapUserPhysicalPages(const long *a) {
 static long h_NtMapUserPhysicalPagesScatter(const long *a) { return h_NtMapUserPhysicalPages(a); }
 static long h_NtModifyBootEntry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtModifyDriverEntry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtNotifyChangeSession(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtNotifyChangeSession(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtPowerInformation(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 
 static long h_NtAddBootEntry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1340,11 +1340,11 @@ static long h_NtCommitTransaction(const long *a) { if (!a) return (long)STATUS_I
 static long h_NtRecoverEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtRecoverResourceManager(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtShutdownWorkerFactory(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCreateWorkerFactory(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryInformationWorkerFactory(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtSetInformationWorkerFactory(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtReleaseWorkerFactoryWorker(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtWorkerFactoryWorkerReady(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtCreateWorkerFactory(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtQueryInformationWorkerFactory(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationWorkerFactory(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtReleaseWorkerFactoryWorker(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtWorkerFactoryWorkerReady(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtCreateWaitCompletionPacket(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return (long)STATUS_INVALID_HANDLE; *o = (HANDLE)1; return (long)STATUS_SUCCESS; }
 static long h_NtCancelWaitCompletionPacket(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; HANDLE *o = (HANDLE *)a[0]; if (!o) return (long)STATUS_INVALID_HANDLE; return (long)STATUS_SUCCESS; }
 static long h_NtAssociateWaitCompletionPacket(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
@@ -1493,8 +1493,8 @@ static long h_NtFlushKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; 
 static long h_NtFlushWriteBuffer(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtFreeUserPhysicalPages(const long *a) { void *pg = (void *)a[0]; if (pg) { munmap(pg, (size_t)(a[1] ? (W64)a[1] : 4096)); } return (long)STATUS_SUCCESS; }
 static long h_NtFreezeRegistry(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtFreezeTransactions(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtGetCompleteWnfStateSubscription(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtFreezeTransactions(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtGetCompleteWnfStateSubscription(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtGetContextThread(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtGetMUIRegistryInfo(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtGetNextProcess(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
@@ -1512,10 +1512,10 @@ static long h_NtLoadKey2(const long *a) { (void)a; return (long)STATUS_SUCCESS; 
 static long h_NtLoadKey3(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtLoadKeyEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtMapCMFModule(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtNotifyChangeDirectoryFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtNotifyChangeDirectoryFileEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtNotifyChangeKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtNotifyChangeMultipleKeys(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtNotifyChangeDirectoryFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtNotifyChangeDirectoryFileEx(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtNotifyChangeKey(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtNotifyChangeMultipleKeys(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtOpenCpuPartition(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtOpenDirectoryObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtOpenEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1534,7 +1534,7 @@ static long h_NtOpenProcessToken(const long *a) { (void)a; return (long)STATUS_S
 static long h_NtOpenProcessTokenEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtOpenRegistryTransaction(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtOpenResourceManager(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtOpenSection(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtOpenSection(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtOpenSession(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtOpenSymbolicLinkObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtOpenThreadToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1546,50 +1546,50 @@ static long h_NtPrivilegeCheck(const long *a) { if (!a) return (long)STATUS_INVA
 static long h_NtPrivilegeObjectAuditAlarm(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtPrivilegedServiceAuditAlarm(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtPssCaptureVaSpaceBulk(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryAttributesFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryAttributesFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryAuxiliaryCounterFrequency(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryDebugFilterState(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryDefaultLocale(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryDefaultUILanguage(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtQueryDirectoryFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryDirectoryFileEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryDirectoryObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryDirectoryFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtQueryDirectoryFileEx(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtQueryDirectoryObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryDriverEntryOrder(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryEaFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryFullAttributesFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryEaFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtQueryFullAttributesFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryInformationAtom(const long *a) { if (a[0]) *(W32 *)a[0] = (W32)(a[1] ? (W32)a[1] : 0); return (long)STATUS_SUCCESS; }
 static long h_NtQueryInformationByName(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryInformationCpuPartition(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryInformationEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryInformationJobObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryInformationResourceManager(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtQueryInformationToken(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryInformationToken(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryInformationTransaction(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryInformationTransactionManager(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryInstallUILanguage(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryIoCompletion(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryIoRingCapabilities(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryLicenseValue(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryMultipleValueKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryMultipleValueKey(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryMutant(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; W32Handle *h = w32_handle((HANDLE)a[0]); if (!h) return STATUS_INVALID_HANDLE; W32 *info = (W32 *)a[2]; if (info) *info = (W32)h->kind; return (long)STATUS_SUCCESS; }
-static long h_NtQueryOpenSubKeys(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryOpenSubKeysEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryOpenSubKeys(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtQueryOpenSubKeysEx(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryPortInformationProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryQuotaInformationFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQuerySection(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryQuotaInformationFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtQuerySection(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQuerySecurityAttributesToken(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQuerySecurityObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtQuerySecurityPolicy(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQuerySecurityPolicy(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; W32Handle *h = w32_handle((HANDLE)a[0]); if (!h) return STATUS_INVALID_HANDLE; W32 *granted = (W32 *)a[2]; if (granted) *granted = (W32)0; return (long)STATUS_SUCCESS; }
 static long h_NtQuerySymbolicLinkObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQuerySystemEnvironmentValue(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQuerySystemEnvironmentValueEx(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQuerySystemInformationEx(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQuerySystemTime(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueryTimer(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryValueKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryVolumeInformationFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryWnfStateData(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtQueryValueKey(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtQueryVolumeInformationFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtQueryWnfStateData(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryWnfStateNameInformation(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueueApcThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtQueueApcThreadEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1616,7 +1616,7 @@ static long h_NtResumeThread(const long *a) { (void)a; return (long)STATUS_SUCCE
 static long h_NtRevertContainerImpersonation(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSaveKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSaveKeyEx(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtSaveMergedKeys(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSaveMergedKeys(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSetCachedSigningLevel(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetCachedSigningLevel2(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetContextThread(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
@@ -1625,7 +1625,7 @@ static long h_NtSetDefaultHardErrorPort(const long *a) { if (!a) return (long)ST
 static long h_NtSetDefaultLocale(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSetDefaultUILanguage(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSetDriverEntryOrder(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtSetEaFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetEaFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSetEventBoostPriority(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetEventEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetHighEventPair(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1636,7 +1636,7 @@ static long h_NtSetInformationDebugObject(const long *a) { (void)a; return (long
 static long h_NtSetInformationEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetInformationIoRing(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetInformationJobObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtSetInformationKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetInformationKey(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSetInformationObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetInformationProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetInformationResourceManager(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
@@ -1651,7 +1651,7 @@ static long h_NtSetIoCompletionEx(const long *a) { (void)a; return (long)STATUS_
 static long h_NtSetLdtEntries(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetLowEventPair(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetLowWaitHighEventPair(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtSetQuotaInformationFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetQuotaInformationFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSetSecurityObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSetSystemEnvironmentValue(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetSystemEnvironmentValueEx(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
@@ -1661,13 +1661,13 @@ static long h_NtSetThreadExecutionState(const long *a) { (void)a; return (long)S
 static long h_NtSetTimer2(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetTimerEx(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSetUuidSeed(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtSetValueKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtSetVolumeInformationFile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtSetWnfProcessNotificationEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSetValueKey(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtSetVolumeInformationFile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtSetWnfProcessNotificationEvent(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtStartProfile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtStopProfile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSubmitIoRing(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtSubscribeWnfStateChange(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSubscribeWnfStateChange(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSuspendProcess(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSuspendThread(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtSystemDebugControl(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1675,7 +1675,7 @@ static long h_NtTerminateEnclave(const long *a) { if (!a) return (long)STATUS_IN
 static long h_NtTerminateJobObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtTestAlert(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtThawRegistry(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtThawTransactions(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtThawTransactions(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtTraceEvent(const long *a) { nt_trace_on = 1; return (long)STATUS_SUCCESS; }
 static long h_NtTranslateFilePath(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtUmsThreadYield(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
@@ -1683,8 +1683,8 @@ static long h_NtUnloadDriver(const long *a) { (void)a; return (long)STATUS_SUCCE
 static long h_NtUnloadKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtUnloadKey2(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtUnloadKeyEx(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtUnsubscribeWnfStateChange(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtUpdateWnfStateData(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtUnsubscribeWnfStateChange(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtUpdateWnfStateData(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtVdmControl(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtWaitForAlertByThreadId(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
 static long h_NtWaitForDebugEvent(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
