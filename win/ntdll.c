@@ -1281,13 +1281,13 @@ static long h_NtIsProcessInJob(const long *a) { (void)a; return (long)STATUS_SUC
 static long h_NtIsSystemResumeAutomatic(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtIsUILanguageComitted(const long *a) { W32 *c = (W32 *)a[0]; if (c) *c = 0; return (long)STATUS_SUCCESS; }
 static long h_NtInitiatePowerAction(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtLoadDriver(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtLockProductActivationKeys(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtLockRegistryKey(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtMakeTemporaryObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtMakePermanentObject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtManageHotPatch(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtManagePartition(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtLoadDriver(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtLockProductActivationKeys(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtLockRegistryKey(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtMakeTemporaryObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtMakePermanentObject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtManageHotPatch(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtManagePartition(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtMapUserPhysicalPages(const long *a) {
   PVOID *addr = (PVOID *)a[1];
   W64 sz = (W64)a[2];
@@ -1297,49 +1297,49 @@ static long h_NtMapUserPhysicalPages(const long *a) {
   return (long)STATUS_SUCCESS;
 }
 static long h_NtMapUserPhysicalPagesScatter(const long *a) { return h_NtMapUserPhysicalPages(a); }
-static long h_NtModifyBootEntry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtModifyDriverEntry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtModifyBootEntry(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtModifyDriverEntry(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtNotifyChangeSession(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtPowerInformation(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 
-static long h_NtAddBootEntry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtAddDriverEntry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtDeleteBootEntry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtDeleteDriverEntry(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtEnumerateBootEntries(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtEnumerateDriverEntries(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryBootEntryOrder(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtSetBootEntryOrder(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryBootOptions(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtSetBootOptions(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtDisableLastKnownGood(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtEnableLastKnownGood(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtQueryIntervalProfile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtSetIntervalProfile(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtSerializeBoot(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtAddBootEntry(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtAddDriverEntry(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtDeleteBootEntry(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtDeleteDriverEntry(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtEnumerateBootEntries(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtEnumerateDriverEntries(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtQueryBootEntryOrder(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtSetBootEntryOrder(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtQueryBootOptions(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtSetBootOptions(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtDisableLastKnownGood(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtEnableLastKnownGood(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtQueryIntervalProfile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtSetIntervalProfile(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtSerializeBoot(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtTraceControl(const long *a) { nt_trace_on = (a[0] == 0) ? 0 : 1; return (long)STATUS_SUCCESS; }
 static long h_NtShutdownSystem(const long *a) { static int nt_shutdown; nt_shutdown = 1; return (long)STATUS_SUCCESS; }
-static long h_NtSinglePhaseReject(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtPrePrepareComplete(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtPrePrepareEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtPrepareComplete(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtPrepareEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtPropagationComplete(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtPropagationFailed(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtRollbackComplete(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtRollbackEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtRollbackRegistryTransaction(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtSinglePhaseReject(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtPrePrepareComplete(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtPrePrepareEnlistment(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtPrepareComplete(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtPrepareEnlistment(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtPropagationComplete(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtPropagationFailed(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtRollbackComplete(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtRollbackEnlistment(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtRollbackRegistryTransaction(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtRollbackTransaction(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtRollforwardTransactionManager(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtRecoverTransactionManager(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtRenameTransactionManager(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCommitComplete(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCommitEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
-static long h_NtCommitRegistryTransaction(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRollforwardTransactionManager(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtRecoverTransactionManager(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtRenameTransactionManager(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtCommitComplete(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtCommitEnlistment(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
+static long h_NtCommitRegistryTransaction(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtCommitTransaction(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtRecoverEnlistment(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtRecoverEnlistment(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtRecoverResourceManager(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
-static long h_NtShutdownWorkerFactory(const long *a) { (void)a; return (long)STATUS_SUCCESS; }
+static long h_NtShutdownWorkerFactory(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtCreateWorkerFactory(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtQueryInformationWorkerFactory(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
 static long h_NtSetInformationWorkerFactory(const long *a) { if (!a) return (long)STATUS_INVALID_PARAMETER; return (long)STATUS_SUCCESS; }
