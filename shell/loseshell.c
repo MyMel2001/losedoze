@@ -2674,6 +2674,7 @@ static int drag_dir;
 static int drag_ox, drag_oy, drag_gx, drag_gy, drag_gw, drag_gh;
 static unsigned long last_click_t;
 static Client *last_click_c;
+static unsigned long drag_start_t;
 
 enum { FE_PRESS = 1, FE_MOTION, FE_RELEASE };
 
@@ -2697,7 +2698,6 @@ static void frame_event(Client *c, int type, int sx, int sy, int btn) {
         if (y < TITLE_H) {
             unsigned long n = now_ms();
             if (last_click_c == c && n - last_click_t < 450) {
-                last_click_t = 0;
                 set_max(c, !c->max);
             } else {
                 last_click_c = c;
@@ -2710,6 +2710,7 @@ static void frame_event(Client *c, int type, int sx, int sy, int btn) {
                 drag_mode = 1;
                 drag_ox = sx - c->x;
                 drag_oy = sy - c->y;
+                drag_start_t = n;
                 cursor_set_shape(CUR_ARROW);
             }
             return;
@@ -2728,18 +2729,20 @@ static void frame_event(Client *c, int type, int sx, int sy, int btn) {
             drag_gx = c->x; drag_gy = c->y; drag_gw = c->w; drag_gh = c->h;
             drag_ox = sx;
             drag_oy = sy;
+            drag_start_t = n;
             cursor_set_shape(((dir & 3) && (dir & 12)) ? CUR_ARROW : ((dir & 3) ? CUR_H : CUR_V));
         }
         return;
     }
     case FE_MOTION: {
         if (dragc == c) {
-            if (drag_mode == 1) {
+            unsigned long n = now_ms();
+            if (drag_mode == 1 && n - drag_start_t >= 500) {
                 int nx = sx - drag_ox, ny = sy - drag_oy;
                 c->x = nx; c->y = ny;
                 wlwin_set_pos(c->wl, nx + FB, ny + TITLE_H);
                 needs_composite = 1;
-            } else {
+            } else if (drag_mode == 2 && n - drag_start_t >= 500) {
                 int dx = sx - drag_ox, dy = sy - drag_oy;
                 int x2 = drag_gx, y2 = drag_gy, w2 = drag_gw, h2 = drag_gh;
                 if (drag_dir & 1) { x2 = drag_gx + dx; w2 = drag_gw - dx; }
