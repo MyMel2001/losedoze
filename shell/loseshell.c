@@ -290,7 +290,7 @@ static void text_draw(Canvas *c, int x, int y, const char *s, int size, int bold
                 int xoff, yoff, w, h;
                 unsigned char *bm = stbtt_GetCodepointBitmap(fi, 0, scale, cp, &w, &h, &xoff, &yoff);
                 glyphs[idx].used = 1; glyphs[idx].w = (int)key; glyphs[idx].bm = bm;
-                glyphs[idx].xoff = xoff; glyphs[idx].yoff = yoff;
+                glyphs[idx].h = h; glyphs[idx].xoff = xoff; glyphs[idx].yoff = yoff;
                 g_widths[idx] = w;
                 gl = &glyphs[idx]; slotfound = idx;
                 break;
@@ -694,7 +694,8 @@ static void launch_exec(const char *exe, const char *arg) {
         setsid();
         int fd = open(LOGPATH, O_WRONLY | O_CREAT | O_APPEND, 0644);
         if (fd >= 0) { dup2(fd, 1); dup2(fd, 2); if (fd > 2) close(fd); }
-        execl(exe, exe, arg, (char *)NULL);
+        char *av[] = { (char *)exe, (char *)arg, NULL };
+        execvp(exe, av);   /* PATH-aware: desktop entries use bare host names (w32host) */
         _exit(127);
     }
 }
@@ -2674,7 +2675,6 @@ static int drag_dir;
 static int drag_ox, drag_oy, drag_gx, drag_gy, drag_gw, drag_gh;
 static unsigned long last_click_t;
 static Client *last_click_c;
-static unsigned long drag_start_t;
 
 enum { FE_PRESS = 1, FE_MOTION, FE_RELEASE };
 
@@ -2699,6 +2699,9 @@ static void frame_event(Client *c, int type, int sx, int sy, int btn) {
             unsigned long n = now_ms();
             if (last_click_c == c && n - last_click_t < 450) {
                 set_max(c, !c->max);
+                last_click_t = 0;      /* double-click consumed */
+                dragc = NULL;           /* clear stale drag state */
+                drag_mode = 0;
             } else {
                 last_click_c = c;
                 last_click_t = n;
@@ -2710,7 +2713,6 @@ static void frame_event(Client *c, int type, int sx, int sy, int btn) {
                 drag_mode = 1;
                 drag_ox = sx - c->x;
                 drag_oy = sy - c->y;
-                drag_start_t = n;
                 cursor_set_shape(CUR_ARROW);
             }
             return;
@@ -2729,20 +2731,18 @@ static void frame_event(Client *c, int type, int sx, int sy, int btn) {
             drag_gx = c->x; drag_gy = c->y; drag_gw = c->w; drag_gh = c->h;
             drag_ox = sx;
             drag_oy = sy;
-            drag_start_t = n;
             cursor_set_shape(((dir & 3) && (dir & 12)) ? CUR_ARROW : ((dir & 3) ? CUR_H : CUR_V));
         }
         return;
     }
     case FE_MOTION: {
         if (dragc == c) {
-            unsigned long n = now_ms();
-            if (drag_mode == 1 && n - drag_start_t >= 500) {
+            if (drag_mode == 1) {
                 int nx = sx - drag_ox, ny = sy - drag_oy;
                 c->x = nx; c->y = ny;
                 wlwin_set_pos(c->wl, nx + FB, ny + TITLE_H);
                 needs_composite = 1;
-            } else if (drag_mode == 2 && n - drag_start_t >= 500) {
+            } else if (drag_mode == 2) {
                 int dx = sx - drag_ox, dy = sy - drag_oy;
                 int x2 = drag_gx, y2 = drag_gy, w2 = drag_gw, h2 = drag_gh;
                 if (drag_dir & 1) { x2 = drag_gx + dx; w2 = drag_gw - dx; }
