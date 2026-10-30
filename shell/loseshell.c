@@ -561,7 +561,8 @@ static char cfg_pinned[MAX_PINNED][128];
 static int cfg_npinned;
 
 static void cfg_defaults(void) {
-    const char *d[] = { "Files", "Notepad", NULL };
+    /* default pinned set: the apps a fresh desktop should offer up front */
+    const char *d[] = { "Files", "Hello", "Notepad", "Terminal", "Browser", "Settings", NULL };
     cfg_npinned = 0;
     for (int i = 0; d[i] && cfg_npinned < MAX_PINNED; i++)
         strlcpy_(cfg_pinned[cfg_npinned++], d[i], 128);

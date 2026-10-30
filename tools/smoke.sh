@@ -439,6 +439,16 @@ print("ui: search-field ink pixels=%d" % n_ink)
 if n_ink < 120:
     fail("start menu has no visible text (search placeholder area ink=%d)" % n_ink)
 
+# 1b) the pinned grid must actually list apps: default pinned set (Files, Hello,
+# Notepad, Terminal, Browser, Settings) packs six entries into grid row 0
+# (item y = 104 + row*92, text at y+54; recommended section moves to y=384)
+y0 = py0 + 104 + 40
+y1 = py0 + 104 + 92
+r0 = ink(w, s2, px0 + 24, y0, px0 + POP_W - 24, y1)
+print("ui: pinned grid row0 ink=%d" % r0)
+if r0 < 150:
+    fail("start menu pinned grid has no visible app text (ink=%d)" % r0)
+
 # 2) type a query -> the result list must change
 for ch in "term":
     tap(ch)
