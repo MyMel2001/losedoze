@@ -359,6 +359,9 @@ if [ -x "$DOTNET_ROOT/dotnet" ] && [ -d tools/dotnet ]; then
         "$DOTNET_ROOT/dotnet" publish "$p" -c Release -o "build/dotnet/$n" \
             --nologo >/dev/null 2>&1 || printf 'skip dotnet app %s (publish failed)\n' "$n"
     done
+    # the .NET runtime probe (prints the LOSEDOZE DOTNET OK smoke marker, then exits)
+    "$DOTNET_ROOT/dotnet" publish tools/dotnet/DotNetProbe -c Release -o build/dotnet/dnapp \
+        --nologo >/dev/null 2>&1 || printf 'skip dotnet probe (publish failed)\n'
     [ -f build/dotnet/dnapp/dnapp.dll ] && DNAPP_OUT=build/dotnet/dnapp
 fi
 if [ -x "$DOTNET_ROOT/dotnet" ]; then
@@ -509,7 +512,7 @@ EOF
     fi
     cat >> "$ROOT/etc/losedoze/autostart.sh" <<'EOF'
 MODE=$(tr '\0' '\n' < /proc/cmdline 2>/dev/null | sed -n 's/^LOSEDOZE_AUTORUN=//p' | head -n1)
-[ -n "$MODE" ] || MODE=${LOSEDOZE_AUTORUN:-browser}
+[ -n "$MODE" ] || MODE=${LOSEDOZE_AUTORUN:-suite}
 LOG=/var/log/losedoze.log
 count_manage() {
     c=$(grep -c "manage:" "$LOG" 2>/dev/null)
@@ -683,24 +686,6 @@ if [ -x /usr/bin/losnetdesktop ]; then
     fi
 fi
 
-# settings app: the same Win32 layer used by a native tool (network on/off,
-# wifi, wallpaper, theme, brightness -> ~/.config/losedoze.conf)
-if [ -x /usr/bin/loseset ]; then
-    loseset > /tmp/loseset.log 2>&1 &
-    i=0
-    while ! grep -q "LOSEDOZE SETTINGS" /tmp/loseset.log 2>/dev/null && [ $i -lt 150 ]; do sleep 0.2; i=$((i + 1)); done
-    grep -q "LOSEDOZE SETTINGS OK" /tmp/loseset.log 2>/dev/null && echo "LOSEDOZE SETTINGS OK" > /dev/console || echo "LOSEDOZE SETTINGS FAIL" > /dev/console
-    # live reload: rewrite the shell's config file and wait for the shell to
-    # notice the new mtime and apply it (that is the settings app's contract)
-    H=${HOME:-/root}
-    mkdir -p "$H/.config"
-    echo "bright=90" > "$H/.config/losedoze.conf"
-    i=0
-    while ! grep -q "config reloaded" /var/log/losedoze.log 2>/dev/null && [ $i -lt 75 ]; do sleep 0.2; i=$((i + 1)); done
-    grep -q "config reloaded" /var/log/losedoze.log 2>/dev/null \
-        && echo "LOSEDOZE SETTINGS RELOAD OK" > /dev/console \
-        || echo "LOSEDOZE SETTINGS RELOAD FAIL" > /dev/console
-fi
 # .NET WinForms: a managed app that runs a window through the losedoze WinForms
 # framework (our System.Windows.Forms on libwin32.so) and paints it with GDI.
 if [ -x /usr/bin/loswinforms ]; then
@@ -722,14 +707,37 @@ if [ -x /usr/bin/loswinforms ]; then
     fi
 fi
 
-cat /tmp/netdesktop.log /tmp/loseset.log /tmp/winforms.log > /dev/console 2>/dev/null
-cat /tmp/winforms.log > /dev/console 2>/dev/null
+cat /tmp/netdesktop.log /tmp/winforms.log > /dev/console 2>/dev/null
 
 # terminal app: /bin/sh -c runner over the Win32 layer
 run_terminal
 
 # web browser: clean-room k93 engine + http client over the Win32 layer
 run_browser
+
+# settings app: the same Win32 layer used by a native tool (network on/off,
+# wifi, wallpaper, theme, brightness -> ~/.config/losedoze.conf)
+# LAST on purpose: the compositor stacks newly managed windows on top, so the
+# smoke's framebuffer shot (taken right after SETTINGS RELOAD) must find the
+# settings window unobscured -- terminal/browser/winforms all stack above it
+# otherwise and cover the orange highlight the shot checks for.
+if [ -x /usr/bin/loseset ]; then
+    loseset > /tmp/loseset.log 2>&1 &
+    i=0
+    while ! grep -q "LOSEDOZE SETTINGS" /tmp/loseset.log 2>/dev/null && [ $i -lt 150 ]; do sleep 0.2; i=$((i + 1)); done
+    grep -q "LOSEDOZE SETTINGS OK" /tmp/loseset.log 2>/dev/null && echo "LOSEDOZE SETTINGS OK" > /dev/console || echo "LOSEDOZE SETTINGS FAIL" > /dev/console
+    # live reload: rewrite the shell's config file and wait for the shell to
+    # notice the new mtime and apply it (that is the settings app's contract)
+    H=${HOME:-/root}
+    mkdir -p "$H/.config"
+    echo "bright=90" > "$H/.config/losedoze.conf"
+    i=0
+    while ! grep -q "config reloaded" /var/log/losedoze.log 2>/dev/null && [ $i -lt 75 ]; do sleep 0.2; i=$((i + 1)); done
+    grep -q "config reloaded" /var/log/losedoze.log 2>/dev/null \
+        && echo "LOSEDOZE SETTINGS RELOAD OK" > /dev/console \
+        || echo "LOSEDOZE SETTINGS RELOAD FAIL" > /dev/console
+    cat /tmp/loseset.log > /dev/console 2>/dev/null
+fi
 
 # crash evidence: kernel fault reports (ip + module offset) and the
 # compositor's own log tail (its last actions before dying)
