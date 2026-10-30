@@ -22,6 +22,8 @@ case "${SMOKE_GPU:-std}" in
     virtio) VGA_ARG="-device virtio-vga" ;;
     *)      VGA_ARG="-vga std" ;;
 esac
+# the guest's input path (PS/2 keyboard + relative mouse) is always present;
+# SMOKE_UI only adds the interaction phase below, no extra device needed
 QMP=/tmp/loseterm-qmp.sock
 SER=/tmp/loseterm-serial.log
 SER_SOCK=/tmp/loseterm-ser.sock
@@ -199,8 +201,6 @@ if wait_marker "LOSEDOZE AUTOSTART BEGIN" 90; then
     wait_marker "LOSEDOZE WINFORMS OK" 250             || fail "winforms"
     wait_marker "LOSEDOZE SETTINGS OK" 180              || fail "settings-app"
     wait_marker "LOSEDOZE SETTINGS RELOAD OK" 60        || fail "settings-reload"
-    wait_marker "LOSEDOZE TERMINAL OK" "$TIMEOUT_TERM"  || fail "terminal-app"
-    wait_marker "LOSEDOZE BROWSER OK" "$TIMEOUT_BROWSER"  || fail "browser-app"
     WIN32_SEEN=1
     sleep 4   # let the compositor draw the last client windows
     shot
@@ -289,6 +289,192 @@ else:
     sys.exit(1)
 PY
 [ $? -eq 0 ] || fail "framebuffer check (shot: $SHOT)"
+fi
+
+# the last two client apps (terminal, browser) open windows that stack on top
+# of the settings client -- verify their markers AFTER the framebuffer check so
+# the screenshot still shows the settings window the check looks for
+if wait_marker "LOSEDOZE TERMINAL OK" "$TIMEOUT_TERM"; then
+    wait_marker "LOSEDOZE BROWSER OK" "$TIMEOUT_BROWSER" || fail "browser-app"
+fi
+
+# ------------------------------------------------- optional UI interaction
+# SMOKE_UI=1: drive the running desktop over QMP (keys + absolute mouse) and
+# prove the shell reacts: start menu opens WITH text, search filters, and a
+# client window can be dragged by its title bar (BUGS.md: dragging missing).
+if [ "${SMOKE_UI:-0}" = 1 ]; then
+    python3 - "$QMP" "$SHOT" <<'PY' || fail "ui-interaction"
+import json, socket, sys, time
+qmp, shot = sys.argv[1], sys.argv[2]
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+for _ in range(30):
+    try:
+        s.connect(qmp)
+        break
+    except OSError:
+        time.sleep(1)
+else:
+    sys.exit("QMP connect failed")
+f = s.makefile("rwb")
+f.readline()
+def cmd(obj):
+    f.write(json.dumps(obj).encode() + b"\n")
+    f.flush()
+    while True:
+        line = f.readline()
+        if not line:
+            sys.exit("QMP connection closed")
+        m = json.loads(line)
+        if "return" in m or "error" in m:
+            return m
+cmd({"execute": "qmp_capabilities"})
+
+def send(events):
+    r = cmd({"execute": "input-send-event", "arguments": {"events": events}})
+    if "error" in r:
+        sys.exit("input-send-event failed: %s" % r)
+
+def tap(q):
+    send([{"type": "key", "data": {"down": True,  "key": {"type": "qcode", "data": q}}},
+          {"type": "key", "data": {"down": False, "key": {"type": "qcode", "data": q}}}])
+    time.sleep(0.2)
+
+# pointer moves via QMP input-send-event abs (axis values are 0..32767 over
+# the surface; FB=1/TITLE_H frame geometry means the guest scales 0..32767 -> 0..w-1)
+def move(x, y):
+    send([{"type": "abs", "data": {"axis": "x", "value": round(x * 32767 / 1279)}},
+          {"type": "abs", "data": {"axis": "y", "value": round(y * 32767 / 799)}}])
+    time.sleep(0.15)
+
+def button(down):
+    send([{"type": "btn", "data": {"down": down, "button": "left"}}])
+    time.sleep(0.1)
+
+def snap():
+    r = cmd({"execute": "screendump", "arguments": {"filename": shot}})
+    if "error" in r:
+        sys.exit("screendump failed: %s" % r)
+    time.sleep(0.4)
+    d = open(shot, "rb").read()
+    toks, i = [], 0
+    while len(toks) < 4:
+        while d[i:i+1].isspace():
+            i += 1
+        if d[i:i+1] == b"#":
+            while d[i:i+1] != b"\n":
+                i += 1
+            continue
+        j = i
+        while not d[j:j+1].isspace():
+            j += 1
+        toks.append(d[i:j]); i = j
+    i += 1
+    w, h = int(toks[1]), int(toks[2])
+    return w, h, d[i:i + w * h * 3]
+
+def P(px, w, x, y):
+    o = (y * w + x) * 3
+    return px[o], px[o+1], px[o+2]
+
+def orange_bbox(w, h, px):
+    minx, miny, maxx, maxy = 10**9, 10**9, -1, -1
+    for y in range(0, h - 60):
+        base = y * w * 3
+        for x in range(w):
+            o = base + x * 3
+            if px[o] == 237 and px[o+1] == 111 and px[o+2] == 47:
+                if x < minx: minx = x
+                if x > maxx: maxx = x
+                if y < miny: miny = y
+                if y > maxy: maxy = y
+    if maxx < 0:
+        return None
+    return minx, miny, maxx, maxy
+
+def ink(w, px, x0, y0, x1, y1, thresh=25):
+    """count pixels that stand out from the band's dominant colour"""
+    from collections import Counter
+    c = Counter()
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            c[P(px, w, x, y)] += 1
+    bg = c.most_common(1)[0][0]
+    n = 0
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            p = P(px, w, x, y)
+            if max(abs(p[i] - bg[i]) for i in range(3)) > thresh:
+                n += 1
+    return n
+
+def changed(w, ax, ay, bx, by, prev, cur):
+    n = 0
+    for y in range(ay, by):
+        for x in range(ax, bx):
+            if P(prev, w, x, y) != P(cur, w, x, y):
+                n += 1
+    return n
+
+def fail(msg):
+    print("ui: %s" % msg)
+    sys.exit(1)
+
+# geometry the shell uses for its start popup (START_W/START_H/TB_H)
+POP_W, POP_H, TB_H = 600, 640, 48
+
+w, h, base = snap()
+bb0 = orange_bbox(w, h, base)
+if not bb0:
+    fail("no orange settings highlight in baseline shot (settings window missing)")
+print("ui: baseline orange bbox %s" % (bb0,))
+
+# 1) open the start menu (Super key-up toggles it in root_key())
+tap("meta_l")
+time.sleep(0.6)
+w, h, s2 = snap()
+px0 = (w - POP_W) // 2
+py0 = h - TB_H - POP_H - 8
+n_ink = ink(w, s2, px0 + 24, py0 + 22, px0 + POP_W - 24, py0 + 60)
+print("ui: search-field ink pixels=%d" % n_ink)
+if n_ink < 120:
+    fail("start menu has no visible text (search placeholder area ink=%d)" % n_ink)
+
+# 2) type a query -> the result list must change
+for ch in "term":
+    tap(ch)
+time.sleep(0.8)
+w, h, s3 = snap()
+n_chg = changed(w, px0 + 24, py0 + 70, px0 + POP_W - 24, py0 + 250, s2, s3)
+print("ui: pixels changed after typing query=%d" % n_chg)
+if n_chg < 300:
+    fail("typing in start search did not render results (changed=%d)" % n_chg)
+
+tap("esc")
+time.sleep(0.6)
+
+# 3) drag the settings window by its title bar; the orange highlight moves along
+# grab point from the baseline geometry: client origin is (frame_x+FB,
+# frame_y+TITLE_H) and the orange row sits at client (16, 76) (FB=1, TITLE_H=32)
+cx = bb0[0] - 17
+cy = bb0[1] - 108
+gx, gy = cx + 100, cy + 16
+tx, ty = gx + 360, gy + 300
+if tx > w - 40 or ty > h - 60:
+    fail("drag target off-screen: window at %d,%d" % (cx, cy))
+move(gx, gy); button(True)
+move(tx, ty)
+button(False)
+time.sleep(0.8)
+w, h, s4 = snap()
+bb1 = orange_bbox(w, h, s4)
+if not bb1:
+    fail("settings window disappeared after drag")
+dx, dy = bb1[0] - bb0[0], bb1[1] - bb0[1]
+print("ui: orange bbox after drag %s dx=%d dy=%d" % (bb1, dx, dy))
+if abs(dx) < 200 or abs(dy) < 200:
+    fail("title-bar drag did not move the window (dx=%d dy=%d)" % (dx, dy))
+print("ui: OK")
+PY
 fi
 
 # ---------------------------------------------------------------- installer
